@@ -251,5 +251,7 @@ namespace tools
 
   std::string get_human_readable_bytes(uint64_t bytes);
 
+  bool check_remote_client_version(const std::string& client_ver);
+
   uint64_t cumulative_block_sync_weight(cryptonote::network_type nettype, uint64_t start_block, uint64_t num_blocks);
 }

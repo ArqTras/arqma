@@ -41,6 +41,7 @@
 #include "string_tools.h"
 #include "time_helper.h"
 #include "cryptonote_config.h"
+//#include "version.h"
 
 namespace nodetool
 {
@@ -105,17 +106,21 @@ namespace nodetool
   };
   typedef anchor_peerlist_entry_base<epee::net_utils::network_address> anchor_peerlist_entry;
 
+#define P2P_CONNECTION_ENTRY_VERSION_MAX_SIZE 50
+
   template<typename AddressType>
   struct connection_entry_base
   {
     AddressType adr;
     peerid_type id;
     bool is_income;
+    char version[P2P_CONNECTION_ENTRY_VERSION_MAX_SIZE];
 
     BEGIN_KV_SERIALIZE_MAP()
       KV_SERIALIZE(adr)
       KV_SERIALIZE(id)
       KV_SERIALIZE(is_income)
+      KV_SERIALIZE(version)
     END_KV_SERIALIZE_MAP()
   };
   typedef connection_entry_base<epee::net_utils::network_address> connection_entry;

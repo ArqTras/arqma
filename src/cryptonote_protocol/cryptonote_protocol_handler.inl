@@ -284,6 +284,8 @@ namespace cryptonote
   template<class t_core>
   bool t_cryptonote_protocol_handler<t_core>::process_payload_sync_data(const CORE_SYNC_DATA& hshd, cryptonote_connection_context& context, bool is_inital)
   {
+    context.m_remote_version = hshd.client_version;
+
     if(context.m_state == cryptonote_connection_context::state_before_handshake && !is_inital)
       return true;
 
@@ -393,6 +395,7 @@ namespace cryptonote
     hshd.cumulative_difficulty = m_core.get_block_cumulative_difficulty(hshd.current_height);
     hshd.current_height += 1;
     hshd.pruning_seed = m_core.get_blockchain_pruning_seed();
+    hshd.client_version = ARQMA_VERSION_FULL;
     return true;
   }
   //------------------------------------------------------------------------------------------------------------------------
