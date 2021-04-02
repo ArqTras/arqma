@@ -642,7 +642,8 @@ namespace nodetool
             }
             else
             {
-              ++number_of_out_peers;
+              if(!(cntxt.m_state == p2p_connection_context::state_before_handshake && std::time(NULL) < cntxt.m_started + 15))
+                ++number_of_out_peers;
             }
             return true;
           }); // lambda
@@ -655,8 +656,8 @@ namespace nodetool
     })); // lambda
 
     network_zone& public_zone = m_network_zones.at(epee::net_utils::zone::public_);
-    public_zone.m_net_server.add_idle_handler(std::bind(&node_server<t_payload_net_handler>::idle_worker, this), 1000);
-    public_zone.m_net_server.add_idle_handler(std::bind(&t_payload_net_handler::on_idle, &m_payload_handler), 1000);
+    public_zone.m_net_server.add_idle_handler(boost::bind(&node_server<t_payload_net_handler>::idle_worker, this), 1000);
+    public_zone.m_net_server.add_idle_handler(boost::bind(&t_payload_net_handler::on_idle, &m_payload_handler), 1000);
 
     //here you can set worker threads count
     int thrds_count = 10;
