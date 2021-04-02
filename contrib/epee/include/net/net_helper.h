@@ -87,7 +87,6 @@ namespace net_utils
 					size_t& ref_bytes_transferred;
 
 					void operator()(const boost::system::error_code& error, std::size_t bytes_transferred)
-						)
 					{
 						ref_error = error;
 						ref_bytes_transferred = bytes_transferred;
@@ -99,8 +98,8 @@ namespace net_utils
       blocked_mode_client() :
           m_io_service(),
           m_ctx(boost::asio::ssl::context::tlsv12),
-          m_ssl_socket(new boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(m_io_service, m_ctx)),
           m_connector(direct_connect{}),
+          m_ssl_socket(new boost::asio::ssl::stream<boost::asio::ip::tcp::socket>(m_io_service, m_ctx)),
           m_ssl_options(epee::net_utils::ssl_support_t::e_ssl_support_autodetect),
           m_initialized(true),
           m_connected(false),
@@ -144,7 +143,7 @@ namespace net_utils
 		}
 
     inline
-      bool connect(const std::string& addr, int port, std::chrono::milliseconds timeout)
+    bool connect(const std::string& addr, int port, std::chrono::milliseconds timeout)
     {
       return connect(addr, std::to_string(port), timeout);
     }
@@ -156,14 +155,14 @@ namespace net_utils
       boost::unique_future<boost::asio::ip::tcp::socket> connection = m_connector(addr, port, m_deadline);
       for (;;)
       {
-	    m_io_service.reset();
-		  m_io_service.run_one();
+        m_io_service.reset();
+	      m_io_service.run_one();
 
-      if(connection.is_ready())
-        break;
+	      if(connection.is_ready())
+          break;
 		}
 
-        m_ssl_socket->next_layer() = connection.get();
+    m_ssl_socket->next_layer() = connection.get();
 		m_deadline.cancel();
 		if(m_ssl_socket->next_layer().is_open())
 				{
