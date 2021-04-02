@@ -465,12 +465,12 @@ namespace nodetool
     std::set<std::string> full_addrs;
     if(nettype == cryptonote::TESTNET)
     {
-      for(const auto& m_seed_nodes : arqma::testnet_core_nodes)
+     for(const auto &m_seed_nodes : arqma_nodes::TESTNET_NODES)
         full_addrs.insert(m_seed_nodes);
     }
     else if(nettype == cryptonote::STAGENET)
     {
-      for(const auto& m_seed_nodes : arqma::stagenet_core_nodes)
+      for(const auto &m_seed_nodes : arqma_nodes::STAGENET_NODES)
         full_addrs.insert(m_seed_nodes);
     }
     else if (nettype == cryptonote::FAKECHAIN)
@@ -478,7 +478,7 @@ namespace nodetool
     }
     else
     {
-      for(const auto& m_seed_nodes : arqma::mainnet_core_nodes)
+      for(const auto &m_seed_nodes : arqma_nodes::MAINNET_NODES)
         full_addrs.insert(m_seed_nodes);
     }
     return full_addrs;
