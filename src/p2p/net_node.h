@@ -229,7 +229,8 @@ namespace nodetool
         m_offline(false),
         m_save_graph(false),
         is_closing(false),
-        m_network_id()
+        m_network_id(),
+        max_connections(1)
     {}
     virtual ~node_server();
 
@@ -253,6 +254,7 @@ namespace nodetool
     size_t get_public_white_peers_count();
     size_t get_public_gray_peers_count();
     void get_public_peerlist(std::vector<peerlist_entry>& gray, std::vector<peerlist_entry>& white);
+    void get_peerlist(std::vector<peerlist_entry>& gray, std::vector<peerlist_entry>& white);
     size_t get_zone_count() const { return m_network_zones.size(); }
 
     void change_max_out_public_peers(size_t count);
@@ -450,7 +452,7 @@ namespace nodetool
     std::list<epee::net_utils::network_address>   m_priority_peers;
     std::vector<epee::net_utils::network_address> m_exclusive_peers;
     std::vector<epee::net_utils::network_address> m_seed_nodes;
-    bool m_fallback_seed_nodes_added; 
+    bool m_fallback_seed_nodes_added;
 //   bool m_seed_nodes_initialized = false;
  //   boost::shared_mutex m_seed_nodes_lock;
  //   std::atomic_flag m_fallback_seed_nodes_added;
@@ -486,6 +488,8 @@ namespace nodetool
     cryptonote::network_type m_nettype;
 
     epee::net_utils::ssl_support_t m_ssl_support;
+
+    uint32_t max_connections;
   };
 
     const int64_t default_limit_up = P2P_DEFAULT_LIMIT_RATE_UP;
@@ -514,6 +518,8 @@ namespace nodetool
     extern const command_line::arg_descriptor<int64_t> arg_limit_rate;
 
     extern const command_line::arg_descriptor<bool> arg_save_graph;
+
+    extern const command_line::arg_descriptor<uint32_t> arg_max_connections_per_ip;
 }
 
 POP_WARNINGS
