@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2021, The Arqma Network
+# Copyright (c) 2018-2024, The Arqma Network
 # Copyright (c) 2014-2021, The Monero Project
 #
 # All rights reserved.
