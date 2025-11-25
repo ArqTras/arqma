@@ -61,6 +61,7 @@ public:
     );
 
   bool print_checkpoints(const std::vector<std::string>& args);
+  bool print_quorum_checkpoints(const std::vector<std::string>& args);
 
   bool print_peer_list(const std::vector<std::string>& args);
 

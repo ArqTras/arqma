@@ -323,6 +323,86 @@ bool t_rpc_command_executor::print_checkpoints(uint64_t start_height, uint64_t e
   return true;
 }
 
+bool t_rpc_command_executor::print_quorum_checkpoints(uint64_t start_height, uint64_t end_height, bool print_json)
+{
+  cryptonote::COMMAND_RPC_GET_CHECKPOINTS::request req;
+  cryptonote::COMMAND_RPC_GET_CHECKPOINTS::response res;
+  epee::json_rpc::error error_resp;
+
+  req.start_height = start_height;
+  req.end_height   = end_height;
+
+  if (req.start_height == cryptonote::COMMAND_RPC_GET_CHECKPOINTS::HEIGHT_SENTINEL_VALUE &&
+      req.end_height   == cryptonote::COMMAND_RPC_GET_CHECKPOINTS::HEIGHT_SENTINEL_VALUE)
+  {
+    req.count = cryptonote::COMMAND_RPC_GET_CHECKPOINTS::NUM_CHECKPOINTS_TO_QUERY_BY_DEFAULT;
+  }
+  else if (req.start_height == cryptonote::COMMAND_RPC_GET_CHECKPOINTS::HEIGHT_SENTINEL_VALUE ||
+           req.end_height   == cryptonote::COMMAND_RPC_GET_CHECKPOINTS::HEIGHT_SENTINEL_VALUE)
+  {
+    req.count = 1;
+  }
+
+  if (m_is_rpc)
+  {
+    if (!m_rpc_client->json_rpc_request(req, res, "get_checkpoints", "Failed to query blockchain checkpoints"))
+      return false;
+  }
+  else
+  {
+    if (!m_rpc_server->on_get_checkpoints(req, res, error_resp) || res.status != CORE_RPC_STATUS_OK)
+    {
+      tools::fail_msg_writer() << "Failed to query checkpoints";
+      return false;
+    }
+  }
+
+  std::ostringstream output;
+  if (print_json)
+  {
+    output << "{\n\"checkpoints\": [";
+    for (size_t i = 0; i < res.checkpoints.size(); ++i)
+    {
+      output << "\n" << epee::serialization::store_t_to_json(res.checkpoints[i]);
+      if (i + 1 != res.checkpoints.size())
+        output << ",";
+    }
+    output << "\n]\n}";
+  }
+  else
+  {
+    for (size_t i = 0; i < res.checkpoints.size(); ++i)
+    {
+      const auto &checkpoint = res.checkpoints[i];
+      output << "Checkpoint [" << i << "]\n";
+      output << "  Height: " << checkpoint.height << "  Hash: " << checkpoint.block_hash << "\n";
+      output << "  Version: " << static_cast<uint32_t>(checkpoint.version)
+             << "  Prev Height: " << checkpoint.prev_height << "\n";
+
+      output << "  Signatures (" << checkpoint.signatures.size() << ")\n";
+      if (checkpoint.signatures.empty())
+      {
+        output << "    <none>\n";
+      }
+      else
+      {
+        for (size_t sig_index = 0; sig_index < checkpoint.signatures.size(); ++sig_index)
+        {
+          const auto &sig = checkpoint.signatures[sig_index];
+          output << "    [" << sig_index << "] voter_index: " << sig.voter_index
+                 << " signature: " << sig.signature << "\n";
+        }
+      }
+    }
+
+    if (res.checkpoints.empty())
+      output << "No quorum checkpoints";
+  }
+
+  tools::success_msg_writer() << output.str();
+  return true;
+}
+
 bool t_rpc_command_executor::print_sn_state_changes(uint64_t start_height, uint64_t end_height)
 {
   cryptonote::COMMAND_RPC_GET_SN_STATE_CHANGES::request req;
@@ -2509,8 +2589,6 @@ static void append_printable_service_node_list_entry(cryptonote::network_type ne
 
   if(is_registered) // Print Service Node tests
   {
-    epee::console_colors uptime_proof_color = (entry.last_uptime_proof == 0) ? epee::console_color_red : epee::console_color_green;
-
     stream << indent2;
     if(entry.last_uptime_proof == 0)
     {
@@ -2912,7 +2990,6 @@ bool t_rpc_command_executor::prepare_registration(bool force_registration)
   }
 
   uint64_t block_height = 0;
-  uint8_t hard_fork_version = cryptonote::network_version_16;
   cryptonote::network_type nettype = cryptonote::UNDEFINED;
   {
     std::string const info_fail_message = "Could not get current blockchain info";
@@ -2950,7 +3027,6 @@ bool t_rpc_command_executor::prepare_registration(bool force_registration)
       nettype = m_rpc_server->nettype();
     }
 
-    hard_fork_version = hf_res.version;
     block_height = std::max(res.height, res.target_height);
   }
 

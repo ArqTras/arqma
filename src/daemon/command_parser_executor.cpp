@@ -95,6 +95,34 @@ bool t_command_parser_executor::print_checkpoints(const std::vector<std::string>
   return m_executor.print_checkpoints(start_height, end_height, print_json);
 }
 
+bool t_command_parser_executor::print_quorum_checkpoints(const std::vector<std::string> &args)
+{
+  uint64_t start_height = cryptonote::COMMAND_RPC_GET_CHECKPOINTS::HEIGHT_SENTINEL_VALUE;
+  uint64_t end_height = cryptonote::COMMAND_RPC_GET_CHECKPOINTS::HEIGHT_SENTINEL_VALUE;
+
+  std::forward_list<std::string> args_list(args.begin(), args.end());
+  bool print_json = !args_list.empty() && args_list.front() == "+json";
+  if (print_json)
+    args_list.pop_front();
+
+  if (!parse_if_present(args_list, start_height, "start height"))
+    return false;
+
+  if (!parse_if_present(args_list, end_height, "end height"))
+    return false;
+
+  if (!args_list.empty())
+  {
+    std::cout << "use: print_quorum_checkpoints [+json] [start_height] [end_height]\n"
+              << "(omit arguments to print the last "
+              << cryptonote::COMMAND_RPC_GET_CHECKPOINTS::NUM_CHECKPOINTS_TO_QUERY_BY_DEFAULT << " checkpoints) "
+              << std::endl;
+    return false;
+  }
+
+  return m_executor.print_quorum_checkpoints(start_height, end_height, print_json);
+}
+
 bool t_command_parser_executor::print_sn_state_changes(const std::vector<std::string>& args)
 {
   uint64_t start_height;

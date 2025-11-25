@@ -8704,7 +8704,7 @@ void wallet2::transfer_selected_rct(std::vector<cryptonote::tx_destination_entry
 
   //prepare inputs
   LOG_PRINT_L2("preparing outputs");
-  size_t i = 0, out_index = 0;
+  size_t out_index = 0;
   std::vector<cryptonote::tx_source_entry> sources;
   std::unordered_set<rct::key> used_L;
   for(size_t idx: selected_transfers)
@@ -8728,8 +8728,6 @@ void wallet2::transfer_selected_rct(std::vector<cryptonote::tx_destination_entry
       oe.second.mask = std::get<2>(outs[out_index][n]);
       src.outputs.push_back(oe);
     }
-    ++i;
-
     //paste real transaction to the random index
     auto it_to_replace = std::find_if(src.outputs.begin(), src.outputs.end(), [&](const tx_output_entry& a)
     {
@@ -9596,6 +9594,7 @@ skip_tx:
 
   LOG_PRINT_L1("Done creating " << txes.size() << " transactions, " << print_money(accumulated_fee) <<
     " total fee, " << print_money(accumulated_change) << " total change");
+  LOG_PRINT_L1("Total inputs consumed: " << print_money(accumulated_outputs));
 
   hwdev.set_mode(hw::device::TRANSACTION_CREATE_REAL);
   for(auto &tx : txes)
@@ -9934,6 +9933,7 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_from(const crypton
 
   LOG_PRINT_L1("Done creating " << txes.size() << " transactions, " << print_money(accumulated_fee) <<
     " total fee, " << print_money(accumulated_change) << " total change");
+  LOG_PRINT_L1("Total inputs consumed: " << print_money(accumulated_outputs));
 
   hwdev.set_mode(hw::device::TRANSACTION_CREATE_REAL);
   for (auto &tx: txes)

@@ -578,7 +578,6 @@ int main(int argc, char* argv[])
             {
               add_ancestry(state.ancestry, txid, ancestor{amount, offset});
               // find the tx which created this output
-              bool found = false;
               crypto::hash output_txid;
               if (!get_output_txid(state, db, amount, offset, output_txid))
               {
@@ -697,7 +696,6 @@ int main(int argc, char* argv[])
             add_ancestor(ancestry, amount, offset);
 
             // find the tx which created this output
-            bool found = false;
             crypto::hash output_txid;
             if (!get_output_txid(state, db, amount, offset, output_txid))
             {

@@ -264,7 +264,9 @@ namespace tools
     try
     {
       res.balance = req.all_accounts ? m_wallet->balance_all(req.strict) : m_wallet->balance(req.account_index, req.strict);
-      res.unlocked_balance = req.all_accounts ? m_wallet->unlocked_balance_all(&res.blocks_to_unlock) : m_wallet->unlocked_balance(req.account_index, &res.blocks_to_unlock);
+      res.unlocked_balance = req.all_accounts
+        ? m_wallet->unlocked_balance_all(req.strict, &res.blocks_to_unlock)
+        : m_wallet->unlocked_balance(req.account_index, req.strict, &res.blocks_to_unlock);
       res.multisig_import_needed = m_wallet->multisig() && m_wallet->has_multisig_partial_key_images();
       std::map<uint32_t, std::map<uint32_t, uint64_t>> balance_per_subaddress_per_account;
       std::map<uint32_t, std::map<uint32_t, std::pair<uint64_t, uint64_t>>> unlocked_balance_per_subaddress_per_account;
@@ -2645,9 +2647,6 @@ namespace tools
         return false;
       }
 
-      crypto::hash long_payment_id;
-      crypto::hash8 short_payment_id;
-
       if (!wallet2::parse_long_payment_id(req.payment_id, payment_id))
       {
         if (!wallet2::parse_short_payment_id(req.payment_id, info.payment_id))
@@ -2887,7 +2886,10 @@ namespace tools
     cryptonote::COMMAND_RPC_GET_HEIGHT::request hreq;
     cryptonote::COMMAND_RPC_GET_HEIGHT::response hres;
     hres.height = 0;
-    bool r = wal->invoke_http_json("/getheight", hreq, hres);
+    if (!wal->invoke_http_json("/getheight", hreq, hres))
+    {
+      MWARNING("Failed to query daemon height while generating wallet; continuing with default");
+    }
     wal->set_refresh_from_block_height(hres.height);
     crypto::secret_key dummy_key;
     try {

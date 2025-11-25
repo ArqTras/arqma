@@ -1,0 +1,404 @@
+diff --git a/contrib/epee/src/byte_slice.cpp b/contrib/epee/src/byte_slice.cpp
+index a6ab225f..616f87c1 100644
+--- a/contrib/epee/src/byte_slice.cpp
++++ b/contrib/epee/src/byte_slice.cpp
+@@ -36,11 +36,6 @@
+ 
+ #include "byte_slice.h"
+ 
+-namespace
+-{
+-  const std::size_t page_size = 4096;
+-}
+-
+ namespace epee
+ {
+   struct byte_slice_data
+diff --git a/src/blockchain_utilities/blockchain_ancestry.cpp b/src/blockchain_utilities/blockchain_ancestry.cpp
+index da80bea6..3d120e18 100644
+--- a/src/blockchain_utilities/blockchain_ancestry.cpp
++++ b/src/blockchain_utilities/blockchain_ancestry.cpp
+@@ -578,7 +578,6 @@ int main(int argc, char* argv[])
+             {
+               add_ancestry(state.ancestry, txid, ancestor{amount, offset});
+               // find the tx which created this output
+-              bool found = false;
+               crypto::hash output_txid;
+               if (!get_output_txid(state, db, amount, offset, output_txid))
+               {
+@@ -697,7 +696,6 @@ int main(int argc, char* argv[])
+             add_ancestor(ancestry, amount, offset);
+ 
+             // find the tx which created this output
+-            bool found = false;
+             crypto::hash output_txid;
+             if (!get_output_txid(state, db, amount, offset, output_txid))
+             {
+diff --git a/src/blockchain_utilities/blockchain_usage.cpp b/src/blockchain_utilities/blockchain_usage.cpp
+index 3dd8aaa9..ba6755d3 100644
+--- a/src/blockchain_utilities/blockchain_usage.cpp
++++ b/src/blockchain_utilities/blockchain_usage.cpp
+@@ -151,7 +151,6 @@ int main(int argc, char* argv[])
+   LOG_PRINT_L0("Initializing source blockchain (BlockchainDB)");
+   BlockchainAndSNlistAndPool blockchain_objects = {};
+   Blockchain *core_storage = &blockchain_objects.blockchain;
+-  tx_memory_pool& tx_pool = blockchain_objects.tx_pool;
+   //std::unique_ptr<BlockchainAndSNlistAndPool> core_storage = std::make_unique<BlockchainAndSNlistAndPool>();
+   BlockchainDB *db = new_db();
+   if (db == NULL)
+diff --git a/src/cryptonote_basic/hardfork.h b/src/cryptonote_basic/hardfork.h
+index 2b971d42..958813bf 100644
+--- a/src/cryptonote_basic/hardfork.h
++++ b/src/cryptonote_basic/hardfork.h
+@@ -266,7 +266,7 @@ namespace cryptonote
+ 
+     BlockchainDB &db;
+ 
+-    std::chrono::seconds forked_time;
++    [[maybe_unused]] std::chrono::seconds forked_time;
+     uint64_t window_size;
+     uint8_t default_threshold_percent;
+ 
+diff --git a/src/cryptonote_core/service_node_list.cpp b/src/cryptonote_core/service_node_list.cpp
+index a0647d21..feca2eea 100644
+--- a/src/cryptonote_core/service_node_list.cpp
++++ b/src/cryptonote_core/service_node_list.cpp
+@@ -194,7 +194,7 @@ namespace service_nodes
+   {
+     std::vector<pubkey_and_sninfo> result;
+     if (reserve) result.reserve(sns_infos.size());
+-    for (const pubkey_and_sninfo &key_info : sns_infos)
++    for (const auto &key_info : sns_infos)
+       if (p(*key_info.second))
+         result.push_back(key_info);
+ 
+@@ -252,7 +252,7 @@ namespace service_nodes
+ 
+     if (alt_quorums)
+     {
+-      for (std::pair<crypto::hash, state_t> const &hash_to_state : m_transient.alt_state)
++      for (const auto &hash_to_state : m_transient.alt_state)
+       {
+         state_t const &alt_state = hash_to_state.second;
+         if (alt_state.height == height)
+@@ -493,7 +493,7 @@ namespace service_nodes
+     if (!verify_tx_state_change(state_change, cryptonote::get_block_height(block), tvc, *quorums->obligations, hard_fork_version))
+     {
+       quorums = nullptr;
+-      for (std::pair<crypto::hash, state_t> const &entry : alt_states)
++      for (const auto &entry : alt_states)
+       {
+         state_t const &alt_state = entry.second;
+         if (alt_state.height != state_change.block_height)
+diff --git a/src/cryptonote_protocol/arqnet.cpp b/src/cryptonote_protocol/arqnet.cpp
+index ec845e05..736a73d3 100644
+--- a/src/cryptonote_protocol/arqnet.cpp
++++ b/src/cryptonote_protocol/arqnet.cpp
+@@ -376,7 +376,7 @@ void relay_obligation_votes(void *obj, const std::vector<service_nodes::quorum_v
+   auto &snw = SNNWrapper::from(obj);
+   auto my_keys_ptr = snw.core.get_service_node_keys();
+   assert(my_keys_ptr);
+-  const auto &my_keys = *my_keys_ptr;
++  [[maybe_unused]] const auto &my_keys = *my_keys_ptr;
+ 
+   MDEBUG("Starting relay of " << votes.size() << " votes");
+   std::vector<service_nodes::quorum_vote_t> relayed_votes;
+diff --git a/src/daemon/command_parser_executor.cpp b/src/daemon/command_parser_executor.cpp
+index 4d3875bc..afa5ff2b 100644
+--- a/src/daemon/command_parser_executor.cpp
++++ b/src/daemon/command_parser_executor.cpp
+@@ -95,6 +95,34 @@ bool t_command_parser_executor::print_checkpoints(const std::vector<std::string>
+   return m_executor.print_checkpoints(start_height, end_height, print_json);
+ }
+ 
++bool t_command_parser_executor::print_quorum_checkpoints(const std::vector<std::string> &args)
++{
++  uint64_t start_height = cryptonote::COMMAND_RPC_GET_CHECKPOINTS::HEIGHT_SENTINEL_VALUE;
++  uint64_t end_height = cryptonote::COMMAND_RPC_GET_CHECKPOINTS::HEIGHT_SENTINEL_VALUE;
++
++  std::forward_list<std::string> args_list(args.begin(), args.end());
++  bool print_json = !args_list.empty() && args_list.front() == "+json";
++  if (print_json)
++    args_list.pop_front();
++
++  if (!parse_if_present(args_list, start_height, "start height"))
++    return false;
++
++  if (!parse_if_present(args_list, end_height, "end height"))
++    return false;
++
++  if (!args_list.empty())
++  {
++    std::cout << "use: print_quorum_checkpoints [+json] [start_height] [end_height]\n"
++              << "(omit arguments to print the last "
++              << cryptonote::COMMAND_RPC_GET_CHECKPOINTS::NUM_CHECKPOINTS_TO_QUERY_BY_DEFAULT << " checkpoints) "
++              << std::endl;
++    return false;
++  }
++
++  return m_executor.print_quorum_checkpoints(start_height, end_height, print_json);
++}
++
+ bool t_command_parser_executor::print_sn_state_changes(const std::vector<std::string>& args)
+ {
+   uint64_t start_height;
+diff --git a/src/daemon/command_parser_executor.h b/src/daemon/command_parser_executor.h
+index 7b86a787..df8c2024 100644
+--- a/src/daemon/command_parser_executor.h
++++ b/src/daemon/command_parser_executor.h
+@@ -61,6 +61,7 @@ public:
+     );
+ 
+   bool print_checkpoints(const std::vector<std::string>& args);
++  bool print_quorum_checkpoints(const std::vector<std::string>& args);
+ 
+   bool print_peer_list(const std::vector<std::string>& args);
+ 
+diff --git a/src/daemon/command_server.cpp b/src/daemon/command_server.cpp
+index 0e41632a..97ce6522 100644
+--- a/src/daemon/command_server.cpp
++++ b/src/daemon/command_server.cpp
+@@ -342,6 +342,12 @@ t_command_server::t_command_server(
+     , "print_checkpoints [+json] [start_height] [end_height]"
+     , "Query the available checkpoints between the range, omit arguments to print the last 60 checkpoints"
+     );
++    m_command_lookup.set_handler(
++      "print_quorum_checkpoints"
++    , std::bind(&t_command_parser_executor::print_quorum_checkpoints, &m_parser, p::_1)
++    , "print_quorum_checkpoints [+json] [start_height] [end_height]"
++    , "Display checkpoint quorum signatures for the requested range (defaults to the last 60 checkpoints)"
++    );
+     m_command_lookup.set_handler(
+       "print_sn_state_changes"
+     , std::bind(&t_command_parser_executor::print_sn_state_changes, &m_parser, p::_1)
+diff --git a/src/daemon/rpc_command_executor.cpp b/src/daemon/rpc_command_executor.cpp
+index a52558eb..c583ee9e 100644
+--- a/src/daemon/rpc_command_executor.cpp
++++ b/src/daemon/rpc_command_executor.cpp
+@@ -323,6 +323,86 @@ bool t_rpc_command_executor::print_checkpoints(uint64_t start_height, uint64_t e
+   return true;
+ }
+ 
++bool t_rpc_command_executor::print_quorum_checkpoints(uint64_t start_height, uint64_t end_height, bool print_json)
++{
++  cryptonote::COMMAND_RPC_GET_CHECKPOINTS::request req;
++  cryptonote::COMMAND_RPC_GET_CHECKPOINTS::response res;
++  epee::json_rpc::error error_resp;
++
++  req.start_height = start_height;
++  req.end_height   = end_height;
++
++  if (req.start_height == cryptonote::COMMAND_RPC_GET_CHECKPOINTS::HEIGHT_SENTINEL_VALUE &&
++      req.end_height   == cryptonote::COMMAND_RPC_GET_CHECKPOINTS::HEIGHT_SENTINEL_VALUE)
++  {
++    req.count = cryptonote::COMMAND_RPC_GET_CHECKPOINTS::NUM_CHECKPOINTS_TO_QUERY_BY_DEFAULT;
++  }
++  else if (req.start_height == cryptonote::COMMAND_RPC_GET_CHECKPOINTS::HEIGHT_SENTINEL_VALUE ||
++           req.end_height   == cryptonote::COMMAND_RPC_GET_CHECKPOINTS::HEIGHT_SENTINEL_VALUE)
++  {
++    req.count = 1;
++  }
++
++  if (m_is_rpc)
++  {
++    if (!m_rpc_client->json_rpc_request(req, res, "get_checkpoints", "Failed to query blockchain checkpoints"))
++      return false;
++  }
++  else
++  {
++    if (!m_rpc_server->on_get_checkpoints(req, res, error_resp) || res.status != CORE_RPC_STATUS_OK)
++    {
++      tools::fail_msg_writer() << "Failed to query checkpoints";
++      return false;
++    }
++  }
++
++  std::ostringstream output;
++  if (print_json)
++  {
++    output << "{\n\"checkpoints\": [";
++    for (size_t i = 0; i < res.checkpoints.size(); ++i)
++    {
++      output << "\n" << epee::serialization::store_t_to_json(res.checkpoints[i]);
++      if (i + 1 != res.checkpoints.size())
++        output << ",";
++    }
++    output << "\n]\n}";
++  }
++  else
++  {
++    for (size_t i = 0; i < res.checkpoints.size(); ++i)
++    {
++      const auto &checkpoint = res.checkpoints[i];
++      output << "Checkpoint [" << i << "]\n";
++      output << "  Height: " << checkpoint.height << "  Hash: " << checkpoint.block_hash << "\n";
++      output << "  Version: " << static_cast<uint32_t>(checkpoint.version)
++             << "  Prev Height: " << checkpoint.prev_height << "\n";
++
++      output << "  Signatures (" << checkpoint.signatures.size() << ")\n";
++      if (checkpoint.signatures.empty())
++      {
++        output << "    <none>\n";
++      }
++      else
++      {
++        for (size_t sig_index = 0; sig_index < checkpoint.signatures.size(); ++sig_index)
++        {
++          const auto &sig = checkpoint.signatures[sig_index];
++          output << "    [" << sig_index << "] voter_index: " << sig.voter_index
++                 << " signature: " << sig.signature << "\n";
++        }
++      }
++    }
++
++    if (res.checkpoints.empty())
++      output << "No quorum checkpoints";
++  }
++
++  tools::success_msg_writer() << output.str();
++  return true;
++}
++
+ bool t_rpc_command_executor::print_sn_state_changes(uint64_t start_height, uint64_t end_height)
+ {
+   cryptonote::COMMAND_RPC_GET_SN_STATE_CHANGES::request req;
+@@ -2509,8 +2589,6 @@ static void append_printable_service_node_list_entry(cryptonote::network_type ne
+ 
+   if(is_registered) // Print Service Node tests
+   {
+-    epee::console_colors uptime_proof_color = (entry.last_uptime_proof == 0) ? epee::console_color_red : epee::console_color_green;
+-
+     stream << indent2;
+     if(entry.last_uptime_proof == 0)
+     {
+@@ -2912,7 +2990,6 @@ bool t_rpc_command_executor::prepare_registration(bool force_registration)
+   }
+ 
+   uint64_t block_height = 0;
+-  uint8_t hard_fork_version = cryptonote::network_version_16;
+   cryptonote::network_type nettype = cryptonote::UNDEFINED;
+   {
+     std::string const info_fail_message = "Could not get current blockchain info";
+@@ -2950,7 +3027,6 @@ bool t_rpc_command_executor::prepare_registration(bool force_registration)
+       nettype = m_rpc_server->nettype();
+     }
+ 
+-    hard_fork_version = hf_res.version;
+     block_height = std::max(res.height, res.target_height);
+   }
+ 
+diff --git a/src/daemon/rpc_command_executor.h b/src/daemon/rpc_command_executor.h
+index 46291f24..8ede587e 100644
+--- a/src/daemon/rpc_command_executor.h
++++ b/src/daemon/rpc_command_executor.h
+@@ -71,6 +71,7 @@ public:
+   ~t_rpc_command_executor();
+ 
+   bool print_checkpoints(uint64_t start_height, uint64_t end_height, bool print_json);
++  bool print_quorum_checkpoints(uint64_t start_height, uint64_t end_height, bool print_json);
+ 
+   bool print_sn_state_changes(uint64_t start_height, uint64_t end_height);
+ 
+diff --git a/src/simplewallet/simplewallet.cpp b/src/simplewallet/simplewallet.cpp
+index aa8486bf..6db79b0c 100644
+--- a/src/simplewallet/simplewallet.cpp
++++ b/src/simplewallet/simplewallet.cpp
+@@ -5168,7 +5168,6 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
+ 
+   vector<cryptonote::address_parse_info> dsts_info;
+   vector<cryptonote::tx_destination_entry> dsts;
+-  size_t num_subaddresses = 0;
+   for (size_t i = 0; i < local_args.size(); )
+   {
+     dsts_info.emplace_back();
+@@ -5227,7 +5226,6 @@ bool simple_wallet::transfer_main(int transfer_type, const std::vector<std::stri
+     de.addr = info.address;
+     de.is_subaddress = info.is_subaddress;
+     de.is_integrated = info.has_payment_id;
+-    num_subaddresses += info.is_subaddress;
+ 
+     if (info.has_payment_id || !payment_id_uri.empty())
+     {
+@@ -7064,7 +7062,6 @@ static std::string get_human_readable_timestamp(uint64_t ts)
+   time_t tt = ts;
+   struct tm tm;
+   epee::misc_utils::get_gmt_time(tt, tm);
+-  uint64_t now = time(NULL);
+   strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm);
+   return std::string(buffer);
+ }
+diff --git a/src/wallet/wallet2.cpp b/src/wallet/wallet2.cpp
+index 5a9cfe09..947e714e 100644
+--- a/src/wallet/wallet2.cpp
++++ b/src/wallet/wallet2.cpp
+@@ -8704,7 +8704,7 @@ void wallet2::transfer_selected_rct(std::vector<cryptonote::tx_destination_entry
+ 
+   //prepare inputs
+   LOG_PRINT_L2("preparing outputs");
+-  size_t i = 0, out_index = 0;
++  size_t out_index = 0;
+   std::vector<cryptonote::tx_source_entry> sources;
+   std::unordered_set<rct::key> used_L;
+   for(size_t idx: selected_transfers)
+@@ -8728,8 +8728,6 @@ void wallet2::transfer_selected_rct(std::vector<cryptonote::tx_destination_entry
+       oe.second.mask = std::get<2>(outs[out_index][n]);
+       src.outputs.push_back(oe);
+     }
+-    ++i;
+-
+     //paste real transaction to the random index
+     auto it_to_replace = std::find_if(src.outputs.begin(), src.outputs.end(), [&](const tx_output_entry& a)
+     {
+@@ -9596,6 +9594,7 @@ skip_tx:
+ 
+   LOG_PRINT_L1("Done creating " << txes.size() << " transactions, " << print_money(accumulated_fee) <<
+     " total fee, " << print_money(accumulated_change) << " total change");
++  LOG_PRINT_L1("Total inputs consumed: " << print_money(accumulated_outputs));
+ 
+   hwdev.set_mode(hw::device::TRANSACTION_CREATE_REAL);
+   for(auto &tx : txes)
+@@ -9934,6 +9933,7 @@ std::vector<wallet2::pending_tx> wallet2::create_transactions_from(const crypton
+ 
+   LOG_PRINT_L1("Done creating " << txes.size() << " transactions, " << print_money(accumulated_fee) <<
+     " total fee, " << print_money(accumulated_change) << " total change");
++  LOG_PRINT_L1("Total inputs consumed: " << print_money(accumulated_outputs));
+ 
+   hwdev.set_mode(hw::device::TRANSACTION_CREATE_REAL);
+   for (auto &tx: txes)
+diff --git a/src/wallet/wallet_rpc_server.cpp b/src/wallet/wallet_rpc_server.cpp
+index 8642df0c..a2b709df 100644
+--- a/src/wallet/wallet_rpc_server.cpp
++++ b/src/wallet/wallet_rpc_server.cpp
+@@ -264,7 +264,9 @@ namespace tools
+     try
+     {
+       res.balance = req.all_accounts ? m_wallet->balance_all(req.strict) : m_wallet->balance(req.account_index, req.strict);
+-      res.unlocked_balance = req.all_accounts ? m_wallet->unlocked_balance_all(&res.blocks_to_unlock) : m_wallet->unlocked_balance(req.account_index, &res.blocks_to_unlock);
++      res.unlocked_balance = req.all_accounts
++        ? m_wallet->unlocked_balance_all(req.strict, &res.blocks_to_unlock)
++        : m_wallet->unlocked_balance(req.account_index, req.strict, &res.blocks_to_unlock);
+       res.multisig_import_needed = m_wallet->multisig() && m_wallet->has_multisig_partial_key_images();
+       std::map<uint32_t, std::map<uint32_t, uint64_t>> balance_per_subaddress_per_account;
+       std::map<uint32_t, std::map<uint32_t, std::pair<uint64_t, uint64_t>>> unlocked_balance_per_subaddress_per_account;
+@@ -2645,9 +2647,6 @@ namespace tools
+         return false;
+       }
+ 
+-      crypto::hash long_payment_id;
+-      crypto::hash8 short_payment_id;
+-
+       if (!wallet2::parse_long_payment_id(req.payment_id, payment_id))
+       {
+         if (!wallet2::parse_short_payment_id(req.payment_id, info.payment_id))
+@@ -2887,7 +2886,10 @@ namespace tools
+     cryptonote::COMMAND_RPC_GET_HEIGHT::request hreq;
+     cryptonote::COMMAND_RPC_GET_HEIGHT::response hres;
+     hres.height = 0;
+-    bool r = wal->invoke_http_json("/getheight", hreq, hres);
++    if (!wal->invoke_http_json("/getheight", hreq, hres))
++    {
++      MWARNING("Failed to query daemon height while generating wallet; continuing with default");
++    }
+     wal->set_refresh_from_block_height(hres.height);
+     crypto::secret_key dummy_key;
+     try {

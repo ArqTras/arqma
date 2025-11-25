@@ -343,6 +343,12 @@ t_command_server::t_command_server(
     , "Query the available checkpoints between the range, omit arguments to print the last 60 checkpoints"
     );
     m_command_lookup.set_handler(
+      "print_quorum_checkpoints"
+    , std::bind(&t_command_parser_executor::print_quorum_checkpoints, &m_parser, p::_1)
+    , "print_quorum_checkpoints [+json] [start_height] [end_height]"
+    , "Display checkpoint quorum signatures for the requested range (defaults to the last 60 checkpoints)"
+    );
+    m_command_lookup.set_handler(
       "print_sn_state_changes"
     , std::bind(&t_command_parser_executor::print_sn_state_changes, &m_parser, p::_1)
     , "print_sn_state_changes <start_height> [end_height]"

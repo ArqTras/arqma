@@ -266,7 +266,7 @@ namespace cryptonote
 
     BlockchainDB &db;
 
-    std::chrono::seconds forked_time;
+    [[maybe_unused]] std::chrono::seconds forked_time;
     uint64_t window_size;
     uint8_t default_threshold_percent;
 
