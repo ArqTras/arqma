@@ -76,12 +76,10 @@ class Serialization_portability_wallet_Test;
 
 namespace tools
 {
-  static const char *ERR_MSG_NETWORK_VERSION_QUERY_FAILED = "Could not query the current network version, try later";
-  static const char *ERR_MSG_NETWORK_HEIGHT_QUERY_FAILED = "Could not query the current network block height, try later: ";
-  static const char *ERR_MSG_SERVICE_NODE_LIST_QUERY_FAILED = "Failed to query daemon for service node list";
-  static const char *ERR_MSG_TOO_MANY_TXS_CONSTRUCTED = "Constructed too many transations, please sweep_all first";
-  static const char *ERR_MSG_EXCEPTION_THROWN = "Exception thrown, staking process could not be completed: ";
-  static const char *ERR_MSG_TX_CONSTRUCT_FAILED = "Could not contruct Transaction";
+  inline constexpr const char *ERR_MSG_NETWORK_VERSION_QUERY_FAILED = "Could not query the current network version, try later";
+  inline constexpr const char *ERR_MSG_NETWORK_HEIGHT_QUERY_FAILED = "Could not query the current network block height, try later: ";
+  inline constexpr const char *ERR_MSG_TOO_MANY_TXS_CONSTRUCTED = "Constructed too many transations, please sweep_all first";
+  inline constexpr const char *ERR_MSG_EXCEPTION_THROWN = "Exception thrown, staking process could not be completed: ";
 
   class ringdb;
   class wallet2;
