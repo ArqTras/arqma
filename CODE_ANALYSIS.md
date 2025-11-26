@@ -260,6 +260,106 @@ This document provides a comprehensive analysis of all modifications made to ens
 - Transaction serialization
 - Service node state persistence
 
+### 7. HardFork `forked_time` Field Removal
+
+**Change**: Removed unused `forked_time` field and related entries from `HardFork` class
+
+**Rationale**:
+- Field was never read after initialization
+- Functionality using this field was removed in commit a6dddea93 (Aug 16, 2021)
+- Compiler warning `-Wunused-private-field` indicated dead code
+- Hardfork activation is time-independent (based on block height and voting)
+
+**Compatibility Impact**:
+- ✅ **Hardfork Execution**: No impact - hardfork activation based on height/voting, not time
+- ✅ **Block Validation**: No changes to block version checking
+- ✅ **Voting Mechanism**: Unchanged - still uses block height and threshold
+- ✅ **Network Synchronization**: No impact - `get_state()` already always returns `Ready`
+- ✅ **RPC Compatibility**: No API changes - internal implementation detail only
+
+**Historical Context**:
+The `forked_time` field was previously used to detect if the network was "forked" (split). However, this functionality was removed in 2021. The method `get_state()` now always returns `Ready`, regardless of time.
+
+**Before removal (old code):**
+```cpp
+HardFork::State HardFork::get_state(time_t t) const
+{
+  time_t t_last_fork = heights.back().time;
+  if (t >= t_last_fork + forked_time)
+    return LikelyForked;
+  return Ready;
+}
+```
+
+**After removal (current code):**
+```cpp
+HardFork::State HardFork::get_state(time_t t) const
+{
+  std::unique_lock l{lock};
+  if (heights.size() <= 1)
+    return Ready;
+  return Ready;  // Always returns Ready
+}
+```
+
+**Hardfork Activation Logic**:
+Hardforks are activated based on:
+1. **Block height** - Each hardfork has a scheduled height
+2. **Voting mechanism** - Blocks vote for next version via `minor_version`
+3. **Threshold** - Percentage of votes needed (default 80%)
+4. **Window size** - Number of blocks considered (default 10080 = ~1 week)
+
+**Key methods** (none use `forked_time`):
+- `add()` - Adds block and checks voting
+- `get_voted_fork_index()` - Calculates which fork should be active based on votes
+- `check()` - Validates block version matches current fork
+
+**Safety Verification**:
+- ✅ Field is never read - Only written in constructor initialization list
+- ✅ Functionality was already removed - Time-based fork detection removed in 2021
+- ✅ Hardfork logic is time-independent - Based on block height and voting, not time
+- ✅ No production impact - `get_state()` already always returns `Ready`
+- ✅ Compiler warning confirms - `-Wunused-private-field` indicates the field is unused
+
+**Files Affected**:
+- `src/cryptonote_basic/hardfork.h` (field and parameter removal)
+- `src/cryptonote_basic/hardfork.cpp` (constructor parameter removal)
+
+**Note**: Test file `tests/unit_tests/hardfork.cpp` contains outdated tests referencing `DEFAULT_FORKED_TIME`, `DEFAULT_UPDATE_TIME`, `UpdateNeeded`, and `LikelyForked` which no longer exist. These tests should be updated separately but don't affect production functionality.
+
+### 8. Wallet2 Unused Variable Warnings Fix
+
+**Change**: Fixed `-Wunused-variable` warnings in `wallet2.h` by changing `static const char*` to `inline constexpr const char*` and removing unused variables
+
+**Rationale**:
+- Variables defined as `static` in header file caused warnings in compilation units that don't use them
+- C++17 `inline constexpr` ensures single definition (ODR) and eliminates warnings
+- Removed truly unused error message constants
+
+**Compatibility Impact**:
+- ✅ **Functionality**: No changes - only used variables remain
+- ✅ **Error Messages**: All active error messages preserved
+- ✅ **RPC Compatibility**: No API changes
+- ✅ **Wallet Operations**: No impact on transaction creation or service node operations
+
+**Changes Made**:
+- Changed `static const char *` to `inline constexpr const char *` for:
+  - `ERR_MSG_NETWORK_VERSION_QUERY_FAILED`
+  - `ERR_MSG_NETWORK_HEIGHT_QUERY_FAILED`
+  - `ERR_MSG_TOO_MANY_TXS_CONSTRUCTED`
+  - `ERR_MSG_EXCEPTION_THROWN`
+- Removed unused variables:
+  - `ERR_MSG_SERVICE_NODE_LIST_QUERY_FAILED`
+  - `ERR_MSG_TX_CONSTRUCT_FAILED`
+
+**Best Practices**:
+- Uses C++17 `inline constexpr` for header-only constants
+- Eliminates multiple definition issues
+- Follows ODR (One Definition Rule) correctly
+
+**Files Affected**:
+- `src/wallet/wallet2.h` (variable declarations)
+
 ## Conclusion
 
 All modifications maintain full backward compatibility while fixing critical bugs and improving code quality. The changes follow C++ best practices and established design patterns. No breaking changes to APIs or data formats were introduced.
