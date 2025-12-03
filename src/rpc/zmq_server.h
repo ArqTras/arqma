@@ -32,13 +32,13 @@
 #include <zmq.hpp>
 #include <string>
 #include <memory>
+#include <atomic>
 
 #include "common/command_line.h"
 #include "rpc_handler.h"
 
 namespace cryptonote
 {
-
 namespace rpc
 {
 
@@ -66,8 +66,8 @@ class ZmqServer
   private:
     RpcHandler& handler;
 
-    volatile bool stop_signal;
-    volatile bool running;
+    std::atomic<bool> stop_signal;
+    std::atomic<bool> running;
 
     zmq::context_t context;
 

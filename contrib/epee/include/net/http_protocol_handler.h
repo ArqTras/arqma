@@ -33,7 +33,6 @@
 #include <boost/optional/optional.hpp>
 #include <string>
 #include "net_utils_base.h"
-#include "to_nonconst_iterator.h"
 #include "http_auth.h"
 #include "http_base.h"
 
@@ -54,14 +53,12 @@ namespace net_utils
 			std::string m_folder;
 			std::vector<std::string> m_access_control_origins;
 			boost::optional<login> m_user;
-			critical_section m_lock;
+			std::mutex m_config_mutex;
 
 			template<typename T>
-			static bool after_init_connection(const std::shared_ptr<T>& self)
+			static constexpr bool after_init_connection(const std::shared_ptr<T>&) noexcept
 			{
-			  if (!self)
-			    return false;
-			  return self->m_protocol_handler.after_init_connection();
+			  return true;
 			}
 		};
 
@@ -92,12 +89,6 @@ namespace net_utils
 			{
 				return true;
 			}
-
-			bool after_init_connection()
-			{
-			  return true;
-			}
-
 			virtual bool handle_recv(const void* ptr, size_t cb);
 			virtual bool handle_request(const http::http_request_info& query_info, http_response_info& response);
 
@@ -126,7 +117,7 @@ namespace net_utils
 			bool handle_invoke_query_line();
 			bool parse_cached_header(http_header_info& body_info, const std::string& m_cache_to_process, size_t pos);
 			std::string::size_type match_end_of_header(const std::string& buf);
-			bool get_len_from_content_lenght(const std::string& str, size_t& len);
+			bool get_len_from_content_length(const std::string& str, size_t& len);
 			bool handle_retriving_query_body();
 			bool handle_query_measure();
 			bool set_ready_state();
@@ -219,10 +210,6 @@ namespace net_utils
 			}
 			void handle_qued_callback()
 			{}
-			bool after_init_connection()
-			{
-			  return true;
-			}
 
 		private:
 			//simple_http_connection_handler::config_type m_stub_config;

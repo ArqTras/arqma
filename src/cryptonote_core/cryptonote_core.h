@@ -31,9 +31,9 @@
 
 #pragma once
 
-
 #include <ctime>
 #include <chrono>
+#include <mutex>
 
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
@@ -73,8 +73,8 @@ namespace cryptonote
   extern const command_line::arg_descriptor<bool> arg_offline;
   extern const command_line::arg_descriptor<size_t> arg_block_download_max_size;
 
-  extern void *(*arqnet_new)(core &core, const std::string &bind);
-  extern void (*arqnet_delete)(void *&self);
+  extern void *(*arqnet_new)(core &core, service_nodes::service_node_list &sn_list, const std::string &bind);
+  extern void (*arqnet_delete)(void *self);
   extern void (*arqnet_relay_obligation_votes)(void *self, const std::vector<service_nodes::quorum_vote_t> &votes);
   extern bool init_core_callback_complete;
 
@@ -100,10 +100,9 @@ namespace cryptonote
        *
        * @param pprotocol pre-constructed protocol object to store and use
        */
-     explicit core(i_cryptonote_protocol* pprotocol);
+     core(i_cryptonote_protocol* pprotocol);
 
-     core(const core&) = delete;
-     core &operator=(const core&) = delete;
+     bool handle_get_blocks(NOTIFY_REQUEST_GET_BLOCKS::request& arg, NOTIFY_RESPONSE_GET_BLOCKS::request& rsp, cryptonote_connection_context& context);
 
      /**
       * @brief calls various idle routines
@@ -137,26 +136,9 @@ namespace cryptonote
       *
       * @return true if the transaction made it to the transaction pool, otherwise false
       */
-     bool handle_incoming_tx(const blobdata& tx_blob, tx_verification_context& tvc, const tx_pool_options &opts);
+     bool handle_incoming_tx(const std::string& tx_blob, tx_verification_context& tvc, const tx_pool_options &opts);
 
-     struct tx_verification_batch_info
-     {
-       tx_verification_context tvc{};
-       bool parsed = false;
-       bool result = false;
-       bool already_have = false;
-       const blobdata *blob = nullptr;
-       crypto::hash tx_hash;
-       transaction tx;
-     };
-
-     auto incoming_tx_lock() { return std::unique_lock<boost::recursive_mutex>{m_incoming_tx_lock}; }
-
-     std::vector<tx_verification_batch_info> parse_incoming_txs(const std::vector<blobdata>& tx_blobs, const tx_pool_options &opts);
-
-     bool handle_parsed_txs(std::vector<tx_verification_batch_info> &parsed_txs, const tx_pool_options &opts);
-
-     std::vector<tx_verification_batch_info> handle_incoming_txs(const std::vector<blobdata>& tx_blobs, const tx_pool_options &opts);
+     bool handle_incoming_txs(const std::vector<std::string>& tx_blobs, std::vector<tx_verification_context>& tvc, const tx_pool_options &opts);
 
      /**
       * @brief handles an incoming block
@@ -173,7 +155,7 @@ namespace cryptonote
       * @return false if loading new checkpoints fails, or the block is not
       * added, otherwise true
       */
-     bool handle_incoming_block(const blobdata& block_blob, const block *b, block_verification_context& bvc, checkpoint_t *checkpoint, bool update_miner_blocktemplate = true);
+     bool handle_incoming_block(const std::string& block_blob, const block *b, block_verification_context& bvc, checkpoint_t *checkpoint, bool update_miner_blocktemplate = true);
 
      /**
       * @copydoc Blockchain::prepare_handle_incoming_blocks
@@ -196,7 +178,7 @@ namespace cryptonote
       *
       * @return whether or not the block is too big
       */
-     bool check_incoming_block_size(const blobdata& block_blob) const;
+     bool check_incoming_block_size(const std::string& block_blob) const;
 
      /**
       * @brief get the cryptonote protocol instance
@@ -226,13 +208,13 @@ namespace cryptonote
       *
       * @note see Blockchain::create_block_template
       */
-     virtual bool get_block_template(block& b, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce, uint64_t &seed_height, crypto::hash &seed_hash);
-     virtual bool get_block_template(block& b, const crypto::hash *prev_block, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce, uint64_t &seed_height, crypto::hash &seed_hash);
+     virtual bool get_block_template(block& b, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const std::string& ex_nonce, uint64_t &seed_height, crypto::hash &seed_hash);
+     virtual bool get_block_template(block& b, const crypto::hash *prev_block, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const std::string& ex_nonce, uint64_t &seed_height, crypto::hash &seed_hash);
 
      /**
       * @brief called when a transaction is relayed
       */
-     virtual crypto::hash on_transaction_relayed(const cryptonote::blobdata& tx);
+     virtual void on_transaction_relayed(const std::string& tx);
 
      /**
       * @brief gets the miner instance
@@ -333,23 +315,23 @@ namespace cryptonote
      void get_blockchain_top(uint64_t& height, crypto::hash& top_id) const;
 
      /**
-      * @copydoc Blockchain::get_blocks(uint64_t, size_t, std::vector<std::pair<cryptonote::blobdata,block>>&, std::vector<transaction>&) const
+      * @copydoc Blockchain::get_blocks(uint64_t, size_t, std::vector<std::pair<std::string,block>>&, std::vector<transaction>&) const
       *
-      * @note see Blockchain::get_blocks(uint64_t, size_t, std::vector<std::pair<cryptonote::blobdata,block>>&, std::vector<transaction>&) const
+      * @note see Blockchain::get_blocks(uint64_t, size_t, std::vector<std::pair<std::string,block>>&, std::vector<transaction>&) const
       */
-     bool get_blocks(uint64_t start_offset, size_t count, std::vector<std::pair<cryptonote::blobdata,block>>& blocks, std::vector<cryptonote::blobdata>& txs) const;
+     bool get_blocks(uint64_t start_offset, size_t count, std::vector<std::pair<std::string,block>>& blocks, std::vector<std::string>& txs) const;
 
      /**
-      * @copydoc Blockchain::get_blocks(uint64_t, size_t, std::vector<std::pair<cryptonote::blobdata,block>>&) const
+      * @copydoc Blockchain::get_blocks(uint64_t, size_t, std::vector<std::pair<std::string,block>>&) const
       *
-      * @note see Blockchain::get_blocks(uint64_t, size_t, std::vector<std::pair<cryptonote::blobdata,block>>&) const
+      * @note see Blockchain::get_blocks(uint64_t, size_t, std::vector<std::pair<std::string,block>>&) const
       */
-     bool get_blocks(uint64_t start_offset, size_t count, std::vector<std::pair<cryptonote::blobdata,block>>& blocks) const;
+     bool get_blocks(uint64_t start_offset, size_t count, std::vector<std::pair<std::string,block>>& blocks) const;
 
      /**
-      * @copydoc Blockchain::get_blocks(uint64_t, size_t, std::vector<std::pair<cryptonote::blobdata,block>>&) const
+      * @copydoc Blockchain::get_blocks(uint64_t, size_t, std::vector<std::pair<std::string,block>>&) const
       *
-      * @note see Blockchain::get_blocks(uint64_t, size_t, std::vector<std::pair<cryptonote::blobdata,block>>&) const
+      * @note see Blockchain::get_blocks(uint64_t, size_t, std::vector<std::pair<std::string,block>>&) const
       */
      bool get_blocks(uint64_t start_offset, size_t count, std::vector<block>& blocks) const;
 
@@ -376,14 +358,14 @@ namespace cryptonote
       *
       * @note see Blockchain::get_transactions
       */
-     bool get_transactions(const std::vector<crypto::hash>& txs_ids, std::vector<cryptonote::blobdata>& txs, std::vector<crypto::hash>& missed_txs) const;
+     bool get_transactions(const std::vector<crypto::hash>& txs_ids, std::vector<std::string>& txs, std::vector<crypto::hash>& missed_txs) const;
 
      /**
       * @copydoc Blockchain::get_transactions
       *
       * @note see Blockchain::get_transactions
       */
-     bool get_split_transactions_blobs(const std::vector<crypto::hash>& txs_ids, std::vector<std::tuple<crypto::hash, cryptonote::blobdata, crypto::hash, cryptonote::blobdata>>& txs, std::vector<crypto::hash>& missed_txs) const;
+     bool get_split_transactions_blobs(const std::vector<crypto::hash>& txs_ids, std::vector<std::tuple<crypto::hash, std::string, crypto::hash, std::string>>& txs, std::vector<crypto::hash>& missed_txs) const;
 
      /**
       * @copydoc Blockchain::get_transactions
@@ -420,6 +402,16 @@ namespace cryptonote
       */
      void set_cryptonote_protocol(i_cryptonote_protocol* pprotocol);
 
+     bool pool_has_tx(const crypto::hash &txid) const;
+     bool get_pool_transactions(std::vector<transaction>& txs, bool include_unrelayed_txes = true) const;
+     bool get_txpool_backlog(std::vector<tx_backlog_entry>& backlog) const;
+     bool get_pool_transaction_hashes(std::vector<crypto::hash>& txs, bool include_unrelayed_txes = true) const;
+     bool get_pool_transaction_stats(struct txpool_stats& stats, bool include_unrelayed_txes = true) const;
+     bool get_pool_transaction(const crypto::hash& id, std::string& tx) const;
+     bool get_pool_transactions_and_spent_keys_info(std::vector<tx_info>& tx_infos, std::vector<spent_key_image_info>& key_image_infos, bool include_unrelayed_txes = true) const;
+     bool get_pool_for_rpc(std::vector<cryptonote::rpc::tx_in_pool>& tx_infos, cryptonote::rpc::key_images_with_tx_hashes& key_image_infos) const;
+     size_t get_pool_transactions_count() const;
+
      /**
       * @copydoc Blockchain::get_total_transactions
       *
@@ -434,6 +426,8 @@ namespace cryptonote
       */
      bool have_block(const crypto::hash& id) const;
 
+     bool get_short_chain_history(std::list<crypto::hash>& ids) const;
+
      /**
       * @copydoc Blockchain::find_blockchain_supplement(const std::list<crypto::hash>&, NOTIFY_RESPONSE_CHAIN_ENTRY::request&) const
       *
@@ -442,11 +436,11 @@ namespace cryptonote
      bool find_blockchain_supplement(const std::list<crypto::hash>& qblock_ids, NOTIFY_RESPONSE_CHAIN_ENTRY::request& resp) const;
 
      /**
-      * @copydoc Blockchain::find_blockchain_supplement(const uint64_t, const std::list<crypto::hash>&, std::vector<std::pair<cryptonote::blobdata, std::vector<cryptonote::blobdata>>>&, uint64_t&, uint64_t&, size_t) const
+      * @copydoc Blockchain::find_blockchain_supplement(const uint64_t, const std::list<crypto::hash>&, std::vector<std::pair<std::string, std::vector<std::string>>>&, uint64_t&, uint64_t&, size_t) const
       *
-      * @note see Blockchain::find_blockchain_supplement(const uint64_t, const std::list<crypto::hash>&, std::vector<std::pair<cryptonote::blobdata, std::vector<transaction>>>&, uint64_t&, uint64_t&, size_t) const
+      * @note see Blockchain::find_blockchain_supplement(const uint64_t, const std::list<crypto::hash>&, std::vector<std::pair<std::string, std::vector<transaction>>>&, uint64_t&, uint64_t&, size_t) const
       */
-     bool find_blockchain_supplement(const uint64_t req_start_block, const std::list<crypto::hash>& qblock_ids, std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata> > > >& blocks, uint64_t& total_height, uint64_t& start_height, bool pruned, bool get_miner_tx_hash, size_t max_block_count, size_t max_tx_count) const;
+     bool find_blockchain_supplement(const uint64_t req_start_block, const std::list<crypto::hash>& qblock_ids, std::vector<std::pair<std::pair<std::string, crypto::hash>, std::vector<std::pair<crypto::hash, std::string> > > >& blocks, uint64_t& total_height, uint64_t& start_height, bool pruned, bool get_miner_tx_hash, size_t max_block_count, size_t max_tx_count) const;
 
      /**
       * @copydoc Blockchain::get_tx_outputs_gindexs
@@ -516,9 +510,6 @@ namespace cryptonote
 
      const service_nodes::service_node_list &get_service_node_list() const { return m_service_node_list; }
      service_nodes::service_node_list &get_service_node_list() { return m_service_node_list; }
-
-     const tx_memory_pool &get_pool() const { return m_mempool; }
-     tx_memory_pool &get_pool() { return m_mempool; }
 
      /**
       * @copydoc miner::on_synchronized
@@ -662,13 +653,6 @@ namespace cryptonote
      bool is_update_available() const { return m_update_available; }
 
      /**
-      * @brief get whether transaction relay should be padded
-      *
-      * @return whether transaction relay should be padded
-      */
-     bool pad_transactions() const { return m_pad_transactions; }
-
-     /**
       * @brief check a set of hashes against the precompiled hash set
       *
       * @return number of usable blocks
@@ -800,9 +784,9 @@ namespace cryptonote
      /// Time point at which the storage server last pinged us
      std::atomic<time_t> m_last_storage_server_ping; //, m_last_arqnet_ping;
 
-     bool relay_txpool_transactions();
-
    private:
+
+     bool add_new_tx(transaction& tx, const crypto::hash& tx_hash, const std::string &blob, size_t tx_weight, tx_verification_context& tvc, const tx_pool_options& opts);
 
      /**
       * @copydoc Blockchain::add_new_block
@@ -810,13 +794,6 @@ namespace cryptonote
       * @note see Blockchain::add_new_block
       */
      bool add_new_block(const block& b, block_verification_context& bvc, checkpoint_t const *checkpoint);
-
-     /**
-      * @copydoc parse_tx_from_blob(transaction&, crypto::hash&, crypto::hash&, const blobdata&) const
-      *
-      * @note see parse_tx_from_blob(transaction&, crypto::hash&, crypto::hash&, const blobdata&) const
-      */
-     bool parse_tx_from_blob(transaction& tx, crypto::hash& tx_hash, const blobdata& blob) const;
 
      /**
       * @brief validates some simple properties of a transaction
@@ -837,8 +814,9 @@ namespace cryptonote
      bool check_tx_semantic(const transaction& tx, bool kept_by_block) const;
      void set_semantics_failed(const crypto::hash &tx_hash);
 
-     void parse_incoming_tx_pre(tx_verification_batch_info &tx_info);
-     void parse_incoming_tx_accumulated_batch(std::vector<tx_verification_batch_info> &tx_info, bool kept_by_block);
+     bool handle_incoming_tx_pre(const std::string& tx_blob, tx_verification_context& tvc, cryptonote::transaction &tx, crypto::hash &tx_hash, const tx_pool_options &opts);
+     struct tx_verification_batch_info { const cryptonote::transaction *tx; crypto::hash tx_hash; tx_verification_context &tvc; bool &result; };
+     bool handle_incoming_tx_accumulated_batch(std::vector<tx_verification_batch_info> &tx_info, bool kept_by_block);
 
      /**
       * @brief act on a set of command line options given
@@ -876,6 +854,8 @@ namespace cryptonote
       * @return false if any key image is not in the valid domain, otherwise true
       */
      bool check_tx_inputs_keyimages_domain(const transaction& tx) const;
+
+     bool relay_txpool_transactions();
 
      /**
       * @brief checks DNS versions
@@ -915,7 +895,7 @@ namespace cryptonote
 
      i_cryptonote_protocol* m_pprotocol; //!< cryptonote protocol instance
 
-     boost::recursive_mutex m_incoming_tx_lock; //!< incoming transaction lock
+     std::recursive_mutex m_incoming_tx_lock; //!< incoming transaction lock
 
      //m_miner and m_miner_addres are probably temporary here
      miner m_miner; //!< miner instance
@@ -956,14 +936,13 @@ namespace cryptonote
 
      std::string m_arqnet_bind_ip;
      void *m_arqnet_obj = nullptr;
-     std::mutex m_arqnet_init_mutex;
 
      size_t block_sync_size;
 
      time_t start_time;
 
      std::unordered_set<crypto::hash> bad_semantics_txes[2];
-     boost::mutex bad_semantics_txes_lock;
+     std::mutex bad_semantics_txes_lock;
 
      enum {
        UPDATES_DISABLED,
@@ -974,10 +953,9 @@ namespace cryptonote
 
      tools::download_async_handle m_update_download;
      size_t m_last_update_length;
-     boost::mutex m_update_mutex;
+     std::mutex m_update_mutex;
 
      bool m_offline;
-     bool m_pad_transactions;
    };
 }
 

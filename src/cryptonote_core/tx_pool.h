@@ -39,7 +39,6 @@
 #include <boost/serialization/version.hpp>
 
 #include "string_tools.h"
-#include "syncobj.h"
 #include "common/periodic_task.h"
 #include "cryptonote_basic/cryptonote_basic_impl.h"
 #include "cryptonote_basic/verification_context.h"
@@ -47,6 +46,11 @@
 #include "crypto/hash.h"
 #include "rpc/core_rpc_server_commands_defs.h"
 #include "rpc/message_data_structs.h"
+
+namespace service_nodes
+{
+  class service_node_list;
+};
 
 namespace cryptonote
 {
@@ -98,7 +102,7 @@ namespace cryptonote
    *   helping create a new block template by choosing transactions for it
    *
    */
-  class tx_memory_pool
+  class tx_memory_pool : boost::noncopyable
   {
   public:
     /**
@@ -108,16 +112,13 @@ namespace cryptonote
      */
     tx_memory_pool(Blockchain& bchs);
 
-    tx_memory_pool(const tx_memory_pool &) = delete;
-    tx_memory_pool &operator=(const tx_memory_pool &) = delete;
-
     /**
      * @copydoc add_tx(transaction&, tx_verification_context&, const tx_pool_options &, uint8_t)
      *
      * @param id the transaction's hash
      * @param tx_weight the transaction's weight
      */
-    bool add_tx(transaction &tx, const crypto::hash &id, const cryptonote::blobdata &blob, size_t tx_weight, tx_verification_context& tvc, const tx_pool_options &opts, uint8_t hard_fork_version);
+    bool add_tx(transaction &tx, const crypto::hash &id, const std::string &blob, size_t tx_weight, tx_verification_context& tvc, const tx_pool_options &opts, uint8_t hard_fork_version);
 
     /**
      * @brief add a transaction to the transaction pool
@@ -153,7 +154,7 @@ namespace cryptonote
      *
      * @return true unless the transaction cannot be found in the pool
      */
-    bool take_tx(const crypto::hash &id, transaction &tx, cryptonote::blobdata &txblob, size_t& tx_weight, uint64_t& fee, bool &relayed, bool &do_not_relay, bool &double_spend_seen);
+    bool take_tx(const crypto::hash &id, transaction &tx, std::string &txblob, size_t& tx_weight, uint64_t& fee, bool &relayed, bool &do_not_relay, bool &double_spend_seen);
 
     /**
      * @brief checks if the pool has a transaction with the given hash
@@ -163,8 +164,6 @@ namespace cryptonote
      * @return true if the transaction is in the pool, otherwise false
      */
     bool have_tx(const crypto::hash &id) const;
-
-    std::vector<uint8_t> have_txs(const std::vector<crypto::hash> &hashes) const;
 
     /**
      * @brief action to take when notified of a block added to the blockchain
@@ -321,9 +320,9 @@ namespace cryptonote
      *
      * @return true if the transaction is found, otherwise false
      */
-    bool get_transaction(const crypto::hash& h, cryptonote::blobdata& txblob) const;
+    bool get_transaction(const crypto::hash& h, std::string& txblob) const;
 
-    int find_transactions(const std::vector<crypto::hash> &tx_hashes, std::vector<cryptonote::blobdata> &txblobs) const;
+    int find_transactions(const std::vector<crypto::hash> &tx_hashes, std::vector<std::string> &txblobs) const;
 
     /**
      * @brief get a list of all relayable transactions and their hashes
@@ -338,16 +337,14 @@ namespace cryptonote
      *
      * @return true
      */
-    bool get_relayable_transactions(std::vector<std::pair<crypto::hash, cryptonote::blobdata>>& txs) const;
-
-    int set_relayable(const std::vector<crypto::hash> &tx_hashes);
+    bool get_relayable_transactions(std::vector<std::pair<crypto::hash, std::string>>& txs) const;
 
     /**
      * @brief tell the pool that certain transactions were just relayed
      *
      * @param txs the list of transactions (and their hashes)
      */
-    void set_relayed(const std::vector<std::pair<crypto::hash, cryptonote::blobdata>>& txs);
+    void set_relayed(const std::vector<std::pair<crypto::hash, std::string>>& txs);
 
     /**
      * @brief get the total number of transactions in the pool
@@ -382,14 +379,14 @@ namespace cryptonote
      *
      * @return the cumulative txpool weight in bytes
      */
-    uint64_t get_txpool_weight() const;
+    size_t get_txpool_weight() const;
 
     /**
      * @brief set the max cumulative txpool weight in bytes
      *
      * @param bytes the max cumulative txpool weight in bytes
      */
-    uint64_t set_txpool_max_weight();
+    void set_txpool_max_weight(size_t bytes);
 
   private:
 
@@ -485,7 +482,7 @@ namespace cryptonote
      *
      * @return true if the transaction is good to go, otherwise false
      */
-    bool is_transaction_ready_to_go(txpool_tx_meta_t& txd, const crypto::hash &txid, const cryptonote::blobdata &txblob, transaction &tx) const;
+    bool is_transaction_ready_to_go(txpool_tx_meta_t& txd, const crypto::hash &txid, const std::string &txblob, transaction &tx) const;
 
     /**
      * @brief mark all transactions double spending the one passed
@@ -512,7 +509,7 @@ namespace cryptonote
      */
     typedef std::unordered_map<crypto::key_image, std::unordered_set<crypto::hash>> key_images_container;
 
-    mutable boost::recursive_mutex m_transactions_lock;  //!< mutex for the pool
+    mutable std::recursive_mutex m_transactions_lock;  //!< mutex for the pool
 
     //! container for spent key images from the transactions in the pool
     key_images_container m_spent_key_images;
@@ -549,6 +546,7 @@ namespace cryptonote
 
     size_t m_txpool_max_weight;
     size_t m_txpool_weight;
+    void decrease_txpool_weight(size_t weight);
 
     mutable std::unordered_map<crypto::hash, std::tuple<bool, tx_verification_context, uint64_t, crypto::hash>> m_input_cache;
 

@@ -35,17 +35,14 @@
 #include "serialization/keyvalue_serialization.h"
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "net/net_utils_base.h"
-#include "cryptonote_basic/blobdatatype.h"
 
 namespace service_nodes
 {
-  struct legacy_deregister_vote;
   struct quorum_vote_t;
 };
 
 namespace cryptonote
 {
-
 
 #define BC_COMMANDS_POOL_BASE 2000
 
@@ -68,22 +65,20 @@ namespace cryptonote
     std::string peer_id;
 
     uint64_t recv_count;
-    uint64_t recv_idle_time;
+    std::chrono::milliseconds recv_idle_time;
 
     uint64_t send_count;
-    uint64_t send_idle_time;
+    std::chrono::milliseconds send_idle_time;
 
     std::string state;
 
-    uint64_t live_time;
+    std::chrono::milliseconds live_time;
 
     uint64_t avg_download;
     uint64_t current_download;
 
     uint64_t avg_upload;
     uint64_t current_upload;
-
-    uint32_t support_flags;
 
     std::string connection_id;
 
@@ -104,16 +99,28 @@ namespace cryptonote
       KV_SERIALIZE(rpc_port)
       KV_SERIALIZE(peer_id)
       KV_SERIALIZE(recv_count)
-      KV_SERIALIZE(recv_idle_time)
+      uint64_t recv_idle_time, send_idle_time, live_time;
+      if (is_store)
+      {
+        recv_idle_time = std::chrono::duration_cast<std::chrono::seconds>(this_ref.recv_idle_time).count();
+        send_idle_time = std::chrono::duration_cast<std::chrono::seconds>(this_ref.send_idle_time).count();
+        live_time = std::chrono::duration_cast<std::chrono::seconds>(this_ref.live_time).count();
+      }
+      KV_SERIALIZE_VALUE(recv_idle_time)
       KV_SERIALIZE(send_count)
-      KV_SERIALIZE(send_idle_time)
+      KV_SERIALIZE_VALUE(send_idle_time)
       KV_SERIALIZE(state)
-      KV_SERIALIZE(live_time)
+      KV_SERIALIZE_VALUE(live_time)
+      if constexpr (!is_store)
+      {
+        this_ref.recv_idle_time = std::chrono::seconds{recv_idle_time};
+        this_ref.send_idle_time = std::chrono::seconds{send_idle_time};
+        this_ref.live_time = std::chrono::seconds{live_time};
+      }
       KV_SERIALIZE(avg_download)
       KV_SERIALIZE(current_download)
       KV_SERIALIZE(avg_upload)
       KV_SERIALIZE(current_upload)
-      KV_SERIALIZE(support_flags)
       KV_SERIALIZE(connection_id)
       KV_SERIALIZE(height)
       KV_SERIALIZE(pruning_seed)
@@ -126,9 +133,9 @@ namespace cryptonote
   /************************************************************************/
   struct block_complete_entry
   {
-    blobdata block;
-    std::vector<blobdata> txs;
-    blobdata checkpoint;
+    std::string block;
+    std::vector<std::string> txs;
+    std::string checkpoint;
     BEGIN_KV_SERIALIZE_MAP()
       KV_SERIALIZE(block)
       KV_SERIALIZE(txs)
@@ -145,13 +152,11 @@ namespace cryptonote
 
     struct request
     {
-      std::vector<blobdata> txs;
-      bool requested = false;
+      std::vector<std::string> txs;
       std::string _; // padding
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(txs)
-        KV_SERIALIZE_OPT(requested, false)
         KV_SERIALIZE(_)
       END_KV_SERIALIZE_MAP()
     };
@@ -165,8 +170,10 @@ namespace cryptonote
 
     struct request
     {
+      std::vector<crypto::hash> txs;
       std::vector<crypto::hash> blocks;
       BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE_CONTAINER_POD_AS_BLOB(txs)
         KV_SERIALIZE_CONTAINER_POD_AS_BLOB(blocks)
       END_KV_SERIALIZE_MAP()
     };
@@ -178,11 +185,13 @@ namespace cryptonote
 
     struct request
     {
+      std::vector<std::string> txs;
       std::vector<block_complete_entry> blocks;
       std::vector<crypto::hash> missed_ids;
       uint64_t current_blockchain_height;
 
       BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(txs)
         KV_SERIALIZE(blocks)
         KV_SERIALIZE_CONTAINER_POD_AS_BLOB(missed_ids)
         KV_SERIALIZE(current_blockchain_height)
@@ -232,7 +241,7 @@ namespace cryptonote
       uint64_t total_height;
       uint64_t cumulative_difficulty;
       std::vector<crypto::hash> m_block_ids;
-      cryptonote::blobdata first_block;
+      std::string first_block;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(start_height)
@@ -332,18 +341,4 @@ namespace cryptonote
       END_KV_SERIALIZE_MAP()
     };
   };
-
-  struct NOTIFY_REQUEST_GET_TXS
-  {
-    constexpr static int ID = BC_COMMANDS_POOL_BASE + 13;
-
-    struct request
-    {
-      std::vector<crypto::hash> txs;
-      BEGIN_KV_SERIALIZE_MAP()
-        KV_SERIALIZE_CONTAINER_POD_AS_BLOB(txs)
-      END_KV_SERIALIZE_MAP()
-    };
-  };
-
 }

@@ -42,6 +42,7 @@
 #ifndef INCLUDED_p2p_connection_basic_hpp
 #define INCLUDED_p2p_connection_basic_hpp
 
+#include <mutex>
 #include <string>
 #include <atomic>
 #include <memory>
@@ -53,7 +54,6 @@
 #include "byte_slice.h"
 #include "net/net_utils_base.h"
 #include "net/net_ssl.h"
-#include "syncobj.h"
 
 namespace epee
 {
@@ -105,16 +105,16 @@ class connection_basic { // not-templated base class for rapid developmet of som
       std::unique_ptr< connection_basic_pimpl > mI; // my Implementation
 
       // moved here from orginal connecton<> - common member variables that do not depend on template in connection<>
-  std::atomic<bool> m_want_close_connection;
-  std::atomic<bool> m_was_shutdown;
-  critical_section m_send_que_lock;
-  std::deque<byte_slice> m_send_que;
-  volatile bool m_is_multithreaded;
-  /// Strand to ensure the connection's handlers are not called concurrently.
-  boost::asio::io_context::strand strand_;
-  /// Socket for the connection.
-  boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket_;
-  ssl_support_t m_ssl_support;
+      std::atomic<bool> m_want_close_connection;
+      std::atomic<bool> m_was_shutdown;
+      std::mutex m_send_que_lock;
+      std::deque<byte_slice> m_send_que;
+      volatile bool m_is_multithreaded;
+      /// Strand to ensure the connection's handlers are not called concurrently.
+      boost::asio::io_context::strand strand_;
+      /// Socket for the connection.
+      boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket_;
+      ssl_support_t m_ssl_support;
 
     public:
       // first counter is the ++/-- count of current sockets, the other socket_number is only-increasing ++ number generator

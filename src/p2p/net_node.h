@@ -34,7 +34,6 @@
 #include <atomic>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/thread.hpp>
 #include <boost/optional/optional_fwd.hpp>
 #include <boost/program_options/options_description.hpp>
 #include <boost/program_options/variables_map.hpp>
@@ -43,6 +42,7 @@
 #include <functional>
 #include <utility>
 #include <vector>
+#include <shared_mutex>
 
 #include "cryptonote_config.h"
 #include "cryptonote_protocol/levin_notify.h"
@@ -111,10 +111,14 @@ namespace nodetool
   template<class base_type>
   struct p2p_connection_context_t: base_type //t_payload_net_handler::connection_context //public net_utils::connection_context_base
   {
-    p2p_connection_context_t(): peer_id(0), support_flags(0), m_in_timedsync(false) {}
+    p2p_connection_context_t(bool is_ping = false)
+      : peer_id(0)
+      , m_in_timedsync(false)
+    {}
+
+    static constexpr int handshake_command() noexcept { return 1001; }
 
     peerid_type peer_id;
-    uint32_t support_flags;
     bool m_in_timedsync;
     std::set<epee::net_utils::network_address> sent_addresses;
   };
@@ -143,13 +147,11 @@ namespace nodetool
     {
       config_t()
         : m_net_config(),
-          m_peer_id(crypto::rand<uint64_t>()),
-          m_support_flags(0)
+          m_peer_id(crypto::rand<uint64_t>())
       {}
 
       network_config m_net_config;
       uint64_t m_peer_id;
-      uint32_t m_support_flags;
     };
     typedef epee::misc_utils::struct_init<config_t> config;
 
@@ -218,7 +220,6 @@ namespace nodetool
         m_config.m_net_config.connection_timeout = P2P_DEFAULT_CONNECTION_TIMEOUT;
         m_config.m_net_config.ping_connection_timeout = P2P_DEFAULT_PING_CONNECTION_TIMEOUT;
         m_config.m_net_config.send_peerlist_sz = P2P_DEFAULT_PEERS_IN_HANDSHAKE;
-        m_config.m_support_flags = 0; // only set in public zone
       }
     };
 
@@ -241,7 +242,8 @@ namespace nodetool
         m_igd(no_igd),
         m_offline(false),
         is_closing(false),
-        m_network_id()
+        m_network_id(),
+        max_connections(1)
     {}
     virtual ~node_server();
 
@@ -274,9 +276,9 @@ namespace nodetool
     virtual bool unblock_host(const epee::net_utils::network_address &address);
     virtual bool block_subnet(const epee::net_utils::ipv4_network_subnet &subnet, time_t seconds = P2P_IP_BLOCKTIME);
     virtual bool unblock_subnet(const epee::net_utils::ipv4_network_subnet &subnet);
-    virtual bool is_host_blocked(const epee::net_utils::network_address &address, time_t *seconds) { CRITICAL_REGION_LOCAL(m_blocked_hosts_lock); return !is_remote_host_allowed(address, seconds); }
-    virtual std::map<std::string, time_t> get_blocked_hosts() { CRITICAL_REGION_LOCAL(m_blocked_hosts_lock); return m_blocked_hosts; }
-    virtual std::map<epee::net_utils::ipv4_network_subnet, time_t> get_blocked_subnets() { CRITICAL_REGION_LOCAL(m_blocked_hosts_lock); return m_blocked_subnets; }
+    virtual bool is_host_blocked(const epee::net_utils::network_address &address, time_t *seconds) { return !is_remote_host_allowed(address, seconds); }
+    virtual std::map<std::string, time_t> get_blocked_hosts() { std::shared_lock lock{m_blocked_hosts_lock}; return m_blocked_hosts; }
+    virtual std::map<epee::net_utils::ipv4_network_subnet, time_t> get_blocked_subnets() { std::shared_lock lock{m_blocked_hosts_lock}; return m_blocked_subnets; }
 
     virtual void add_used_stripe_peer(const typename t_payload_net_handler::connection_context &context);
     virtual void remove_used_stripe_peer(const typename t_payload_net_handler::connection_context &context);
@@ -284,7 +286,7 @@ namespace nodetool
 
   private:
     const std::vector<std::string> m_seed_nodes_list =
-    { "seeds.arqma.com", "seeds.myarqma.com", "seeds.supportarqma.com", "seeds.supportarqma.eu" };
+    { "seeds.arqma.com", "seeds.myarqma.com", "seeds.supportarqma.com" };
     // TODO ASAP. Will try to do that yet before or just after HF11 Fork
     // One issue has to be sorted. seeder script os adding IN A to ZONE while
     // should not do so. SmajeNz0 got that script btw.
@@ -299,10 +301,11 @@ namespace nodetool
       if (is_filtered_command(context.m_remote_address, command))
         return LEVIN_ERROR_CONNECTION_HANDLER_NOT_DEFINED;
 
-      HANDLE_INVOKE_T2(COMMAND_HANDSHAKE, &node_server::handle_handshake)
-      HANDLE_INVOKE_T2(COMMAND_TIMED_SYNC, &node_server::handle_timed_sync)
-      HANDLE_INVOKE_T2(COMMAND_PING, &node_server::handle_ping)
-      HANDLE_INVOKE_T2(COMMAND_REQUEST_SUPPORT_FLAGS, &node_server::handle_get_support_flags)
+      HANDLE_INVOKE_T2(COMMAND_HANDSHAKE, handle_handshake)
+      HANDLE_INVOKE_T2(COMMAND_TIMED_SYNC, handle_timed_sync)
+      HANDLE_INVOKE_T2(COMMAND_PING, handle_ping)
+      // TODO: remove after Hard-Fork
+      HANDLE_INVOKE_T2(COMMAND_REQUEST_SUPPORT_FLAGS, handle_get_support_flags)
       CHAIN_INVOKE_MAP_TO_OBJ_FORCE_CONTEXT(m_payload_handler, typename t_payload_net_handler::connection_context&)
     END_INVOKE_MAP2()
 
@@ -312,25 +315,26 @@ namespace nodetool
     int handle_handshake(int command, typename COMMAND_HANDSHAKE::request& arg, typename COMMAND_HANDSHAKE::response& rsp, p2p_connection_context& context);
     int handle_timed_sync(int command, typename COMMAND_TIMED_SYNC::request& arg, typename COMMAND_TIMED_SYNC::response& rsp, p2p_connection_context& context);
     int handle_ping(int command, COMMAND_PING::request& arg, COMMAND_PING::response& rsp, p2p_connection_context& context);
+    // TODO: remove after Hard-Fork
     int handle_get_support_flags(int command, COMMAND_REQUEST_SUPPORT_FLAGS::request& arg, COMMAND_REQUEST_SUPPORT_FLAGS::response& rsp, p2p_connection_context& context);
     bool init_config();
     bool make_default_peer_id();
     bool make_default_config();
     bool store_config();
 
-
     //----------------- levin_commands_handler -------------------------------------------------------------
     virtual void on_connection_new(p2p_connection_context& context);
     virtual void on_connection_close(p2p_connection_context& context);
     virtual void callback(p2p_connection_context& context);
     //----------------- i_p2p_endpoint -------------------------------------------------------------
-    virtual bool relay_notify_to_list(int command, epee::levin::message_writer message, std::vector<std::pair<epee::net_utils::zone, boost::uuids::uuid>> connections) final;
-    virtual epee::net_utils::zone send_txs(std::vector<cryptonote::blobdata> txs, const epee::net_utils::zone origin, const boost::uuids::uuid& source, const bool pad_txs);
-    virtual bool invoke_notify_to_peer(int command, epee::levin::message_writer message, const epee::net_utils::connection_context_base& context) final;
+    virtual bool relay_notify_to_list(int command, const epee::span<const uint8_t> data_buff, std::vector<std::pair<epee::net_utils::zone, boost::uuids::uuid>> connections);
+    virtual epee::net_utils::zone send_txs(std::vector<std::string> txs, const epee::net_utils::zone origin, const boost::uuids::uuid& source);
+    virtual bool invoke_command_to_peer(int command, const epee::span<const uint8_t> req_buff, std::string& resp_buff, const epee::net_utils::connection_context_base& context);
+    virtual bool invoke_notify_to_peer(int command, const epee::span<const uint8_t> req_buff, const epee::net_utils::connection_context_base& context);
     virtual bool drop_connection(const epee::net_utils::connection_context_base& context);
     virtual void request_callback(const epee::net_utils::connection_context_base& context);
-    virtual void for_each_connection(std::function<bool(typename t_payload_net_handler::connection_context&, peerid_type, uint32_t)> f);
-    virtual bool for_connection(const boost::uuids::uuid&, std::function<bool(typename t_payload_net_handler::connection_context&, peerid_type, uint32_t)> f);
+    virtual void for_each_connection(std::function<bool(typename t_payload_net_handler::connection_context&, peerid_type)> f);
+    virtual bool for_connection(const boost::uuids::uuid&, std::function<bool(typename t_payload_net_handler::connection_context&, peerid_type)> f);
     virtual bool add_host_fail(const epee::net_utils::network_address &address, unsigned int score = 1);
     //----------------- i_connection_filter  --------------------------------------------------------
     virtual bool is_remote_host_allowed(const epee::net_utils::network_address &address, time_t *t = NULL);
@@ -369,13 +373,12 @@ namespace nodetool
     void delete_upnp_port_mapping(uint32_t port);
     template<class t_callback>
     bool try_ping(basic_node_data& node_data, p2p_connection_context& context, const t_callback &cb);
-    bool try_get_support_flags(const p2p_connection_context& context, std::function<void(p2p_connection_context&, const uint32_t&)> f);
     bool make_expected_connections_count(network_zone& zone, PeerType peer_type, size_t expected_connections);
     void cache_connect_fail_info(const epee::net_utils::network_address& addr);
     bool is_addr_recently_failed(const epee::net_utils::network_address& addr);
     bool is_priority_node(const epee::net_utils::network_address& na);
     std::set<std::string> get_seed_nodes(cryptonote::network_type nettype) const;
-//    std::set<std::string> get_seed_nodes();
+    std::set<std::string> get_seed_nodes();
     bool connect_to_seed();
 
     template <class Container>
@@ -403,19 +406,17 @@ namespace nodetool
     bool check_incoming_connections();
 
     void kill() { ///< will be called e.g. from deinit()
-      _info("Killing the net_node");
+      MINFO("Killing the net_node");
       is_closing = true;
-      if(mPeersLoggerThread != nullptr)
+      if(mPeersLoggerThread)
         mPeersLoggerThread->join(); // make sure the thread finishes
-      _info("Joined extra background net_node threads");
+      MINFO("Joined extra background net_node threads");
     }
 
     //debug functions
     std::string print_connections_container();
 
-
-    public:
-
+  public:
     void set_rpc_port(uint16_t rpc_port)
     {
       m_rpc_port = rpc_port;
@@ -442,9 +443,7 @@ namespace nodetool
     bool m_use_ipv6;
     bool m_require_ipv4;
     std::atomic<bool> is_closing;
-    std::unique_ptr<boost::thread> mPeersLoggerThread;
-    //critical_section m_connections_lock;
-    //connections_indexed_container m_connections;
+    std::optional<std::thread> mPeersLoggerThread;
 
     t_payload_net_handler& m_payload_handler;
     peerlist_storage m_peerlist_storage;
@@ -459,10 +458,9 @@ namespace nodetool
     std::list<epee::net_utils::network_address>   m_priority_peers;
     std::vector<epee::net_utils::network_address> m_exclusive_peers;
     std::vector<epee::net_utils::network_address> m_seed_nodes;
-    bool m_fallback_seed_nodes_added;
-//   bool m_seed_nodes_initialized = false;
- //   boost::shared_mutex m_seed_nodes_lock;
- //   std::atomic_flag m_fallback_seed_nodes_added;
+    std::atomic<bool> m_seed_nodes_initialized{false};
+    std::shared_mutex m_seed_nodes_mutex;
+    std::atomic_flag m_fallback_seed_nodes_added;
     std::vector<nodetool::peerlist_entry> m_command_line_peers;
     uint64_t m_peer_livetime;
     //keep connections to initiate some interactions
@@ -480,16 +478,16 @@ namespace nodetool
     std::map<epee::net_utils::zone, network_zone> m_network_zones;
 
     std::map<std::string, time_t> m_conn_fails_cache;
-    epee::critical_section m_conn_fails_cache_lock;
+    std::shared_mutex m_conn_fails_cache_lock;
 
-    epee::critical_section m_blocked_hosts_lock; // for both hosts and subnets
+    std::shared_mutex m_blocked_hosts_lock; // for both hosts and subnets
     std::map<std::string, time_t> m_blocked_hosts;
     std::map<epee::net_utils::ipv4_network_subnet, time_t> m_blocked_subnets;
 
-    epee::critical_section m_host_fails_score_lock;
+    std::mutex m_host_fails_score_lock;
     std::map<std::string, uint64_t> m_host_fails_score;
 
-    boost::mutex m_used_stripe_peers_mutex;
+    std::mutex m_used_stripe_peers_mutex;
     std::array<std::list<epee::net_utils::network_address>, 1 << CRYPTONOTE_PRUNING_LOG_STRIPES> m_used_stripe_peers;
 
     boost::uuids::uuid m_network_id;
@@ -498,6 +496,8 @@ namespace nodetool
     epee::net_utils::ssl_support_t m_ssl_support;
 
     bool m_enable_dns_blocklist;
+
+    uint32_t max_connections;
   };
 
     const int64_t default_limit_up = P2P_DEFAULT_LIMIT_RATE_UP;
@@ -530,6 +530,8 @@ namespace nodetool
     extern const command_line::arg_descriptor<int64_t> arg_limit_rate_up;
     extern const command_line::arg_descriptor<int64_t> arg_limit_rate_down;
     extern const command_line::arg_descriptor<int64_t> arg_limit_rate;
+    extern const command_line::arg_descriptor<uint32_t> arg_max_connections_per_ip;
+    extern const command_line::arg_descriptor<bool> arg_pad_transactions;
 }
 
 POP_WARNINGS

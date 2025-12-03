@@ -103,6 +103,7 @@ library archives (`.a`).
 | pkg-config   | any           | NO       | `pkg-config`       | `base-devel` | `pkgconf`         | NO       |                |
 | Boost        | 1.66          | NO       | `libboost-all-dev` | `boost`      | `boost-devel`     | NO       | C++ libraries  |
 | OpenSSL      | 1.1.1         | NO       | `libssl-dev`       | `openssl`    | `openssl-devel`   | NO       | sha256 sum     |
+| libzmq       | 4.3.2         | NO       | `libzmq3-dev`      | `zeromq`     | `cppzmq-devel`    | NO       | ZeroMQ library |
 | libsodium    | 1.0.18        | NO       | `libsodium-dev`    | ?            | `libsodium-devel` | NO       | Cryptography   |
 | libunwind    | any           | NO       | `libunwind8-dev`   | `libunwind`  | `libunwind-devel` | YES      | Stack traces   |
 | liblzma      | any           | NO       | `liblzma-dev`      | `xz`         | `xz-devel`        | YES      | For libunwind  |
@@ -127,10 +128,6 @@ Debian / Ubuntu one liner for all dependencies
 
 `sudo apt update && sudo apt install --yes git build-essential curl cmake pkg-config libboost-all-dev libssl-dev libzmq3-dev libunbound-dev libsodium-dev libunwind-dev liblzma-dev libreadline-dev libldns-dev libexpat1-dev qttools5-dev-tools doxygen graphviz libudev-dev libusb-1.0-0-dev libhidapi-dev xsltproc gperf autoconf automake libtool-bin`
 
-Install all dependencies at once on OSX:
-
-`brew update && brew bundle --file=contrib/apple/brew`
-
 ### Cloning the repository
 
 Clone recursively to pull-in needed submodule(s):
@@ -139,7 +136,7 @@ Clone recursively to pull-in needed submodule(s):
 
 If you already have a repo cloned, initialize and update:
 
-`cd arqma && git checkout v8.2.0`
+`cd arqma && git checkout v9.0.0`
 
 `git submodule init && git submodule update`
 
@@ -288,7 +285,7 @@ application.
 
 * Change branch to last Release:
 
-	`cd arqma && git checkout v8.2.0`
+	`cd arqma && git checkout v9.0.0`
 
 * Activate and update submodules:
 
