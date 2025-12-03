@@ -2,7 +2,7 @@ name: Build & Push arqtras/arqma:latest
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, devnet ]
     paths-ignore:
       - '**.md'
       - 'LICENSE'
