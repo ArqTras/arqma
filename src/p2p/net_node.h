@@ -62,6 +62,10 @@
 PUSH_WARNINGS
 DISABLE_VS_WARNINGS(4355)
 
+namespace boost::asio {
+  using io_service = io_context;
+}
+
 namespace nodetool
 {
   using namespace std::literals;
@@ -105,7 +109,7 @@ namespace nodetool
 
   // hides boost::future and chrono stuff from mondo template file
   boost::optional<boost::asio::ip::tcp::socket>
-  socks_connect_internal(const std::atomic<bool>& stop_signal, boost::asio::io_context& service, const boost::asio::ip::tcp::endpoint& proxy, const epee::net_utils::network_address& remote);
+  socks_connect_internal(const std::atomic<bool>& stop_signal, boost::asio::io_service& service, const boost::asio::ip::tcp::endpoint& proxy, const epee::net_utils::network_address& remote);
 
 
   template<class base_type>
@@ -176,7 +180,7 @@ namespace nodetool
         set_config_defaults();
       }
 
-      network_zone(boost::asio::io_context& public_service)
+      network_zone(boost::asio::io_service& public_service)
         : m_connect(nullptr),
           m_net_server(public_service, epee::net_utils::e_connection_type_P2P),
           m_bind_ip(),
@@ -223,13 +227,6 @@ namespace nodetool
       }
     };
 
-    enum igd_t
-    {
-      no_igd,
-      igd,
-      delayed_igd,
-    };
-
   public:
     typedef t_payload_net_handler payload_net_handler;
 
@@ -239,7 +236,6 @@ namespace nodetool
         m_rpc_port(0),
         m_allow_local_ip(false),
         m_hide_my_port(false),
-        m_igd(no_igd),
         m_offline(false),
         is_closing(false),
         m_network_id(),
@@ -328,7 +324,7 @@ namespace nodetool
     virtual void callback(p2p_connection_context& context);
     //----------------- i_p2p_endpoint -------------------------------------------------------------
     virtual bool relay_notify_to_list(int command, const epee::span<const uint8_t> data_buff, std::vector<std::pair<epee::net_utils::zone, boost::uuids::uuid>> connections);
-    virtual epee::net_utils::zone send_txs(std::vector<std::string> txs, const epee::net_utils::zone origin, const boost::uuids::uuid& source);
+    virtual epee::net_utils::zone send_txs(std::vector<std::string> txs, const epee::net_utils::zone origin, const boost::uuids::uuid& source, bool pad_txs);
     virtual bool invoke_command_to_peer(int command, const epee::span<const uint8_t> req_buff, std::string& resp_buff, const epee::net_utils::connection_context_base& context);
     virtual bool invoke_notify_to_peer(int command, const epee::span<const uint8_t> req_buff, const epee::net_utils::connection_context_base& context);
     virtual bool drop_connection(const epee::net_utils::connection_context_base& context);
@@ -363,14 +359,6 @@ namespace nodetool
     bool is_peer_used(const peerlist_entry& peer);
     bool is_peer_used(const anchor_peerlist_entry& peer);
     bool is_addr_connected(const epee::net_utils::network_address& peer);
-    void add_upnp_port_mapping_impl(uint32_t port, bool ipv6=false);
-    void add_upnp_port_mapping_v4(uint32_t port);
-    void add_upnp_port_mapping_v6(uint32_t port);
-    void add_upnp_port_mapping(uint32_t port, bool ipv4=true, bool ipv6=false);
-    void delete_upnp_port_mapping_impl(uint32_t port, bool ipv6=false);
-    void delete_upnp_port_mapping_v4(uint32_t port);
-    void delete_upnp_port_mapping_v6(uint32_t port);
-    void delete_upnp_port_mapping(uint32_t port);
     template<class t_callback>
     bool try_ping(basic_node_data& node_data, p2p_connection_context& context, const t_callback &cb);
     bool make_expected_connections_count(network_zone& zone, PeerType peer_type, size_t expected_connections);
@@ -438,7 +426,6 @@ namespace nodetool
     uint16_t m_rpc_port;
     bool m_allow_local_ip;
     bool m_hide_my_port;
-    igd_t m_igd;
     bool m_offline;
     bool m_use_ipv6;
     bool m_require_ipv4;
@@ -520,8 +507,6 @@ namespace nodetool
     extern const command_line::arg_descriptor<std::string> arg_ban_list;
     extern const command_line::arg_descriptor<bool> arg_enable_dns_banlist;
 
-    extern const command_line::arg_descriptor<bool> arg_no_igd;
-    extern const command_line::arg_descriptor<std::string> arg_igd;
     extern const command_line::arg_descriptor<bool> arg_offline;
     extern const command_line::arg_descriptor<int64_t> arg_out_peers;
     extern const command_line::arg_descriptor<int64_t> arg_in_peers;
@@ -531,7 +516,6 @@ namespace nodetool
     extern const command_line::arg_descriptor<int64_t> arg_limit_rate_down;
     extern const command_line::arg_descriptor<int64_t> arg_limit_rate;
     extern const command_line::arg_descriptor<uint32_t> arg_max_connections_per_ip;
-    extern const command_line::arg_descriptor<bool> arg_pad_transactions;
 }
 
 POP_WARNINGS

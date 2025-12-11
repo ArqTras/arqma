@@ -145,8 +145,6 @@ namespace nodetool
     const command_line::arg_descriptor<std::string> arg_ban_list = {"ban-list", "Specify ban list file, one IP address per line"};
     const command_line::arg_descriptor<bool> arg_enable_dns_banlist = {"enable-dns-banlist", "Apply realtime ban list from DNS", false};
 
-    const command_line::arg_descriptor<bool> arg_no_igd  = {"no-igd", "Disable UPnP port mapping"};
-    const command_line::arg_descriptor<std::string> arg_igd = {"igd", "UPnP port mapping (disabled, enabled, delayed)", "delayed"};
     const command_line::arg_descriptor<bool> arg_p2p_use_ipv6 = {"p2p-use-ipv6", "Enable IPv6 for p2p", false};
     const command_line::arg_descriptor<bool> arg_p2p_ignore_ipv4 = {"p2p-ignore-ipv4", "Ignore unsuccessful IPv4 bind for p2p", false};
     const command_line::arg_descriptor<int64_t> arg_out_peers = {"out-peers", "set max number of out peers", -1};
@@ -157,8 +155,6 @@ namespace nodetool
     const command_line::arg_descriptor<int64_t> arg_limit_rate_down = {"limit-rate-down", "set limit-rate-down [kB/s]", P2P_DEFAULT_LIMIT_RATE_DOWN};
     const command_line::arg_descriptor<int64_t> arg_limit_rate = {"limit-rate", "set limit-rate [kB/s]", -1};
     const command_line::arg_descriptor<uint32_t> arg_max_connections_per_ip = {"max-connections-per-ip", "Maximum number of p2p connections allowed from the same IP address", 10};
-
-    const command_line::arg_descriptor<bool> arg_pad_transactions = {"pad-transactions", "Pad relayed transactions to help defend against traffic volume analysis", false};
 
     boost::optional<std::vector<proxy>> get_proxies(boost::program_options::variables_map const& vm)
     {
@@ -316,7 +312,7 @@ namespace nodetool
     }
 
     boost::optional<boost::asio::ip::tcp::socket>
-    socks_connect_internal(const std::atomic<bool>& stop_signal, boost::asio::io_context& service, const boost::asio::ip::tcp::endpoint& proxy, const epee::net_utils::network_address& remote)
+    socks_connect_internal(const std::atomic<bool>& stop_signal, boost::asio::io_service& service, const boost::asio::ip::tcp::endpoint& proxy, const epee::net_utils::network_address& remote)
     {
         using socket_type = net::socks::client::stream_type::socket;
         using client_result = std::pair<boost::system::error_code, socket_type>;
