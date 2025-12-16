@@ -1259,7 +1259,7 @@ namespace nodetool
     {
       bool is_priority = is_priority_node(na);
       LOG_PRINT_CC_PRIORITY_NODE(is_priority, p2p_connection_context{}, " Connect failed to " << na.str());
-      zone.m_net_server.get_config_object().close(con->m_connection_id);
+      // No connection was created, nothing to close.
       return false;
     }
 
