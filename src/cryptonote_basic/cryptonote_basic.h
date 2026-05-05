@@ -359,6 +359,60 @@ namespace cryptonote
   };
 
   /************************************************************************/
+  /* Pulse/PoS (incremental Oxen-aligned wire format, hf16_pulse slice)   */
+  /************************************************************************/
+
+  /** Serialized as 16 raw bytes like Oxen's pulse_random_value. */
+  struct pulse_random_value
+  {
+    unsigned char data[16]{};
+
+    bool operator==(pulse_random_value const& o) const noexcept
+    {
+      return std::memcmp(data, o.data, sizeof(data)) == 0;
+    }
+
+    template <bool W, template <bool> class Archive>
+    bool do_serialize(Archive<W>& ar)
+    {
+      ar.serialize_blob(data, sizeof(data));
+      return ar.stream().good();
+    }
+  };
+
+  struct pulse_header
+  {
+    pulse_random_value random_value{};
+    uint8_t round{0};
+    uint16_t validator_bitset{0};
+
+    bool empty() const noexcept
+    {
+      static constexpr pulse_random_value zero{};
+      return validator_bitset == 0 && random_value == zero;
+    }
+
+    BEGIN_SERIALIZE()
+      FIELD(random_value)
+      FIELD(round)
+      FIELD(validator_bitset)
+    END_SERIALIZE()
+  };
+
+  /** One Pulse quorum validator vote on the block (Oxen quorum_signature-compatible on wire). */
+  struct pulse_validator_signature_entry
+  {
+    uint16_t voter_index{0};
+    uint8_t padding[6]{};
+    crypto::signature signature;
+
+    BEGIN_SERIALIZE()
+      FIELD(voter_index)
+      FIELD(signature)
+    END_SERIALIZE()
+  };
+
+  /************************************************************************/
   /*                                                                      */
   /************************************************************************/
   struct block_header
@@ -368,6 +422,13 @@ namespace cryptonote
     uint64_t timestamp;
     crypto::hash prev_id;
     uint32_t nonce;
+    pulse_header pulse{};
+
+    /** True when this block carries non-empty Pulse header fields (implies PoS era once HF is enabled). */
+    bool has_pulse_header_data() const noexcept
+    {
+      return major_version >= network_version_20_pos && !pulse.empty();
+    }
 
     BEGIN_SERIALIZE()
       VARINT_FIELD(major_version)
@@ -375,6 +436,10 @@ namespace cryptonote
       VARINT_FIELD(timestamp)
       FIELD(prev_id)
       FIELD(nonce)
+      if (major_version >= network_version_20_pos)
+      {
+        FIELDS(pulse)
+      }
     END_SERIALIZE()
   };
 
@@ -397,6 +462,14 @@ namespace cryptonote
 
     transaction miner_tx;
     std::vector<crypto::hash> tx_hashes;
+    std::vector<pulse_validator_signature_entry> pulse_validator_signatures;
+
+    /** Pulse metadata present (Oxen-compatible: pulse header blob and/or validator signatures after tx_hashes). */
+    bool has_pulse() const noexcept
+    {
+      return major_version >= network_version_20_pos
+          && (has_pulse_header_data() || !pulse_validator_signatures.empty());
+    }
 
     // hash cash
     mutable crypto::hash hash;
@@ -410,6 +483,13 @@ namespace cryptonote
       FIELD(tx_hashes)
       if(tx_hashes.size() > config::tx_settings::MAX_TRANSACTIONS_IN_BLOCK)
         return false;
+      if (major_version >= network_version_20_pos)
+      {
+        FIELD(pulse_validator_signatures)
+        if (!typename Archive<W>::is_saving() &&
+            pulse_validator_signatures.size() > config::block_settings::MAX_PULSE_VALIDATOR_SIGNATURES)
+          return false;
+      }
     END_SERIALIZE()
   };
 

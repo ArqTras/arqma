@@ -118,6 +118,7 @@ namespace cryptonote
     : block_header(b)
     , miner_tx{b.miner_tx}
     , tx_hashes{b.tx_hashes}
+    , pulse_validator_signatures{b.pulse_validator_signatures}
   {
     copy_hash(b);
   }
@@ -126,6 +127,7 @@ namespace cryptonote
     : block_header(std::move(b))
     , miner_tx{std::move(b.miner_tx)}
     , tx_hashes{std::move(b.tx_hashes)}
+    , pulse_validator_signatures{std::move(b.pulse_validator_signatures)}
   {
     copy_hash(b);
   }
@@ -137,6 +139,7 @@ namespace cryptonote
       block_header::operator=(b);
       miner_tx = b.miner_tx;
       tx_hashes = b.tx_hashes;
+      pulse_validator_signatures = b.pulse_validator_signatures;
       copy_hash(b);
     }
     return *this;
@@ -148,6 +151,7 @@ namespace cryptonote
       block_header::operator=(std::move(b));
       miner_tx = std::move(b.miner_tx);
       tx_hashes = std::move(b.tx_hashes);
+      pulse_validator_signatures = std::move(b.pulse_validator_signatures);
       copy_hash(b);
     }
     return *this;

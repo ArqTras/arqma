@@ -49,7 +49,8 @@ inline constexpr char NOTICE_LOG[] =
     "PoS target block time 60s; quorum minimum 10 validators, signature threshold 7.";
 
 /*
- Next steps (from roadmap; not implemented here):
+ Next steps (from roadmap; incremental port in progress):
+ - Wire format: pulse_header + pulse_validator_signatures on block when major_version >= network_version_20_pos (see cryptonote_basic.h); JSON block dump not yet extended.
  - Pulse round scheduling, producer selection, validator signatures (7-of-10).
  - Extend arqnet or adopt OxenMQ-style transport for Pulse messages.
  - Post-fork: coinbase/miner_tx layout for SN rewards only; replace LWMA difficulty (next_difficulty_v16) with Pulse rules when FORK_ACTIVE.

@@ -320,6 +320,12 @@ namespace config
     const uint64_t sync_height = 1860000;
   }
 
+  namespace block_settings
+  {
+    /** Upper bound on pulse_validator_signatures entries per block (DOS guard; quorum is much smaller). */
+    constexpr size_t MAX_PULSE_VALIDATOR_SIGNATURES = 64;
+  }
+
   namespace tx_settings
   {
     static const size_t ARQMA_TX_CONFIRMATIONS_REQUIRED = 4; // How many blocks are needed to confirm transaction sent.
