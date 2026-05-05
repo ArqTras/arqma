@@ -41,5 +41,17 @@ bool convert_time_to_round(
     std::chrono::system_clock::time_point const &r0_timestamp,
     uint8_t *round_out);
 
+/**
+ * Whether an arqnet-cached `pulse_vote` row may be merged into a template whose header carries \p validator_bitset.
+ * Indices **≥16** are always allowed (no header bit); **0..15** require the corresponding bit (same family as
+ * `Blockchain::verify_pulse_fork_block_rules` and RPC `merge_arqnet_votes`).
+ */
+constexpr bool merge_vote_matches_validator_bitset(uint16_t voter_index, uint16_t validator_bitset) noexcept
+{
+  if (voter_index >= 16)
+    return true;
+  return ((validator_bitset >> voter_index) & 1u) != 0u;
+}
+
 } // namespace pulse
 } // namespace cryptonote

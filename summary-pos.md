@@ -142,8 +142,8 @@ Bindings live in **`src/arqnet/pulse_wire.h`**; handlers in **`src/cryptonote_pr
 | Command | Payload (bt_dict parts) | Handler behaviour |
 |---------|--------------------------|-------------------|
 | **`pulse_cap`** | Optional **`!`** tag | Capability / fork telemetry (**`wv`**, **`fa`**, **`h`** = blockchain height, **`ihf`**, **`pmr`**). |
-| **`pulse_proposal`** | **`blk`**, optional **`rh`** | Parse blob; when **`FORK_ACTIVE`** && block **`major_version >= network_version_20_pos`**, **`Blockchain::verify_pulse_fork_block_rules`**. If **`bh`** was **already accepted** within the dedup window, reply **`ok=1`** + **`bh`** only. Otherwise reply **`bh`** or **`ok=0`**; on success **`mark_seen(bh)`** then relay as above. |
-| **`pulse_vote`** | **`bh`**, **`h`**, **`vi`**, **`sig`**, optional **`rh`** | Quorum / signature / sender binding; if the vote fingerprint was **already accepted** in-window, **`ok=1`** + **`bh`** only. Else append to accumulator, **`mark_seen`**, relay as above. |
+| **`pulse_proposal`** | **`blk`**, optional **`rh`** | Per-sender rate limit: combined **`pulse_proposal`** + **`pulse_vote`** capped at **48** / **10 s** (hex sender key); **`ok=0`** + **`e`** `pulse proposal rate limit` when exceeded. Then: parse blob; when **`FORK_ACTIVE`** && block **`major_version >= network_version_20_pos`**, **`Blockchain::verify_pulse_fork_block_rules`**. If **`bh`** was **already accepted** within the dedup window, reply **`ok=1`** + **`bh`** only. Otherwise reply **`bh`** or **`ok=0`**; on success **`mark_seen(bh)`** then relay as above. |
+| **`pulse_vote`** | **`bh`**, **`h`**, **`vi`**, **`sig`**, optional **`rh`** | Same per-sender cap as **`pulse_proposal`**; **`ok=0`** + **`e`** `pulse vote rate limit` when exceeded. Quorum / signature / sender binding; if the vote fingerprint was **already accepted** in-window, **`ok=1`** + **`bh`** only. Else append to accumulator, **`mark_seen`**, relay as above. |
 
 The root **`summary-pos.md`** tracks this narrative; **`docs:`** commits that only touch `summary-pos.md` have no consensus impact.
 
@@ -152,6 +152,15 @@ The root **`summary-pos.md`** tracks this narrative; **`docs:`** commits that on
  **`simplewallet`** **status** and **`wallet_rpc_server`** **`start_mining`** forward daemon PoS refusal messages where applicable.
 
  After **`refresh`**, **`simplewallet`** prints optional **PoS rehearsal** block count, **`pos_pulse_next_round_wire_hint`**, and whether **`pos_pulse_cum_diff_uses_60s_lwma`** when PoS telemetry from **`get_info`** is present.
+
+---
+
+## Delivery pack (items 1–4 — operator / maintainer)
+
+1. **HTTP rehearsal (producer-side tooling)** — Script **`contrib/pulse-rehearsal/pulse_http_rehearsal.py`** (stdlib only): **`get_info`**, **`get_pulse_block_template`**, **`get_pulse_arqnet_votes`**. Example: `python3 contrib/pulse-rehearsal/pulse_http_rehearsal.py --url http://127.0.0.1:19994/json_rpc --info --pulse-template --merge-arqnet-votes`. Full round-trip (proposal / vote over arqnet ZMQ, **`submit_block`**) remains **SN / external orchestration**.
+2. **Automated tests** — **`tests/unit_tests/pulse_round.cpp`**: GTest for **`cryptonote::pulse::merge_vote_matches_validator_bitset`** plus existing round / difficulty checks (`PulseRound.*`, `PulseDifficulty.*`).
+3. **Mainnet / governance (no code flip in-tree)** — Follow **[Mainnet go-live checklist](#mainnet-go-live-checklist-enable-full-pos--pulse)** (`hardfork.cpp` row, **`FORK_ACTIVE`**, economics, rehearsal). This pack does **not** activate mainnet PoS by itself.
+4. **Anti-spam on arqnet Pulse** — **`arqnet.cpp`**: sliding window per sender hex (**48** events / **10 s** for **`pulse_proposal`** + **`pulse_vote`** combined); map pruned when large. **`pulse_cap`** is not rate-limited.
 
 ---
 
@@ -213,6 +222,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | 2026-05-05 | *(working tree)* | arqnet: forget proposal dedup on vote-buffer clear | **`pulse_seen_recent::forget`** from **`arqnet_pulse_vote_buffer_clear`**; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | **`merge_arqnet_votes`**: filter by **`validator_bitset`** | RPC merge skips **`vi` < 16** without header bit; **`core_rpc_server.cpp`**; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | **`get_pulse_block_template`**: threshold hint in reply | **`pulse_signature_threshold`**, **`merged_pulse_signatures_meet_threshold`**; **`summary-pos.md`**. |
+| 2026-05-05 | *(working tree)* | Pack 1–4: HTTP script, tests, docs, arqnet rate limit | **`contrib/pulse-rehearsal/pulse_http_rehearsal.py`**; **`pulse.h`** **`merge_vote_matches_validator_bitset`** + **`pulse_round.cpp`** tests; **`arqnet.cpp`** per-peer Pulse flood cap; **`summary-pos.md`** delivery pack + wire table. |
 
 ---
 
@@ -222,7 +232,8 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 - `src/cryptonote_basic/cryptonote_basic.h` — Pulse structs and header fields.
 - `src/cryptonote_basic/difficulty.cpp` / `.h` — LWMA cores; **`next_difficulty_pulse_pos`**.
 - `src/cryptonote_core/blockchain.cpp` / `.h` — PoW skip, **`verify_pulse_fork_block_rules`**, Pulse coinbase/header checks, template sanitisation, **`create_next_pulse_block_template`**.
-- `src/cryptonote_core/pulse.cpp` / `.h` — **`get_round_timings`**, **`convert_time_to_round`**.
+- `src/cryptonote_core/pulse.cpp` / `.h` — **`get_round_timings`**, **`convert_time_to_round`**, **`merge_vote_matches_validator_bitset`** (RPC merge / tests).
+- `contrib/pulse-rehearsal/pulse_http_rehearsal.py` — HTTP JSON-RPC Pulse rehearsal (**`get_info`**, **`get_pulse_block_template`**, **`get_pulse_arqnet_votes`**).
 - `src/cryptonote_core/cryptonote_core.cpp` / `.h` — **`get_pulse_block_template`**, **`copy_pulse_arqnet_vote_accumulator`**, **`clear_pulse_arqnet_vote_accumulator`**, **`get_pulse_arqnet_vote_buffer_distinct_block_count`**.
 - `src/cryptonote_core/service_node_list.cpp` / `.h` — **`try_get_block_winner_for_service_node`**, **`validate_miner_tx`** (before **`network_version_20_pos`**: scheduled winner; PoS era: checkpointing-quorum producer at **`height-1`** + payout check).
 - `src/crypto/hash.h` — **`hash4`**, **`null_hash4`**.

@@ -162,6 +162,53 @@ struct pulse_seen_recent {
 
 pulse_seen_recent g_pulse_seen_inbound;
 
+/** Per-sender (hex x25519 pubkey) cap on `pulse_proposal` + `pulse_vote` combined (flood guard). */
+struct pulse_quorum_peer_rate {
+  std::mutex mu;
+  struct rec {
+    size_t n = 0;
+    std::chrono::steady_clock::time_point window_start = std::chrono::steady_clock::time_point::min();
+  };
+  std::unordered_map<std::string, rec> by_sender_hex;
+  static constexpr size_t max_in_window = 48;
+  static constexpr std::chrono::seconds window_len{10};
+
+  bool try_consume(std::string const &sender_hex)
+  {
+    auto const now = std::chrono::steady_clock::now();
+    std::lock_guard<std::mutex> lk(mu);
+    rec &r = by_sender_hex[sender_hex];
+    if (r.window_start == std::chrono::steady_clock::time_point::min() || now - r.window_start > window_len)
+    {
+      r.n = 0;
+      r.window_start = now;
+    }
+    if (r.n >= max_in_window)
+    {
+      prune_old(now);
+      return false;
+    }
+    ++r.n;
+    prune_old(now);
+    return true;
+  }
+
+  void prune_old(std::chrono::steady_clock::time_point const now)
+  {
+    if (by_sender_hex.size() <= 600)
+      return;
+    for (auto it = by_sender_hex.begin(); it != by_sender_hex.end();)
+    {
+      if (now - it->second.window_start > window_len * 3)
+        it = by_sender_hex.erase(it);
+      else
+        ++it;
+    }
+  }
+};
+
+pulse_quorum_peer_rate g_pulse_quorum_peer_rate;
+
 struct SNNWrapper {
   SNNetwork snn;
   cryptonote::core &core;
@@ -746,6 +793,15 @@ void handle_pulse_proposal(SNNetwork::message &m, void *self)
 
   try
   {
+    std::string const sender_hex = as_hex(m.pubkey);
+    if (!g_pulse_quorum_peer_rate.try_consume(sender_hex))
+    {
+      m.reply(arqma::pulse_wire::COMMAND_PULSE_PROPOSAL,
+          bt_dict{{arqma::pulse_wire::KEY_OK, 0LL},
+              {arqma::pulse_wire::KEY_ERR, std::string{"pulse proposal rate limit"}}});
+      return;
+    }
+
     bt_dict const &d = boost::get<bt_dict>(m.data[0]);
     std::string const &blk = boost::get<std::string>(d.at(arqma::pulse_wire::KEY_BLOCK_BLOB));
     if (blk.size() > arqma::pulse_wire::PULSE_PROPOSAL_MAX_BLOB_BYTES)
@@ -828,6 +884,15 @@ void handle_pulse_vote(SNNetwork::message &m, void *self)
 
   try
   {
+    std::string const sender_hex = as_hex(m.pubkey);
+    if (!g_pulse_quorum_peer_rate.try_consume(sender_hex))
+    {
+      m.reply(arqma::pulse_wire::COMMAND_PULSE_VOTE,
+          bt_dict{{arqma::pulse_wire::KEY_OK, 0LL},
+              {arqma::pulse_wire::KEY_ERR, std::string{"pulse vote rate limit"}}});
+      return;
+    }
+
     bt_dict const &d = boost::get<bt_dict>(m.data[0]);
     std::string const &bh_s = boost::get<std::string>(d.at(arqma::pulse_wire::KEY_BLOCK_HASH));
     if (bh_s.size() != sizeof(crypto::hash))

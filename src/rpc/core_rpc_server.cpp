@@ -1602,13 +1602,11 @@ namespace cryptonote
         {
           if (b.pulse_validator_signatures.size() >= cap)
             break;
-          if (e.voter_index < 16)
+          if (!cryptonote::pulse::merge_vote_matches_validator_bitset(e.voter_index, vmask))
           {
-            if (((vmask >> e.voter_index) & 1u) == 0u)
-            {
+            if (e.voter_index < 16)
               ++skipped_bit_mismatch;
-              continue;
-            }
+            continue;
           }
           b.pulse_validator_signatures.push_back(e);
         }

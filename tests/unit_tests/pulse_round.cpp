@@ -63,6 +63,20 @@ TEST(PulseRound, convert_time_rejects_round_overflow)
   EXPECT_FALSE(cryptonote::pulse::convert_time_to_round(cryptonote::MAINNET, t, r0, &round_out));
 }
 
+TEST(PulseMergeBitset, high_indices_allowed_without_header_bits)
+{
+  EXPECT_TRUE(cryptonote::pulse::merge_vote_matches_validator_bitset(16, 0));
+  EXPECT_TRUE(cryptonote::pulse::merge_vote_matches_validator_bitset(19, 0));
+}
+
+TEST(PulseMergeBitset, low_indices_require_participation_bit)
+{
+  EXPECT_FALSE(cryptonote::pulse::merge_vote_matches_validator_bitset(0, 0));
+  uint16_t const mask = static_cast<uint16_t>(1u << 3);
+  EXPECT_TRUE(cryptonote::pulse::merge_vote_matches_validator_bitset(3, mask));
+  EXPECT_FALSE(cryptonote::pulse::merge_vote_matches_validator_bitset(4, mask));
+}
+
 TEST(PulseDifficulty, pulse_pos_differs_from_v16_on_same_window)
 {
   std::vector<uint64_t> timestamps(60);
