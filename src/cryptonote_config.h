@@ -186,6 +186,8 @@ constexpr auto P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT     = 5s;
 #define HF_VERSION_PER_OUTPUT_FEE                       cryptonote::network_version_19
 #define HF_VERSION_BURN                                 cryptonote::network_version_19
 #define HF_VERSION_CLSAG                                cryptonote::network_version_19
+// Planned PoS (ARQMA-V11.0.0-PoS): activate when consensus is ready — see common/arqma_pulse_fork.h
+//#define HF_VERSION_PULSE_POS                          cryptonote::network_version_20_pos
 
 #define PER_KB_FEE_QUANTIZATION_DECIMALS                8
 
@@ -389,6 +391,8 @@ namespace cryptonote
     network_version_17,
     network_version_18,
     network_version_19,
+    /** Planned PoS HF (ARQMA-V11.0.0-PoS) — inactive until appended to hardfork tables + consensus. */
+    network_version_20_pos,
 
     network_version_count,
   };

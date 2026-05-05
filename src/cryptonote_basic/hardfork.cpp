@@ -72,6 +72,9 @@ static constexpr HardFork::Params mainnet_hard_forks[] =
   { network_version_17, 1760751, 0, 1754410575 },
   { network_version_18, 1863160, 0, 1768160647 },
   { network_version_19, 1886030, 0, 1771099200 }
+
+  // Planned ARQMA-V11.0.0-PoS (inactive):
+  // { network_version_20_pos, 2000000, 0, TBD_UNIX_TIME },
 };
 
 static constexpr HardFork::Params testnet_hard_forks[] =
@@ -91,6 +94,21 @@ static constexpr HardFork::Params testnet_hard_forks[] =
   { network_version_18,   1100, 0, 1566598282 }
 };
 
+// ------------------------------------------------------------------------------
+// Planned HF ARQMA-V11.0.0-PoS — DO NOT uncomment without full Pulse/PoS + HF activation.
+//
+// cryptonote::network_version_20_pos, target block time 60s, quorum min 10 / threshold 7 signatures.
+//
+// MAINNET planned height (user spec):          2000000
+// STAGENET planned height (last HF row + 100): 320  (currently last entry is network_version_19 @ 220)
+//
+// Example entries (wrong timestamp placeholders — set real UNIX time before activation):
+//   MAINNET:
+//     { cryptonote::network_version_20_pos, 2000000, 0, TBD_UNIX_TIME_MAINNET_POS },
+//   STAGENET:
+//     { cryptonote::network_version_20_pos, 320, 0, TBD_UNIX_TIME_STAGENET_POS },
+// ------------------------------------------------------------------------------
+
 static constexpr HardFork::Params stagenet_hard_forks[] =
 {
   { network_version_1,       0, 0, 1341378000 },
@@ -107,6 +125,9 @@ static constexpr HardFork::Params stagenet_hard_forks[] =
   { network_version_17,    180, 0, 1570414511 },
   { network_version_18,    200, 0, 1570414512 },
   { network_version_19,    220, 0, 1570414513 }
+
+  // Planned PoS rehearsal (inactive — uncomment only with Pulse implementation + timestamp):
+  // { network_version_20_pos, arqma::pulse_fork::STAGENET_FORK_HEIGHT_PLANNED, 0, TBD_UNIX_TIME },
 };
 
 uint64_t HardFork::get_hardcoded_hard_fork_height(network_type nettype, cryptonote::network_version version)

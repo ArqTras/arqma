@@ -71,6 +71,7 @@ extern "C" {
 #include "cryptonote_protocol/arqnet.h"
 
 #include "config/ascii.h"
+#include "common/arqma_pulse_fork.h"
 
 #undef ARQMA_DEFAULT_LOG_CATEGORY
 #define ARQMA_DEFAULT_LOG_CATEGORY "cn"
@@ -714,7 +715,8 @@ namespace cryptonote
       MERROR("Failed to parse reorg notify spec");
     }
 
-    const std::vector<std::pair<uint8_t, uint64_t>> regtest_hard_forks = {std::make_pair(cryptonote::network_version_count - 1, 1)};
+    // Pin to v19 until PoS (network_version_20_pos) is fully implemented; avoids regtest tracking an inactive HF.
+    const std::vector<std::pair<uint8_t, uint64_t>> regtest_hard_forks = {std::make_pair(cryptonote::network_version_19, 1)};
     const cryptonote::test_options regtest_test_options = {
       regtest_hard_forks
     };
@@ -1808,6 +1810,11 @@ namespace cryptonote
         MGINFO_GREEN(ENDL << main_message_true << ENDL);
       else
         MGINFO_GREEN(ENDL << main_message_false << ENDL);
+
+#if ARQMA_ANNOUNCE_PLANNED_POS_TRANSITION
+      if (!arqma::pulse_fork::FORK_ACTIVE)
+        MGINFO_GREEN(ENDL << arqma::pulse_fork::NOTICE_LOG << ENDL);
+#endif
 
       m_starter_message_showed = true;
     }
