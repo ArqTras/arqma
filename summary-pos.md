@@ -49,6 +49,7 @@ Affected areas: **`blockchain.cpp`**, **`core_rpc_server.cpp`**, **`daemon_handl
 - Requires **non-empty** `pulse_header` (no signature-only payloads).
 - Requires **`pulse.random_value`** bytes not all-zero ( preimage binding for the Pulse round ).
 - Requires at least **`PULSE_SIGNATURE_THRESHOLD`** signature entries.
+- Requires at least **one** checkpointing quorum candidate (`main` or **alt** state) whose **`validators`** list has **`size() >= PULSE_SIGNATURE_THRESHOLD`** — otherwise no quorum can yield enough distinct valid votes.
 - Verifies **`crypto::check_signature(block_hash, validator_pubkey, sig)`** against checkpointing quorum validators (`service_node_list::get_quorum(...)`) including **alternate-quorum candidates** where applicable.
 - Block hash excludes validator signatures — correct preimage for validators.
 
@@ -88,6 +89,8 @@ The root **`summary-pos.md`** tracks this narrative; **`docs:`** commits that on
 
  **`simplewallet`** **status** and **`wallet_rpc_server`** **`start_mining`** forward daemon PoS refusal messages where applicable.
 
+ After **`refresh`**, **`simplewallet`** prints optional **PoS rehearsal** block count, **`pos_pulse_next_round_wire_hint`**, and whether **`pos_pulse_cum_diff_uses_60s_lwma`** when PoS telemetry from **`get_info`** is present.
+
 ---
 
 ## Commit index (`c8aff143` … `HEAD` on PoS branch at time of writing)
@@ -113,6 +116,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | `7f20161e` | `docs:` add **`summary-pos.md`** (living PoS/Pulse summary for maintainers). |
 | `9dc3b9d2` | Reject zero **`pulse_random_value`** when verifying Pulse blocks; add **`pos_pulse_cum_diff_uses_60s_lwma`** to RPC / DaemonInfo / JSON. |
 | `0ebf398c` | **`docs:`** refresh **`summary-pos.md`** after `9dc3b9d2`. |
+| `dd8d4eaa` | Require **`validators.size() >= PULSE_SIGNATURE_THRESHOLD`** on some checkpointing quorum; extend **`simplewallet`** refresh PoS lines. |
 
 *(If your branch diverged via history rewrite, re-run `git log --oneline <base>..HEAD` and reconcile this table.)*
 
@@ -126,6 +130,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | 2026-05-05 | `7f20161e` | Add `summary-pos.md` | Maintainer-facing English summary table + append-only changelog contract. |
 | 2026-05-05 | `9dc3b9d2` | Pulse random preimage + LWMA-flag RPC | Consensus (when active): **`pulse_random_value`** must not be all-zero; operators see **`pos_pulse_cum_diff_uses_60s_lwma`** alongside existing PoS telemetry. |
 | 2026-05-05 | `0ebf398c` | Update `summary-pos.md` | Document commit `9dc3b9d2` behaviour and extend commit index / changelog. |
+| 2026-05-05 | `dd8d4eaa` | Quorum sizing + wallet PoS telemetry echo | Faster reject when no quorum is large enough; **`simplewallet`** **`refresh`** shows rehearsal depth, round modulus hint, 60 s LWMA flag. |
 
 ---
 
