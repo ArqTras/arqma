@@ -1097,6 +1097,9 @@ namespace cryptonote
     uint64_t m_prepare_nblocks;
     std::vector<block> *m_prepare_blocks;
 
+    /** When arqma::pulse_fork::FORK_ACTIVE and PoS-era block version, reject Pulse blocks with insufficient/invalid quorum signatures. */
+    bool verify_pulse_fork_block_rules(const cryptonote::block &bl, cryptonote::block_verification_context &bvc, const char *context) const;
+
     /**
      * @brief collects the keys for all outputs being "spent" as an input
      *
