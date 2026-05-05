@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
           fetch-depth: 1
@@ -35,7 +35,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             git build-essential curl ca-certificates cmake pkg-config \
             libboost-all-dev libssl-dev libzmq3-dev libsodium-dev \
-            libnettle-dev libhogweed-dev libunbound-dev \
+            nettle-dev libunbound-dev \
             libunwind-dev liblzma-dev libreadline-dev libldns-dev libexpat1-dev \
             gperf autoconf automake libtool-bin libhidapi-dev libusb-1.0-0-dev libudev-dev
 
