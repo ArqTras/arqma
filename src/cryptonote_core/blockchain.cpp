@@ -107,7 +107,7 @@ namespace
  */
 bool pulse_coinbase_matches_pulse_header(block const &b)
 {
-  if (!arqma::pulse_fork::FORK_ACTIVE || b.major_version < cryptonote::network_version_20_pos)
+  if (!arqma::pulse_fork::fork_active(m_nettype) || b.major_version < cryptonote::network_version_20_pos)
     return true;
 
   uint64_t money_in_use = 0;
@@ -888,7 +888,7 @@ size_t get_difficulty_blocks_count(uint8_t version)
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
 
-  if (version >= cryptonote::network_version_20_pos && arqma::pulse_fork::FORK_ACTIVE)
+  if (version >= cryptonote::network_version_20_pos && arqma::pulse_fork::fork_active(m_nettype))
     return DIFFICULTY_BLOCKS_COUNT_V16; /* next_diff Pulse uses DIFFICULTY_TARGET_V20_POS inside same LWMA window. */
 
   if(version < 7)
@@ -907,7 +907,7 @@ uint8_t get_current_diff_target(uint8_t version)
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
 
-  if (version >= cryptonote::network_version_20_pos && arqma::pulse_fork::FORK_ACTIVE)
+  if (version >= cryptonote::network_version_20_pos && arqma::pulse_fork::fork_active(m_nettype))
     return DIFFICULTY_TARGET_V20_POS;
 
   if(version < 10)
@@ -993,7 +993,7 @@ difficulty_type Blockchain::get_difficulty_for_next_block()
   }
 
   if(version >= 16) {
-    if (arqma::pulse_fork::FORK_ACTIVE && version >= cryptonote::network_version_20_pos)
+    if (arqma::pulse_fork::fork_active(m_nettype) && version >= cryptonote::network_version_20_pos)
       return next_difficulty_pulse_pos(timestamps, difficulties);
     return next_difficulty_v16(timestamps, difficulties);
   } else if(version >= 10) {
@@ -1233,7 +1233,7 @@ difficulty_type Blockchain::get_next_difficulty_for_alternative_chain(const std:
 
   // FIXME: This will fail if fork activation heights are subject to voting
   if(version >= 16) {
-    if (arqma::pulse_fork::FORK_ACTIVE && version >= cryptonote::network_version_20_pos)
+    if (arqma::pulse_fork::fork_active(m_nettype) && version >= cryptonote::network_version_20_pos)
       return next_difficulty_pulse_pos(timestamps, cumulative_difficulties);
     return next_difficulty_v16(timestamps, cumulative_difficulties);
   } else if(version >= 10) {
@@ -1406,7 +1406,7 @@ bool Blockchain::validate_miner_transaction(const block& b, size_t cumulative_bl
 //------------------------------------------------------------------
 bool Blockchain::verify_pulse_fork_block_rules(const cryptonote::block &bl, cryptonote::block_verification_context &bvc, const char *context) const
 {
-  if (!arqma::pulse_fork::FORK_ACTIVE || bl.major_version < cryptonote::network_version_20_pos)
+  if (!arqma::pulse_fork::fork_active(m_nettype) || bl.major_version < cryptonote::network_version_20_pos)
     return true;
 
   if (!bl.has_pulse_header_data())
@@ -1759,7 +1759,7 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
   if (arqma::pulse_fork::pow_mining_disabled_for_chain(m_nettype, b.major_version, height))
   {
     MINFO("rejecting PoW block template height " << height << ", major_ver " << (unsigned)b.major_version
-          << " (PoS/Pulse era or FORK_ACTIVE rehearsal height)");
+          << " (PoS/Pulse era or fork_active rehearsal height)");
     return false;
   }
 
@@ -1860,7 +1860,7 @@ bool Blockchain::create_next_pulse_block_template(
     uint64_t &seed_height,
     crypto::hash &seed_hash)
 {
-  if (!arqma::pulse_fork::FORK_ACTIVE)
+  if (!arqma::pulse_fork::fork_active(m_nettype))
     return false;
 
   LOG_PRINT_L3("Blockchain::" << __func__);
@@ -2195,7 +2195,7 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
     difficulty_type current_diff = get_next_difficulty_for_alternative_chain(alt_chain, block_height);
     CHECK_AND_ASSERT_MES(current_diff, false, "!!!!!!! DIFFICULTY OVERHEAD !!!!!!!");
     const bool pulse_skip_pow_alt =
-        arqma::pulse_fork::FORK_ACTIVE &&
+        arqma::pulse_fork::fork_active(m_nettype) &&
         b.major_version >= cryptonote::network_version_20_pos;
     crypto::hash proof_of_work;
     memset(proof_of_work.data, 0xff, sizeof(proof_of_work.data));
@@ -4316,7 +4316,7 @@ bool Blockchain::handle_block_to_main_chain(const block& bl, const crypto::hash&
   if(!fast_check)
   {
     const bool pulse_skip_pow =
-        arqma::pulse_fork::FORK_ACTIVE &&
+        arqma::pulse_fork::fork_active(m_nettype) &&
         bl.major_version >= cryptonote::network_version_20_pos;
     if (pulse_skip_pow)
     {
@@ -4598,7 +4598,7 @@ bool Blockchain::handle_block_to_main_chain(const block& bl, const crypto::hash&
 
   abort_block.cancel();
   bool const pulse_block_added =
-      arqma::pulse_fork::FORK_ACTIVE && bl.major_version >= cryptonote::network_version_20_pos;
+      arqma::pulse_fork::fork_active(m_nettype) && bl.major_version >= cryptonote::network_version_20_pos;
   if (pulse_block_added)
   {
     MINFO(

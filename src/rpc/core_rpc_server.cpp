@@ -297,7 +297,7 @@ namespace cryptonote
     res.version = restricted ? std::to_string(ARQMA_VERSION[0]) : ARQMA_VERSION_STR;
     res.syncing = m_p2p.get_payload_object().currently_busy_syncing();
 
-    res.pos_fork_active = arqma::pulse_fork::FORK_ACTIVE;
+    res.pos_fork_active = arqma::pulse_fork::fork_active(net_type);
     if (restricted)
     {
       res.pos_planned_hf_name.clear();
@@ -321,7 +321,7 @@ namespace cryptonote
       res.pos_expects_sn_storage_server = arqma::pulse_fork::POS_EXPECTS_STORAGE_SERVER_FOR_SERVICE_NODES;
 
       uint64_t const fh = arqma::pulse_fork::planned_fork_height_for_net(net_type);
-      if (arqma::pulse_fork::FORK_ACTIVE && fh > 0 && res.height > fh)
+      if (arqma::pulse_fork::fork_active(net_type) && fh > 0 && res.height > fh)
         res.pos_pulse_blocks_since_fork = res.height - fh;
       res.pos_pulse_next_round_wire_hint = res.height % 256;
       {
@@ -337,7 +337,7 @@ namespace cryptonote
             res.pos_pulse_next_round_wire_hint = rnd;
         }
         res.pos_pulse_cum_diff_uses_60s_lwma =
-            arqma::pulse_fork::FORK_ACTIVE
+            arqma::pulse_fork::fork_active(net_type)
             && bs.get_ideal_hard_fork_version(next_h) >= cryptonote::network_version_20_pos;
         res.pos_pulse_arqnet_vote_buffer_blocks =
             static_cast<uint64_t>(m_core.get_pulse_arqnet_vote_buffer_distinct_block_count());
@@ -1504,10 +1504,12 @@ namespace cryptonote
       return false;
     }
 
-    if (!arqma::pulse_fork::FORK_ACTIVE)
+    if (!arqma::pulse_fork::fork_active(m_core.get_nettype()))
     {
       error_resp.code = CORE_RPC_ERROR_CODE_WRONG_PARAM;
-      error_resp.message = "PoS/Pulse is disabled in this build (arqma::pulse_fork::FORK_ACTIVE is false)";
+      error_resp.message =
+          "PoS/Pulse is not active for this daemon: mainnet uses default builds until governance enables the fork; "
+          "for stagenet rehearsal rebuild with -DARQMA_STAGENET_POS_REHEARSAL=ON and run --stagenet";
       return false;
     }
 
@@ -1692,10 +1694,12 @@ namespace cryptonote
       return false;
     }
 
-    if (!arqma::pulse_fork::FORK_ACTIVE)
+    if (!arqma::pulse_fork::fork_active(m_core.get_nettype()))
     {
       error_resp.code = CORE_RPC_ERROR_CODE_WRONG_PARAM;
-      error_resp.message = "PoS/Pulse is disabled in this build (arqma::pulse_fork::FORK_ACTIVE is false)";
+      error_resp.message =
+          "PoS/Pulse is not active for this daemon: mainnet uses default builds until governance enables the fork; "
+          "for stagenet rehearsal rebuild with -DARQMA_STAGENET_POS_REHEARSAL=ON and run --stagenet";
       return false;
     }
 

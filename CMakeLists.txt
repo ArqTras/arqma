@@ -348,6 +348,13 @@ enable_testing()
 
 option(BUILD_DOCUMENTATION "Build the Doxygen documentation." ON)
 option(BUILD_TESTS "Build tests." OFF)
+
+option(ARQMA_STAGENET_POS_REHEARSAL "Enable PoS/Pulse consensus + HF v20 row on STAGENET only (mainnet behaviour unchanged)" OFF)
+if(ARQMA_STAGENET_POS_REHEARSAL)
+  add_compile_definitions(ARQMA_STAGENET_POS_REHEARSAL=1)
+  message(STATUS "ARQMA_STAGENET_POS_REHEARSAL: PoS/Pulse active on stagenet when running --stagenet (mainnet unaffected)")
+endif()
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(DEFAULT_BUILD_DEBUG_UTILITIES ON)
 else()

@@ -1,7 +1,8 @@
 // Copyright (c) 2026, The Arqma Network
 //
 // Planned Proof-of-Stake (Pulse-style) fork — scaffolding only.
-// FORK_ACTIVE must remain false until full consensus + network code is merged.
+// FORK_ACTIVE must remain false for mainnet production until the network votes go-live.
+// Stagenet-only rehearsal: build with -DARQMA_STAGENET_POS_REHEARSAL=ON (see top-level CMakeLists.txt).
 //
 // Repository convention: all Git commit messages must be written in English.
 
@@ -19,8 +20,27 @@
 
 namespace arqma::pulse_fork {
 
-/** Master switch — keep false in production builds until PoS goes live on the chosen network schedule. */
+/** Mainnet / global go-live: keep false until governance schedules PoS on mainnet. */
 inline constexpr bool FORK_ACTIVE = false;
+
+#if defined(ARQMA_STAGENET_POS_REHEARSAL) && ARQMA_STAGENET_POS_REHEARSAL
+inline constexpr bool STAGENET_POS_REHEARSAL_BUILD = true;
+#else
+inline constexpr bool STAGENET_POS_REHEARSAL_BUILD = false;
+#endif
+
+/**
+ * Live PoS/Pulse rules for this process: global FORK_ACTIVE (future mainnet) OR stagenet-only rehearsal build
+ * on STAGENET. MAINNET/TESTNET/FAKECHAIN never use the rehearsal branch — unchanged behaviour for public mainnet.
+ */
+inline bool fork_active(cryptonote::network_type net) noexcept
+{
+  if (FORK_ACTIVE)
+    return true;
+  if (STAGENET_POS_REHEARSAL_BUILD && net == cryptonote::STAGENET)
+    return true;
+  return false;
+}
 
 inline constexpr char HF_RELEASE_NAME[] = "ARQMA-V11.0.0-PoS";
 
@@ -93,7 +113,7 @@ inline constexpr uint64_t planned_fork_height_for_net(cryptonote::network_type n
 /**
  * When true, PoW block templates must not be produced and mining must not run.
  * Activated if the block being built is already on the PoS major version, or if
- * FORK_ACTIVE and height is at/after the planned mainnet/stagenet fork height (for rehearsal builds).
+ * `fork_active(net)` and height is at/after the planned fork height for that network (stagenet rehearsal uses the same height metadata).
  */
 inline bool pow_mining_disabled_for_chain(cryptonote::network_type net,
     uint8_t block_major_version_for_next_block,
@@ -102,7 +122,7 @@ inline bool pow_mining_disabled_for_chain(cryptonote::network_type net,
   if (block_major_version_for_next_block >= cryptonote::network_version_20_pos)
     return true;
 
-  if (!FORK_ACTIVE)
+  if (!fork_active(net))
     return false;
 
   const uint64_t fh = planned_fork_height_for_net(net);

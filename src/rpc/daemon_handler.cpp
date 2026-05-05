@@ -574,7 +574,7 @@ namespace rpc
 
     {
       const cryptonote::network_type net_type = m_core.get_nettype();
-      res.info.pos_fork_active = arqma::pulse_fork::FORK_ACTIVE;
+      res.info.pos_fork_active = arqma::pulse_fork::fork_active(net_type);
       res.info.pos_planned_hf_name = arqma::pulse_fork::HF_RELEASE_NAME;
       res.info.pos_planned_fork_height = arqma::pulse_fork::planned_fork_height_for_net(net_type);
       res.info.pos_target_block_time_sec = arqma::pulse_fork::PULSE_TARGET_BLOCK_TIME_SEC;
@@ -583,7 +583,8 @@ namespace rpc
       res.info.pos_expects_sn_storage_server = arqma::pulse_fork::POS_EXPECTS_STORAGE_SERVER_FOR_SERVICE_NODES;
 
       uint64_t const fh = arqma::pulse_fork::planned_fork_height_for_net(net_type);
-      res.info.pos_pulse_blocks_since_fork = (arqma::pulse_fork::FORK_ACTIVE && fh > 0 && res.info.height > fh) ? (res.info.height - fh) : 0;
+      res.info.pos_pulse_blocks_since_fork =
+          (arqma::pulse_fork::fork_active(net_type) && fh > 0 && res.info.height > fh) ? (res.info.height - fh) : 0;
       res.info.pos_pulse_next_round_wire_hint = res.info.height % 256;
       {
         uint64_t const next_h = chain.get_current_blockchain_height();
@@ -598,7 +599,7 @@ namespace rpc
         }
       }
       res.info.pos_pulse_cum_diff_uses_60s_lwma =
-          arqma::pulse_fork::FORK_ACTIVE
+          arqma::pulse_fork::fork_active(net_type)
           && chain.get_ideal_hard_fork_version(chain.get_current_blockchain_height()) >= cryptonote::network_version_20_pos;
       res.info.pos_pulse_arqnet_vote_buffer_blocks =
           static_cast<uint64_t>(m_core.get_pulse_arqnet_vote_buffer_distinct_block_count());

@@ -1860,12 +1860,18 @@ namespace cryptonote
         MGINFO_GREEN(ENDL << main_message_false << ENDL);
 
 #if ARQMA_ANNOUNCE_PLANNED_POS_TRANSITION
-      if (!arqma::pulse_fork::FORK_ACTIVE)
+      if (!arqma::pulse_fork::fork_active(m_nettype))
       {
         MGINFO_GREEN(ENDL << arqma::pulse_fork::NOTICE_LOG << ENDL);
         if (m_service_node_keys)
           MGINFO_CYAN(arqma::pulse_fork::SN_POS_STORAGE_PAIRING_HINT << ENDL);
       }
+#if defined(ARQMA_STAGENET_POS_REHEARSAL) && ARQMA_STAGENET_POS_REHEARSAL
+      if (m_nettype == cryptonote::STAGENET)
+        MGINFO_CYAN(
+            "This binary was built with ARQMA_STAGENET_POS_REHEARSAL: PoS/Pulse consensus is active on STAGENET only. "
+            "Do not ship this build to mainnet operators." << ENDL);
+#endif
 #endif
 
       m_starter_message_showed = true;

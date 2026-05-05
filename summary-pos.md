@@ -10,11 +10,12 @@ This document summarises Proof-of-Stake (**PoS**) and **Pulse**-style scaffoldin
 
 | Item | Value |
 |------|--------|
-| **Runtime master switch** | `arqma::pulse_fork::FORK_ACTIVE` in `src/common/arqma_pulse_fork.h` — **must remain `false` in production until the network adopts PoS consensus.** |
+| **Mainnet master switch** | `arqma::pulse_fork::FORK_ACTIVE` in `src/common/arqma_pulse_fork.h` — **must remain `false` in production until the network adopts PoS consensus.** |
+| **Stagenet-only rehearsal build** | CMake **`ARQMA_STAGENET_POS_REHEARSAL`** (default **`OFF`**). When **`ON`**, binaries define **`ARQMA_STAGENET_POS_REHEARSAL=1`**: PoS/Pulse logic is active **only** when the daemon runs **`--stagenet`** (`fork_active(net)`). Default / release builds for mainnet operators are unchanged. |
 | **Planned release label** | `HF_RELEASE_NAME` → `ARQMA-V11.0.0-PoS` |
-| **Wire / consensus version marker** | `cryptonote::network_version_20_pos` (`cryptonote_config.h`) — hard-fork scheduling rows remain commented until go-live planning. |
+| **Wire / consensus version marker** | `cryptonote::network_version_20_pos` (`cryptonote_config.h`) — mainnet hard-fork row stays commented until go-live; stagenet v20 row exists **only** in rehearsal builds (see `hardfork.cpp`). |
 
-When `FORK_ACTIVE` is **`false`** (default), most new validation paths below are **inactive**; RPC and types still expose PoS telemetry for tooling and rehearsals.
+Consensus helpers use **`fork_active(net)`** (global `FORK_ACTIVE` **or** stagenet rehearsal on STAGENET). When neither applies, most new validation paths below are **inactive**; RPC and types still expose PoS telemetry for tooling.
 
 ---
 
@@ -31,7 +32,7 @@ The items below are **engineering and operations steps** required before **mainn
 7. **Storage server pairing** — Require operators to run the **paired storage server** stack where **`POS_EXPECTS_STORAGE_SERVER_FOR_SERVICE_NODES`** applies; verify **`storage_server_ping`** / reachability policies match validator eligibility.
 8. **Pulse producer / round network** — Extend **arqnet** (**rh** relay hops + **`core::copy_pulse_arqnet_vote_accumulator`**) with production policy: **`random_value`** agreement, merging accumulated votes into **`pulse_validator_signatures`** on the blob, **P2P** submission, and dedup / anti-spam beyond hop-limited gossip (in-tree: short **success-only** inbound dedup on **`pulse_proposal`** / **`pulse_vote`**; broader policy still TBD). Tooling **`create_next_pulse_block_template`** / **`get_pulse_block_template`** remains separate from acceptance.
 9. **Wallets & RPC** — Confirm **wallet**, **mining**, and **RPC** surfaces refuse PoW where **`pow_mining_disabled_for_chain`** applies; extend any operator UIs to use **`pos_pulse_*`** telemetry and Pulse templates where needed. Concrete file-level status: **[PoS integration audit (code surfaces)](#pos-integration-audit-code-surfaces)**.
-10. **Rehearsal** — Run **stagenet** (and optional public testnet) with **`FORK_ACTIVE`** and real HF rows **before** mainnet; monitor **reorgs**, **alt-chain Pulse** blocks, **LWMA** (`next_difficulty_pulse_pos`), and **SNL hook** failures after `add_block`. In CI or locally, configure with **`BUILD_TESTS=ON`** and run **`unit_tests`** (includes **`PulseRound.*`** / **`PulseDifficulty.*`** in `tests/unit_tests/pulse_round.cpp`).
+10. **Rehearsal** — For **stagenet** Pulse rehearsal without touching mainnet defaults, configure with **`-DARQMA_STAGENET_POS_REHEARSAL=ON`** (adds HF v20 on stagenet only) and run **`--stagenet`**. For a full mainnet dress rehearsal later, align testnet/public stagenet HF rows and only then consider **`FORK_ACTIVE`** / governance go-live. Monitor **reorgs**, **alt-chain Pulse** blocks, **LWMA** (`next_difficulty_pulse_pos`), and **SNL hook** failures after `add_block`. In CI or locally, configure with **`BUILD_TESTS=ON`** and run **`unit_tests`** (includes **`PulseRound.*`** / **`PulseDifficulty.*`** in `tests/unit_tests/pulse_round.cpp`).
 11. **Release & comms** — Publish **fork height**, **mandatory software version**, SN operator checklist, and rollback / emergency procedures; tag a **release** after final audit.
 
 Until steps **2–4** and **8** are complete, mainnet **must not** be considered “full PoS live”; the daemon can **validate** Pulse-shaped blocks when enabled, but **block production** and **economic finality** depend on the transport and governance layer above.
@@ -55,16 +56,16 @@ Serialization: binary, Boost serialization, JSON (`serialization/json_object.*`)
 
 ### PoW suppression (when Pulse rules apply)
 
-PoW hashing is **skipped** for incoming blocks only when **`FORK_ACTIVE`** and **`major_version >= network_version_20_pos`** (main chain and alternative chain paths in `Blockchain`). **Quorum signature verification** for those blocks is **not** done in that PoW branch: it runs from **`service_node_list::block_added`** / **`alt_block_added`** via **`Blockchain::verify_pulse_fork_block_rules`** (oxen-core style: after the block is accepted into the DB, the SNL hook can still abort and roll back).
+PoW hashing is **skipped** for incoming blocks only when **`fork_active(net)`** and **`major_version >= network_version_20_pos`** (main chain and alternative chain paths in `Blockchain`). **Quorum signature verification** for those blocks is **not** done in that PoW branch: it runs from **`service_node_list::block_added`** / **`alt_block_added`** via **`Blockchain::verify_pulse_fork_block_rules`** (oxen-core style: after the block is accepted into the DB, the SNL hook can still abort and roll back).
 
 Mining and block templates honour **`arqma::pulse_fork::pow_mining_disabled_for_chain()`**:
 
-- **`major_version >= network_version_20_pos`** always disables PoW mining/templates for that template version **regardless** of `FORK_ACTIVE`.
-- **`FORK_ACTIVE`** additionally disables PoW rehearsal at/after **`planned_fork_height_for_net()`** before the chain reaches PoS-major blocks.
+- **`major_version >= network_version_20_pos`** always disables PoW mining/templates for that template version **regardless** of `fork_active`.
+- **`fork_active(net)`** additionally disables PoW rehearsal at/after **`planned_fork_height_for_net()`** before the chain reaches PoS-major blocks.
 
 Affected areas: **`blockchain.cpp`**, **`core_rpc_server.cpp`**, **`daemon_handler.cpp`**, **`miner.cpp`**, **`cryptonote_core.cpp`**.
 
-### Consensus checks when `FORK_ACTIVE` (Pulse-era blocks)
+### Consensus checks when `fork_active(net)` (Pulse-era blocks)
 
  **`Blockchain::verify_pulse_fork_block_rules`** (`blockchain.cpp`):
 

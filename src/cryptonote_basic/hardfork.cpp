@@ -31,6 +31,9 @@
 #include <cstdio>
 
 #include "common/arqma.h"
+#if defined(ARQMA_STAGENET_POS_REHEARSAL) && ARQMA_STAGENET_POS_REHEARSAL
+#include "common/arqma_pulse_fork.h"
+#endif
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "blockchain_db/blockchain_db.h"
 #include "hardfork.h"
@@ -125,9 +128,10 @@ static constexpr HardFork::Params stagenet_hard_forks[] =
   { network_version_17,    180, 0, 1570414511 },
   { network_version_18,    200, 0, 1570414512 },
   { network_version_19,    220, 0, 1570414513 }
-
-  // Planned PoS rehearsal (inactive — uncomment only with Pulse implementation + timestamp):
-  // { network_version_20_pos, arqma::pulse_fork::STAGENET_FORK_HEIGHT_PLANNED, 0, TBD_UNIX_TIME },
+#if defined(ARQMA_STAGENET_POS_REHEARSAL) && ARQMA_STAGENET_POS_REHEARSAL
+  /** PoS/Pulse stagenet rehearsal — only when CMake ARQMA_STAGENET_POS_REHEARSAL=ON (not in default / mainnet binaries). */
+  ,{ cryptonote::network_version_20_pos, arqma::pulse_fork::STAGENET_FORK_HEIGHT_PLANNED, 0, 1735689600 }
+#endif
 };
 
 uint64_t HardFork::get_hardcoded_hard_fork_height(network_type nettype, cryptonote::network_version version)

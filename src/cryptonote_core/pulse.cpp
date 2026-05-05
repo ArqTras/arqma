@@ -32,7 +32,7 @@ uint64_t first_ideal_pos_block_height(Blockchain const &blockchain)
 
 std::optional<round_timings> get_round_timings(Blockchain const &blockchain, uint64_t block_height, uint64_t prev_timestamp)
 {
-  if (!arqma::pulse_fork::FORK_ACTIVE)
+  if (!arqma::pulse_fork::fork_active(blockchain.nettype()))
     return std::nullopt;
 
   uint64_t const first_pos_h = first_ideal_pos_block_height(blockchain);
