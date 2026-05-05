@@ -7,28 +7,15 @@
 # Arqnet quorum (ZMQ SN transport) is out of scope here.
 
 import argparse
-import json
 import sys
+from pathlib import Path
+
+# Allow `from pulse_tools_common import …` when run as a script.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 import urllib.error
-import urllib.request
 
-
-def json_rpc(url, method, params=None, timeout=30.0):
-    body = {"jsonrpc": "2.0", "id": "0", "method": method}
-    if params is not None:
-        body["params"] = params
-    data = json.dumps(body).encode("utf-8")
-    req = urllib.request.Request(
-        url,
-        data=data,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        out = json.loads(resp.read().decode("utf-8"))
-    if "error" in out and out["error"]:
-        raise RuntimeError(out["error"])
-    return out.get("result", {})
+from pulse_tools_common import json_rpc
 
 
 def main():
@@ -57,6 +44,12 @@ def main():
         help="Set merge_arqnet_votes true",
     )
     p.add_argument(
+        "--dump-template-hex",
+        metavar="PATH",
+        default="",
+        help="With --pulse-template, write blocktemplate_blob hex to file (- = stdout)",
+    )
+    p.add_argument(
         "--votes-for-hash",
         default="",
         metavar="HEX64",
@@ -82,7 +75,7 @@ def main():
                     print(f"  {k}: {r[k]}")
 
         if args.pulse_template:
-            params: dict = {
+            params = {
                 "pulse_round": int(args.pulse_round),
                 "validator_bitset": int(args.validator_bitset),
             }
@@ -90,7 +83,7 @@ def main():
                 params["pulse_random_value"] = args.pulse_random_hex
             if args.merge_arqnet_votes:
                 params["merge_arqnet_votes"] = True
-            r = json_rpc(args.url, "get_pulse_block_template", params)
+            tpl_r = json_rpc(args.url, "get_pulse_block_template", params)
             print("get_pulse_block_template (subset):")
             for k in (
                 "height",
@@ -100,8 +93,23 @@ def main():
                 "merged_pulse_signatures_meet_threshold",
                 "status",
             ):
-                if k in r:
-                    print(f"  {k}: {r[k]}")
+                if k in tpl_r:
+                    print(f"  {k}: {tpl_r[k]}")
+
+            if args.dump_template_hex:
+                blob = tpl_r.get("blocktemplate_blob", "")
+                if not blob:
+                    print("No blocktemplate_blob in response", file=sys.stderr)
+                    return 2
+                out_path = args.dump_template_hex
+                if out_path == "-":
+                    sys.stdout.write(blob)
+                    if not blob.endswith("\n"):
+                        sys.stdout.write("\n")
+                else:
+                    with open(out_path, "w", encoding="ascii", errors="strict") as f:
+                        f.write(blob)
+                    print("Wrote blocktemplate_blob hex to", out_path, file=sys.stderr)
 
         if args.votes_for_hash:
             h = args.votes_for_hash.strip().lower()

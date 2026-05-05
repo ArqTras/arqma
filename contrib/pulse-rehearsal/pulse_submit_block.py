@@ -8,26 +8,13 @@
 import argparse
 import json
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
 import urllib.error
-import urllib.request
 
-
-def json_rpc(url, method, params=None, timeout=60.0):
-    body = {"jsonrpc": "2.0", "id": "0", "method": method}
-    if params is not None:
-        body["params"] = params
-    data = json.dumps(body).encode("utf-8")
-    req = urllib.request.Request(
-        url,
-        data=data,
-        headers={"Content-Type": "application/json"},
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        out = json.loads(resp.read().decode("utf-8"))
-    if "error" in out and out["error"]:
-        raise RuntimeError(out["error"])
-    return out.get("result", {})
+from pulse_tools_common import json_rpc
 
 
 def load_hex_blob(path):

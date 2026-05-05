@@ -157,8 +157,10 @@ The root **`summary-pos.md`** tracks this narrative; **`docs:`** commits that on
 
 ## Delivery pack (items 1–4 — operator / maintainer)
 
-1. **HTTP rehearsal (producer-side tooling)** — **`contrib/pulse-rehearsal/pulse_http_rehearsal.py`**: **`get_info`**, **`get_pulse_block_template`**, **`get_pulse_arqnet_votes`**. **`contrib/pulse-rehearsal/pulse_submit_block.py`**: **`submit_block`** with hex blob (file or stdin). Example: `python3 contrib/pulse-rehearsal/pulse_http_rehearsal.py --url http://127.0.0.1:19994/json_rpc --info --pulse-template --merge-arqnet-votes` then pipe template hex into **`pulse_submit_block.py`**. Arqnet ZMQ (**`pulse_proposal`** / **`pulse_vote`**) stays **SN / external orchestration**.
-2. **Automated tests** — **`tests/unit_tests/pulse_round.cpp`**: GTest for **`cryptonote::pulse::merge_vote_matches_validator_bitset`** plus existing round / difficulty checks (`PulseRound.*`, `PulseDifficulty.*`).
+1. **HTTP rehearsal (producer-side tooling)** — **`contrib/pulse-rehearsal/pulse_http_rehearsal.py`**: **`get_info`**, **`get_pulse_block_template`**, **`get_pulse_arqnet_votes`**, optional **`--dump-template-hex PATH`** (stdout when PATH is a single hyphen) to feed **`pulse_submit_block.py`**. **`contrib/pulse-rehearsal/pulse_submit_block.py`**: **`submit_block`** with hex blob (file or stdin). Shared **`pulse_tools_common.py`** (`json_rpc`). Example:  
+   `python3 contrib/pulse-rehearsal/pulse_http_rehearsal.py --url http://127.0.0.1:19994/json_rpc --pulse-template --merge-arqnet-votes --dump-template-hex tpl.hex`  
+   then `python3 contrib/pulse-rehearsal/pulse_submit_block.py --url http://127.0.0.1:19994/json_rpc tpl.hex` (after any required mining / nonce work outside these scripts). Arqnet ZMQ stays **SN / external orchestration**.
+2. **Automated tests** — **`tests/unit_tests/pulse_round.cpp`**: GTest for **`cryptonote::pulse::merge_vote_matches_validator_bitset`** plus existing round / difficulty checks (`PulseRound.*`, `PulseDifficulty.*`). Configure with **`BUILD_TESTS=ON`** then build target **`unit_tests`** (existing `build-msys` trees without tests have no `unit_tests` rule — reconfigure or use a fresh build dir).
 3. **Mainnet / governance (no code flip in-tree)** — Follow **[Mainnet go-live checklist](#mainnet-go-live-checklist-enable-full-pos--pulse)** (`hardfork.cpp` row, **`FORK_ACTIVE`**, economics, rehearsal). This pack does **not** activate mainnet PoS by itself.
 4. **Anti-spam on arqnet Pulse** — **`arqnet.cpp`**: sliding window per sender hex; limits **`PULSE_QUORUM_PEER_RATE_MAX_EVENTS`** / **`PULSE_QUORUM_PEER_RATE_WINDOW_SEC`** in **`src/arqnet/pulse_wire.h`**. **`pulse_cap`** is not rate-limited.
 
@@ -224,6 +226,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | 2026-05-05 | *(working tree)* | **`get_pulse_block_template`**: threshold hint in reply | **`pulse_signature_threshold`**, **`merged_pulse_signatures_meet_threshold`**; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | Pack 1–4: HTTP script, tests, docs, arqnet rate limit | **`contrib/pulse-rehearsal/pulse_http_rehearsal.py`**; **`pulse.h`** **`merge_vote_matches_validator_bitset`** + **`pulse_round.cpp`** tests; **`arqnet.cpp`** per-peer Pulse flood cap; **`summary-pos.md`** delivery pack + wire table. |
 | 2026-05-05 | *(working tree)* | Rate limit tunables + submit_block script | **`pulse_wire.h`** **`PULSE_QUORUM_PEER_RATE_*`**; **`pulse_submit_block.py`**; **`summary-pos.md`**. |
+| 2026-05-05 | *(working tree)* | Pulse rehearsal: shared json_rpc + dump template hex | **`pulse_tools_common.py`**; **`--dump-template-hex`**; **`summary-pos.md`**. |
 
 ---
 
@@ -236,6 +239,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 - `src/cryptonote_core/pulse.cpp` / `.h` — **`get_round_timings`**, **`convert_time_to_round`**, **`merge_vote_matches_validator_bitset`** (RPC merge / tests).
 - `contrib/pulse-rehearsal/pulse_http_rehearsal.py` — HTTP JSON-RPC Pulse rehearsal (**`get_info`**, **`get_pulse_block_template`**, **`get_pulse_arqnet_votes`**).
 - `contrib/pulse-rehearsal/pulse_submit_block.py` — JSON-RPC **`submit_block`** for a hex block blob.
+- `contrib/pulse-rehearsal/pulse_tools_common.py` — shared **`json_rpc`** for rehearsal scripts.
 - `src/cryptonote_core/cryptonote_core.cpp` / `.h` — **`get_pulse_block_template`**, **`copy_pulse_arqnet_vote_accumulator`**, **`clear_pulse_arqnet_vote_accumulator`**, **`get_pulse_arqnet_vote_buffer_distinct_block_count`**.
 - `src/cryptonote_core/service_node_list.cpp` / `.h` — **`try_get_block_winner_for_service_node`**, **`validate_miner_tx`** (before **`network_version_20_pos`**: scheduled winner; PoS era: checkpointing-quorum producer at **`height-1`** + payout check).
 - `src/crypto/hash.h` — **`hash4`**, **`null_hash4`**.
