@@ -970,11 +970,17 @@ namespace cryptonote
       uint64_t validator_bitset;
       /** Optional hex-encoded service-node **service** pubkey; if non-empty, templates coinbase for this active SN instead of `get_block_winner()`. */
       std::string producer_pubkey;
+      /** Optional: 32 hex chars = 16-byte `pulse_header.random_value` (binds block hash before merge; must match the proposal peers voted on). */
+      std::string pulse_random_value;
+      /** If true, fill `pulse_validator_signatures` from the in-process arqnet vote accumulator for `get_block_hash(b)` (after optional random binding). */
+      bool merge_arqnet_votes;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(pulse_round)
         KV_SERIALIZE(validator_bitset)
         KV_SERIALIZE(producer_pubkey)
+        KV_SERIALIZE_OPT(pulse_random_value, (std::string) "")
+        KV_SERIALIZE_OPT(merge_arqnet_votes, false)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<request_t> request;

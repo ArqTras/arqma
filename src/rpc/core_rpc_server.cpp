@@ -49,8 +49,10 @@ using namespace epee;
 #include "common/perf_timer.h"
 #include "common/random.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
+#include "cryptonote_basic/cryptonote_basic.h"
 #include "cryptonote_basic/account.h"
 #include "cryptonote_basic/cryptonote_basic_impl.h"
+#include "cryptonote_config.h"
 #include "cryptonote_core/tx_sanity_check.h"
 #include "cryptonote_core/pulse.h"
 #include "misc_language.h"
@@ -1563,6 +1565,44 @@ namespace cryptonote
     }
     (void)pulse_tpl_seed_height;
     (void)pulse_tpl_seed_hash;
+
+    if (!req.pulse_random_value.empty())
+    {
+      std::string rnd_bin;
+      if (!string_tools::parse_hexstr_to_binbuff(req.pulse_random_value, rnd_bin)
+          || rnd_bin.size() != sizeof(b.pulse.random_value.data))
+      {
+        error_resp.code = CORE_RPC_ERROR_CODE_WRONG_PARAM;
+        error_resp.message = "pulse_random_value must be exactly 32 hex characters (16 bytes)";
+        return false;
+      }
+      std::memcpy(b.pulse.random_value.data, rnd_bin.data(), sizeof(b.pulse.random_value.data));
+    }
+
+    if (req.merge_arqnet_votes)
+    {
+      b.invalidate_hashes();
+      crypto::hash const bh = cryptonote::get_block_hash(b);
+      uint64_t acc_chain_height = 0;
+      std::vector<cryptonote::pulse_validator_signature_entry> acc{};
+      if (m_core.copy_pulse_arqnet_vote_accumulator(bh, acc_chain_height, acc))
+      {
+        if (acc_chain_height != height)
+          MDEBUG("merge_arqnet_votes: vote accumulator chain_height " << acc_chain_height << " != template height " << height);
+        b.pulse_validator_signatures.clear();
+        size_t const cap = config::block_settings::MAX_PULSE_VALIDATOR_SIGNATURES;
+        b.pulse_validator_signatures.reserve(std::min(acc.size(), cap));
+        for (cryptonote::pulse_validator_signature_entry const &e : acc)
+        {
+          if (b.pulse_validator_signatures.size() >= cap)
+            break;
+          b.pulse_validator_signatures.push_back(e);
+        }
+      }
+      else
+        MDEBUG("merge_arqnet_votes: no accumulator data for block hash " << bh);
+      b.invalidate_hashes();
+    }
 
     res.difficulty = m_core.get_blockchain_storage().get_difficulty_for_next_block();
     res.height = height;
