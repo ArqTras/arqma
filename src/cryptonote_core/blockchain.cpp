@@ -828,6 +828,9 @@ size_t get_difficulty_blocks_count(uint8_t version)
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
 
+  if (version >= cryptonote::network_version_20_pos && arqma::pulse_fork::FORK_ACTIVE)
+    return DIFFICULTY_BLOCKS_COUNT_V16; // Replace with Pulse-specific window when PoS difficulty is implemented.
+
   if(version < 7)
     return DIFFICULTY_BLOCKS_COUNT;
   else if(version < 9)

@@ -377,6 +377,7 @@ namespace cryptonote {
 //v16 diffculty algo
   difficulty_type next_difficulty_v16(std::vector<uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties) {
 
+    // When PoS replaces PoW, Pulse uses a separate difficulty model; this LWMA path stays for pre-fork and as a placeholder.
     uint64_t  T = DIFFICULTY_TARGET_V16;
     uint64_t  N = DIFFICULTY_WINDOW_V16; // N=45, 60, and 90 for T=600, 120, 60.
     uint64_t  L(0), ST(0), next_D, prev_D, avg_D, i;

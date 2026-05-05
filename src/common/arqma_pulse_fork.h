@@ -2,6 +2,8 @@
 //
 // Planned Proof-of-Stake (Pulse-style) fork — scaffolding only.
 // FORK_ACTIVE must remain false until full consensus + network code is merged.
+//
+// Repository convention: all Git commit messages must be written in English.
 
 #pragma once
 
@@ -49,7 +51,7 @@ inline constexpr char NOTICE_LOG[] =
  Next steps (from roadmap; not implemented here):
  - Pulse round scheduling, producer selection, validator signatures (7-of-10).
  - Extend arqnet or adopt OxenMQ-style transport for Pulse messages.
- - Post-fork: skip PoW checks; coinbase/miner_tx layout for SN rewards only.
+ - Post-fork: skip PoW checks; coinbase/miner_tx layout for SN rewards only; replace LWMA difficulty (next_difficulty_v16) with Pulse rules when FORK_ACTIVE.
  - Stagenet/mocknet rehearsal; then uncomment HF rows in hardfork.cpp with real timestamps.
  - Optional: checkpoint relay expansion, wallet/RPC alignment, HF_VERSION_PULSE_POS in cryptonote_config.h
 */
