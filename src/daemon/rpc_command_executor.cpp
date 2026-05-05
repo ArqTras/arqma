@@ -671,6 +671,26 @@ bool t_rpc_command_executor::show_status()
 
   tools::success_msg_writer() << str.str();
 
+  if (ires.pos_fork_active || ires.pos_planned_fork_height > 0)
+  {
+    str.str("");
+    str.clear();
+    str << "PoS/Pulse: ";
+    if (ires.pos_fork_active)
+      str << "fork active (PoW mining disabled). ";
+    if (!ires.pos_planned_hf_name.empty() && ires.pos_planned_fork_height > 0)
+      str << "planned " << ires.pos_planned_hf_name << " @ height " << ires.pos_planned_fork_height
+          << ", target block time " << ires.pos_target_block_time_sec << "s. ";
+    if (ires.pos_pulse_blocks_since_fork > 0)
+      str << "rehearsal +blocks " << ires.pos_pulse_blocks_since_fork << ". ";
+    if (ires.pos_pulse_arqnet_vote_buffer_blocks > 0)
+      str << "arqnet vote buffer " << ires.pos_pulse_arqnet_vote_buffer_blocks << " block(s). ";
+    if (ires.pos_fork_active || ires.pos_pulse_cum_diff_uses_60s_lwma || ires.pos_pulse_blocks_since_fork > 0)
+      str << "round hint " << (unsigned)ires.pos_pulse_next_round_wire_hint
+          << ", next cum-diff 60s LWMA " << (ires.pos_pulse_cum_diff_uses_60s_lwma ? "yes" : "no") << ". ";
+    tools::success_msg_writer() << str.str();
+  }
+
   if (!my_sn_key.empty())
   {
     str.str("");

@@ -1426,6 +1426,19 @@ namespace cryptonote
       return false;
     }
 
+    {
+      const uint64_t chain_height_hf = m_core.get_current_blockchain_height();
+      const uint64_t next_height_hf = chain_height_hf + 1;
+      const uint8_t next_major_hf =
+          m_core.get_blockchain_storage().get_ideal_hard_fork_version(next_height_hf);
+      if (arqma::pulse_fork::pow_mining_disabled_for_chain(m_core.get_nettype(), next_major_hf, next_height_hf))
+      {
+        error_resp.code = CORE_RPC_ERROR_CODE_POW_MINING_DISABLED;
+        error_resp.message = arqma::pulse_fork::POW_MINING_DISABLED_RPC_MESSAGE;
+        return false;
+      }
+    }
+
     block b;
     std::string blob_reserve;
     size_t reserved_offset;

@@ -1183,10 +1183,10 @@ struct WalletManagerBase
     //! returns true iff mining
     virtual bool isMining() = 0;
 
-    //! starts mining with the set number of threads
+    //! starts mining with the set number of threads. On failure, \ref errorString() is set (daemon `status`, e.g. PoS/Pulse PoW disabled, or transport error).
     virtual bool startMining(const std::string &address, uint32_t threads = 1) = 0;
 
-    //! stops mining
+    //! stops mining. On failure, \ref errorString() carries the daemon `status` when available.
     virtual bool stopMining() = 0;
 
     //! resolves an OpenAlias address to a monero address

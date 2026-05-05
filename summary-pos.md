@@ -162,7 +162,7 @@ Audit of **in-tree** components for **PoW refusal**, **Pulse template / vote RPC
 | Surface | Location | Behaviour | Status |
 |---------|----------|-----------|--------|
 | PoW block template | **`Blockchain::create_block_template`** (`blockchain.cpp`) | Returns **`false`** when **`pow_mining_disabled_for_chain`** — PoW templates stop at the chain layer. | OK |
-| **`getblocktemplate`** | **`core_rpc_server::on_getblocktemplate`** → **`get_block_template`** | Failure surfaces as JSON-RPC **internal error** (“failed to create block template”); no dedicated “PoW disabled” message (unlike **`start_mining`**). | Gap (operator UX) |
+| **`getblocktemplate`** | **`core_rpc_server::on_getblocktemplate`** | Before template build: **`pow_mining_disabled_for_chain`** → **`error_resp.code = CORE_RPC_ERROR_CODE_POW_MINING_DISABLED` (-14)** and **`error_resp.message = POW_MINING_DISABLED_RPC_MESSAGE`**. Other failures remain generic internal error. | OK |
 | **`start_mining` (HTTP)** | **`core_rpc_server::on_start_mining`** | **`pow_mining_disabled_for_chain`** → **`res.status = POW_MINING_DISABLED_RPC_MESSAGE`** (not **`CORE_RPC_STATUS_OK`**). | OK |
 | **`start_mining` (ZMQ)** | **`daemon_handler::handle(StartMining)`** | Same check; **`error_details`** carries **`POW_MINING_DISABLED_RPC_MESSAGE`**. | OK |
 | **`get_info` (HTTP)** | **`core_rpc_server::on_get_info`** | Full **`pos_*` / `pos_pulse_*`** when **not** restricted; restricted mode clears planned-fork constants and **`pos_pulse_*`** hints **except** **`pos_fork_active`** remains set from **`FORK_ACTIVE`**. | OK |
@@ -170,11 +170,11 @@ Audit of **in-tree** components for **PoW refusal**, **Pulse template / vote RPC
 | **`get_pulse_block_template` / `get_pulse_arqnet_votes`** | **`core_rpc_server`** | Require **`FORK_ACTIVE`**, ideal HF **`>= network_version_20_pos`**, no bootstrap daemon. | OK |
 | **`simplewallet`** | **`start_mining`**, **`status`** | Mining refusal text from daemon **`status`**; PoS telemetry lines after **`status`** via **`get_info`** (see above). | OK |
 | **`wallet_rpc_server`** | **`on_start_mining`** | Forwards **`/start_mining`**; **`er.message`** = daemon **`status`** on failure (includes PoS refusal string). | OK |
-| **Wallet API (C++)** | **`wallet/api/wallet_manager.cpp`** | **`startMining` / `stopMining`** return **`bool`** only — callers do not get **`POW_MINING_DISABLED_RPC_MESSAGE`** text; **`get_info`** fields are not exposed as dedicated API getters. | Gap (GUI / bindings) |
-| **`arqmad` CLI `status`** | **`daemon/rpc_command_executor.cpp`** **`show_status()`** | Prints height, hash rate from **`get_info`**, SN ping — **does not** print **`pos_pulse_*`** or planned fork lines. | Gap (operator UX) |
+| **Wallet API (C++)** | **`wallet/api/wallet_manager.cpp`** | **`startMining` / `stopMining`**: on failure **`errorString()`** is set to daemon **`status`** (includes PoW-disabled text) or a transport message; success clears it. No separate typed getters for **`pos_*`** (GUI may still call daemon **`get_info`**). | OK |
+| **`arqmad` CLI `status`** | **`daemon/rpc_command_executor.cpp`** **`show_status()`** | After the main status line, prints a **PoS/Pulse** line when **`pos_fork_active`** or **`pos_planned_fork_height > 0`** (planned HF, rehearsal, arqnet buffer, round hint, 60s LWMA flag). | OK |
 | **In-process miner** | **`cryptonote_basic/miner.*`** | No local **`pow_mining_disabled`** guard; mining is expected to start only via RPC / ZMQ paths that already check. | OK (by convention) |
 
-**Follow-ups (optional):** (1) **`on_getblocktemplate`**: early **`pow_mining_disabled`** check with a stable **`error_resp.message`** (and optional dedicated error code) matching **`POW_MINING_DISABLED_RPC_MESSAGE`**. (2) **`show_status`**: append one line when **`pos_planned_fork_height > 0`** or **`pos_fork_active`** (mirror **`simplewallet`**). (3) **Wallet API**: surface daemon **`status`** string on failed **`startMining`**, or add thin **`get_daemon_pos_info`** accessors if a GUI must not parse raw **`get_info`**.
+**Optional later:** thin **`WalletManager`** accessors for selected **`get_info.pos_*`** fields if a GUI should avoid raw HTTP.
 
 ---
 
@@ -252,6 +252,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | 2026-05-05 | *(working tree)* | Pulse rehearsal: shared json_rpc + dump template hex | **`pulse_tools_common.py`**; **`--dump-template-hex`**; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | **`build_unit_tests`** helper scripts | **`contrib/pulse-rehearsal/build_unit_tests.ps1`**, **`build_unit_tests.sh`**; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | **`summary-pos.md`**: PoS integration audit | File-level table (HTTP/ZMQ/wallet/daemon CLI); fix **`simplewallet`** doc (**`status`** vs **`refresh`**); optional follow-ups for **`getblocktemplate`** UX and **`show_status`**. |
+| 2026-05-05 | *(working tree)* | PoS UX follow-ups implemented | **`on_getblocktemplate`**: **`CORE_RPC_ERROR_CODE_POW_MINING_DISABLED`** (-14); **`show_status`** PoS line; **`WalletManager`** **`errorString()`** on mining RPC failure; **`summary-pos.md`** audit table updated. |
 
 ---
 
@@ -269,5 +270,8 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 - `src/cryptonote_core/cryptonote_core.cpp` / `.h` — **`get_pulse_block_template`**, **`copy_pulse_arqnet_vote_accumulator`**, **`clear_pulse_arqnet_vote_accumulator`**, **`get_pulse_arqnet_vote_buffer_distinct_block_count`**.
 - `src/cryptonote_core/service_node_list.cpp` / `.h` — **`try_get_block_winner_for_service_node`**, **`validate_miner_tx`** (before **`network_version_20_pos`**: scheduled winner; PoS era: checkpointing-quorum producer at **`height-1`** + payout check).
 - `src/crypto/hash.h` — **`hash4`**, **`null_hash4`**.
+- `src/rpc/core_rpc_server_error_codes.h` — RPC error codes including **`CORE_RPC_ERROR_CODE_POW_MINING_DISABLED`** (**`-14`**) for **`getblocktemplate`** when PoW is disabled.
 - `src/rpc/core_rpc_server*.cpp/.h`, `core_rpc_server_commands_defs.h`, `daemon_handler.cpp`, `message_data_structs.h`, `serialization/json_object.cpp` — telemetry, **`get_pulse_block_template`**, **`get_pulse_arqnet_votes`**, and JSON parity.
+- `src/daemon/rpc_command_executor.cpp` — **`show_status`** PoS/Pulse summary line from **`get_info`**.
+- `src/wallet/api/wallet_manager.cpp`, `wallet2_api.h` — **`WalletManager::errorString()`** after **`startMining` / `stopMining`** failures.
 - `src/arqnet/pulse_wire.h`, `src/cryptonote_protocol/arqnet.cpp` — Pulse **arqnet** commands (**`pulse_cap`**, **`pulse_proposal`**, **`pulse_vote`**, **`rh`** relay, in-memory vote buffer).
