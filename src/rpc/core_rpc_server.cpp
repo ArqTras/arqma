@@ -1783,11 +1783,20 @@ namespace cryptonote
       return false;
     }
 
-    block_verification_context bvc;
-    if(!m_core.handle_block_found(b, bvc))
+    block_verification_context bvc{};
+    if (!m_core.handle_block_found(b, bvc))
     {
       error_resp.code = CORE_RPC_ERROR_CODE_BLOCK_NOT_ACCEPTED;
-      error_resp.message = "Block not accepted";
+      std::string msg = "Block not accepted";
+      if (bvc.m_already_exists)
+        msg += ": duplicate block";
+      else if (bvc.m_marked_as_orphaned)
+        msg += ": orphaned (parent not main tip or alt-chain)";
+      else if (bvc.m_verification_failed)
+        msg += ": verification failed (Pulse quorum / PoW / tx rules — see daemon log)";
+      else
+        msg += ": rejected (prepare/relay path — see daemon log)";
+      error_resp.message = std::move(msg);
       return false;
     }
     res.status = CORE_RPC_STATUS_OK;

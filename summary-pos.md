@@ -36,6 +36,8 @@ The items below are **engineering and operations steps** required before **mainn
 
 Until steps **2–4** and **8** are complete, mainnet **must not** be considered “full PoS live”; the daemon can **validate** Pulse-shaped blocks when enabled, but **block production** and **economic finality** depend on the transport and governance layer above.
 
+**Technical “full path” in this tree (stagenet / rehearsal):** SN **arqnet** gossip fills the vote accumulator → **`get_pulse_block_template`** with **`merge_arqnet_votes`** → **`submit_block`** ( **`core::handle_block_found`** → DB + **P2P** relay). The HTTP script **`pulse_http_rehearsal.py`** implements **poll-and-submit** (**`--watch-submit`**) and **single-shot submit** (**`--submit-if-ready`**). That is **end-to-end block production over RPC** given live quorum traffic; it is **not** a substitute for mainnet checklist items (HF activation, economics, mandatory release).
+
 ---
 
 ## Functional behaviour overview
@@ -178,9 +180,9 @@ Audit of **in-tree** components for **PoW refusal**, **Pulse template / vote RPC
 
 ## Delivery pack (items 1–4 — operator / maintainer)
 
-1. **HTTP rehearsal (producer-side tooling)** — **`contrib/pulse-rehearsal/pulse_http_rehearsal.py`**: **`get_info`**, **`get_pulse_block_template`**, **`get_pulse_arqnet_votes`**, optional **`--dump-template-hex PATH`** (stdout when PATH is a single hyphen) to feed **`pulse_submit_block.py`**. **`contrib/pulse-rehearsal/pulse_submit_block.py`**: **`submit_block`** with hex blob (file or stdin). Shared **`pulse_tools_common.py`** (`json_rpc`). Example:  
-   `python3 contrib/pulse-rehearsal/pulse_http_rehearsal.py --url http://127.0.0.1:19994/json_rpc --pulse-template --merge-arqnet-votes --dump-template-hex tpl.hex`  
-   then `python3 contrib/pulse-rehearsal/pulse_submit_block.py --url http://127.0.0.1:19994/json_rpc tpl.hex` (after any required mining / nonce work outside these scripts). Arqnet ZMQ stays **SN / external orchestration**.
+1. **HTTP rehearsal (producer-side tooling)** — **`contrib/pulse-rehearsal/pulse_http_rehearsal.py`**: **`get_info`**, **`get_pulse_block_template`**, **`get_pulse_arqnet_votes`**, **`--dump-template-hex`**, **`--submit-if-ready`** (submit when **`merged_pulse_signatures_meet_threshold`**), **`--submit-anyway`** (forced submit), **`--watch-submit`** (poll template with **`--merge-arqnet-votes`** until submit). **`contrib/pulse-rehearsal/pulse_submit_block.py`**: raw **`submit_block`**. Shared **`pulse_tools_common.py`**. E2E example (votes must arrive via SN arqnet first):  
+   `python3 contrib/pulse-rehearsal/pulse_http_rehearsal.py --url http://127.0.0.1:19994/json_rpc --watch-submit --merge-arqnet-votes --pulse-round 0 --validator-bitset 1`  
+   Single-shot (if threshold already met): **`--pulse-template --merge-arqnet-votes --submit-if-ready`**. **`submit_block`** JSON-RPC errors from **`on_submitblock`** include **duplicate / orphan / verification failed** hints ( **`block_verification_context`** ).
 2. **Automated tests** — **`tests/unit_tests/pulse_round.cpp`**: GTest for **`cryptonote::pulse::merge_vote_matches_validator_bitset`** plus existing round / difficulty checks (`PulseRound.*`, `PulseDifficulty.*`). Helpers: **`contrib/pulse-rehearsal/build_unit_tests.ps1`** (`-Run` runs **`--gtest_filter=Pulse*`**), **`contrib/pulse-rehearsal/build_unit_tests.sh`**. CI: **`.github/workflows/pulse-tests.yml`** (Ubuntu 22.04, **`BUILD_TESTS=ON`**, runs **`Pulse*`**). Requires **`BUILD_TESTS=ON`** and a working CMake toolchain (fresh build dir if an old tree has no **`unit_tests`** target).
 3. **Mainnet / governance (no code flip in-tree)** — Follow **[Mainnet go-live checklist](#mainnet-go-live-checklist-enable-full-pos--pulse)** (`hardfork.cpp` row, **`FORK_ACTIVE`**, economics, rehearsal). This pack does **not** activate mainnet PoS by itself.
 4. **Anti-spam on arqnet Pulse** — **`arqnet.cpp`**: sliding window per sender hex; limits **`PULSE_QUORUM_PEER_RATE_MAX_EVENTS`** / **`PULSE_QUORUM_PEER_RATE_WINDOW_SEC`** in **`src/arqnet/pulse_wire.h`**. **`pulse_cap`** is not rate-limited.
@@ -253,6 +255,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | 2026-05-05 | *(working tree)* | PoS UX follow-ups implemented | **`on_getblocktemplate`**: **`CORE_RPC_ERROR_CODE_POW_MINING_DISABLED`** (-14); **`show_status`** PoS line; **`WalletManager`** **`errorString()`** on mining RPC failure; **`summary-pos.md`** audit table updated. |
 | 2026-05-05 | *(working tree)* | **`WalletManager::daemonPosInfo`** | **`DaemonPosInfo`** + **`daemonPosInfo()`** in **`wallet2_api.h`** / **`wallet_manager.*`**; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | CI + rehearsal + **`simplewallet`** refresh | **`.github/workflows/pulse-tests.yml`**; **`pulse_http_rehearsal.py`** extended **`--info`** keys; **`maybe_print_daemon_pos_info`** after **`refresh`**; **`summary-pos.md`**. |
+| 2026-05-05 | *(working tree)* | Pulse HTTP E2E + **`submit_block`** errors | **`pulse_http_rehearsal.py`**: **`--watch-submit`**, **`--submit-if-ready`**, **`--submit-anyway`**; **`on_submitblock`** bvc hints; **`summary-pos.md`** technical full path. |
 
 ---
 

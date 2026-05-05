@@ -2,8 +2,8 @@
 # Copyright (c) 2026, The Arqma Network
 #
 # Submit a mined / assembled block blob via JSON-RPC submit_block (same as pool "submitblock").
-# Arqnet quorum (pulse_proposal / pulse_vote) is NOT implemented here — use SN tooling or extend
-# your orchestrator to speak the ZMQ/bt-dict wire documented in src/arqnet/pulse_wire.h.
+# For Pulse, prefer pulse_http_rehearsal.py --watch-submit (merge arqnet votes + poll + submit).
+# Raw arqnet (pulse_proposal / pulse_vote) uses SN ZMQ — see src/arqnet/pulse_wire.h.
 
 import argparse
 import json
