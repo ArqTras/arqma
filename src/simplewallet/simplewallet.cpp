@@ -8219,6 +8219,8 @@ bool simple_wallet::status(const std::vector<std::string> &args)
           << tr(", transition height (mainnet/stagenet): ") << info_res.pos_planned_fork_height
           << tr(", target block time (s): ") << info_res.pos_target_block_time_sec;
     }
+    if (info_res.pos_expects_sn_storage_server)
+      message_writer() << tr("Planned PoS: service-node quorum design expects arqma-storage-server paired with arqmad (storage_server_ping RPC).");
   }
 
   return true;

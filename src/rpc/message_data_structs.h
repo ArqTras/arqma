@@ -206,6 +206,7 @@ namespace rpc
     uint64_t pos_target_block_time_sec = 0;
     uint64_t pos_quorum_validators_min = 0;
     uint64_t pos_signature_threshold = 0;
+    bool pos_expects_sn_storage_server = false;
   };
 
   struct output_distribution

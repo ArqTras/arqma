@@ -93,6 +93,35 @@ DISABLE_VS_WARNINGS(4267)
 
 #define MERROR_VER(x) MCERROR("verify", x)
 
+namespace
+{
+  inline bool pulse_era_fork_active_block(cryptonote::block const& bl)
+  {
+    return arqma::pulse_fork::FORK_ACTIVE && bl.major_version >= cryptonote::network_version_20_pos;
+  }
+
+  bool enforce_pulse_placeholder_block_rules(cryptonote::block const& bl, cryptonote::block_verification_context& bvc, char const* context)
+  {
+    if (!pulse_era_fork_active_block(bl))
+      return true;
+    if (!bl.has_pulse())
+    {
+      MERROR_VER("Pulse-era block rejected (" << context << "): missing non-empty Pulse header/signature payload");
+      bvc.m_verification_failed = true;
+      return false;
+    }
+    if (bl.pulse_validator_signatures.size() < arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD)
+    {
+      MERROR_VER("Pulse-era block rejected (" << context << "): insufficient validator signatures (need "
+                                              << arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD << ", have "
+                                              << bl.pulse_validator_signatures.size() << ")");
+      bvc.m_verification_failed = true;
+      return false;
+    }
+    return true;
+  }
+} // namespace
+
 // used to overestimate the block reward when estimating a per kB to use
 #define BLOCK_REWARD_OVERESTIMATE (10 * 1000000000000)
 
@@ -1887,7 +1916,11 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
       }
     }
     else
+    {
       MDEBUG("PoW skipped for alternative block (Pulse placeholder; height " << block_height << ")");
+      if (!enforce_pulse_placeholder_block_rules(b, bvc, "alt"))
+        return false;
+    }
 
     if(!prevalidate_miner_transaction(b, block_height, hard_fork_version))
     {
@@ -3966,6 +3999,8 @@ bool Blockchain::handle_block_to_main_chain(const block& bl, const crypto::hash&
           << (unsigned)bl.major_version
           << " at height " << blockchain_height
           << " (Pulse placeholder — require validator/signature checks before releasing FORK_ACTIVE)");
+      if (!enforce_pulse_placeholder_block_rules(bl, bvc, "main"))
+        return false;
     }
     else
     {

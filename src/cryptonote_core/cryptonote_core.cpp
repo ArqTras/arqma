@@ -1813,7 +1813,11 @@ namespace cryptonote
 
 #if ARQMA_ANNOUNCE_PLANNED_POS_TRANSITION
       if (!arqma::pulse_fork::FORK_ACTIVE)
+      {
         MGINFO_GREEN(ENDL << arqma::pulse_fork::NOTICE_LOG << ENDL);
+        if (m_service_node_keys)
+          MGINFO_CYAN(arqma::pulse_fork::SN_POS_STORAGE_PAIRING_HINT << ENDL);
+      }
 #endif
 
       m_starter_message_showed = true;

@@ -1331,6 +1331,7 @@ void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const crypton
   INSERT_INTO_JSON_OBJECT(dest, pos_target_block_time_sec, info.pos_target_block_time_sec);
   INSERT_INTO_JSON_OBJECT(dest, pos_quorum_validators_min, info.pos_quorum_validators_min);
   INSERT_INTO_JSON_OBJECT(dest, pos_signature_threshold, info.pos_signature_threshold);
+  INSERT_INTO_JSON_OBJECT(dest, pos_expects_sn_storage_server, info.pos_expects_sn_storage_server);
 
   dest.EndObject();
 }
@@ -1348,6 +1349,7 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::rpc::DaemonInfo& inf
   info.pos_target_block_time_sec = 0;
   info.pos_quorum_validators_min = 0;
   info.pos_signature_threshold = 0;
+  info.pos_expects_sn_storage_server = false;
 
   GET_FROM_JSON_OBJECT(val, info.height, height);
   GET_FROM_JSON_OBJECT(val, info.target_height, target_height);
@@ -1391,6 +1393,11 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::rpc::DaemonInfo& inf
 
   if (val.HasMember("pos_signature_threshold"))
     fromJsonValue(val["pos_signature_threshold"], info.pos_signature_threshold);
+
+  if (val.HasMember("pos_expects_sn_storage_server"))
+    fromJsonValue(val["pos_expects_sn_storage_server"], info.pos_expects_sn_storage_server);
+  else
+    info.pos_expects_sn_storage_server = false;
 }
 
 void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const cryptonote::rpc::output_distribution& dist)

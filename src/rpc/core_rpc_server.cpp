@@ -220,6 +220,7 @@ namespace cryptonote
     res.pos_target_block_time_sec = 0;
     res.pos_quorum_validators_min = 0;
     res.pos_signature_threshold = 0;
+    res.pos_expects_sn_storage_server = false;
     bool r;
     if (use_bootstrap_daemon_if_necessary<COMMAND_RPC_GET_INFO>(invoke_http_mode::JON, "/getinfo", req, res, r))
     {
@@ -295,6 +296,7 @@ namespace cryptonote
       res.pos_target_block_time_sec = 0;
       res.pos_quorum_validators_min = 0;
       res.pos_signature_threshold = 0;
+      res.pos_expects_sn_storage_server = false;
     }
     else
     {
@@ -303,6 +305,7 @@ namespace cryptonote
       res.pos_target_block_time_sec = arqma::pulse_fork::PULSE_TARGET_BLOCK_TIME_SEC;
       res.pos_quorum_validators_min = arqma::pulse_fork::PULSE_QUORUM_VALIDATORS_MIN;
       res.pos_signature_threshold = arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD;
+      res.pos_expects_sn_storage_server = arqma::pulse_fork::POS_EXPECTS_STORAGE_SERVER_FOR_SERVICE_NODES;
     }
 
     res.status = CORE_RPC_STATUS_OK;

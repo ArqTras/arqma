@@ -710,6 +710,8 @@ namespace cryptonote
       uint64_t pos_target_block_time_sec;
       uint64_t pos_quorum_validators_min;
       uint64_t pos_signature_threshold;
+      /** Planned Pulse/PoS: service validators still need paired arqma-storage-server (RFC storage_server_ping). */
+      bool pos_expects_sn_storage_server;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(status)
@@ -756,6 +758,7 @@ namespace cryptonote
         KV_SERIALIZE(pos_target_block_time_sec)
         KV_SERIALIZE(pos_quorum_validators_min)
         KV_SERIALIZE(pos_signature_threshold)
+        KV_SERIALIZE(pos_expects_sn_storage_server)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<response_t> response;
