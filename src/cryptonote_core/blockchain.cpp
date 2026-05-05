@@ -1839,40 +1839,48 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
     // Check the block's hash against the difficulty target for its alt chain
     difficulty_type current_diff = get_next_difficulty_for_alternative_chain(alt_chain, block_height);
     CHECK_AND_ASSERT_MES(current_diff, false, "!!!!!!! DIFFICULTY OVERHEAD !!!!!!!");
+    const bool pulse_skip_pow_alt =
+        arqma::pulse_fork::FORK_ACTIVE &&
+        b.major_version >= cryptonote::network_version_20_pos;
     crypto::hash proof_of_work;
     memset(proof_of_work.data, 0xff, sizeof(proof_of_work.data));
-    if(b.major_version >= RX_BLOCK_VERSION)
+    if (!pulse_skip_pow_alt)
     {
-      crypto::hash seedhash = null_hash;
-      uint64_t seedheight = rx_seedheight(block_height);
-      // seedblock is on the alt chain somewhere
-      if(alt_chain.size() && alt_chain.front().height <= seedheight)
+      if(b.major_version >= RX_BLOCK_VERSION)
       {
-        for (auto it=alt_chain.begin(); it != alt_chain.end(); it++)
+        crypto::hash seedhash = null_hash;
+        uint64_t seedheight = rx_seedheight(block_height);
+        // seedblock is on the alt chain somewhere
+        if(alt_chain.size() && alt_chain.front().height <= seedheight)
         {
-          if(it->height == seedheight+1)
+          for (auto it=alt_chain.begin(); it != alt_chain.end(); it++)
           {
-            seedhash = it->bl.prev_id;
-            break;
+            if(it->height == seedheight+1)
+            {
+              seedhash = it->bl.prev_id;
+              break;
+            }
           }
         }
+        else
+        {
+          seedhash = get_block_id_by_height(seedheight);
+        }
+        get_altblock_longhash(b, proof_of_work, seedhash);
       }
       else
       {
-        seedhash = get_block_id_by_height(seedheight);
+        get_block_longhash(this, b, proof_of_work, block_height, 0);
       }
-      get_altblock_longhash(b, proof_of_work, seedhash);
+      if(!check_hash(proof_of_work, current_diff))
+      {
+        MERROR_VER("Block with id: " << id << std::endl << " for alternative chain, does not have enough proof of work: " << proof_of_work << std::endl << " expected difficulty: " << current_diff);
+        bvc.m_verification_failed = true;
+        return false;
+      }
     }
     else
-    {
-      get_block_longhash(this, b, proof_of_work, block_height, 0);
-    }
-    if(!check_hash(proof_of_work, current_diff))
-    {
-      MERROR_VER("Block with id: " << id << std::endl << " for alternative chain, does not have enough proof of work: " << proof_of_work << std::endl << " expected difficulty: " << current_diff);
-      bvc.m_verification_failed = true;
-      return false;
-    }
+      MDEBUG("PoW skipped for alternative block (Pulse placeholder; height " << block_height << ")");
 
     if(!prevalidate_miner_transaction(b, block_height, hard_fork_version))
     {
@@ -3941,21 +3949,35 @@ bool Blockchain::handle_block_to_main_chain(const block& bl, const crypto::hash&
 #endif
   if(!fast_check)
   {
-    auto it = m_blocks_longhash_table.find(id);
-    if (it != m_blocks_longhash_table.end())
+    const bool pulse_skip_pow =
+        arqma::pulse_fork::FORK_ACTIVE &&
+        bl.major_version >= cryptonote::network_version_20_pos;
+    if (pulse_skip_pow)
     {
-      precomputed = true;
-      proof_of_work = it->second;
+      MDEBUG(
+          "PoW skipped for major_version="
+          << (unsigned)bl.major_version
+          << " at height " << blockchain_height
+          << " (Pulse placeholder — require validator/signature checks before releasing FORK_ACTIVE)");
     }
     else
-      proof_of_work = get_block_longhash(this, bl, blockchain_height, 0);
-
-    // validate proof_of_work versus difficulty target
-    if(!check_hash(proof_of_work, current_diffic))
     {
-      MERROR_VER("Block with id: " << id << std::endl << "does not have enough proof of work: " << proof_of_work << " at height " << blockchain_height << ", unexpected difficulty: " << current_diffic);
-      bvc.m_verification_failed = true;
-      return false;
+      auto it = m_blocks_longhash_table.find(id);
+      if (it != m_blocks_longhash_table.end())
+      {
+        precomputed = true;
+        proof_of_work = it->second;
+      }
+      else
+        proof_of_work = get_block_longhash(this, bl, blockchain_height, 0);
+
+      // validate proof_of_work versus difficulty target
+      if(!check_hash(proof_of_work, current_diffic))
+      {
+        MERROR_VER("Block with id: " << id << std::endl << "does not have enough proof of work: " << proof_of_work << " at height " << blockchain_height << ", unexpected difficulty: " << current_diffic);
+        bvc.m_verification_failed = true;
+        return false;
+      }
     }
   }
 

@@ -51,7 +51,8 @@ inline constexpr char NOTICE_LOG[] =
  Next steps (from roadmap; not implemented here):
  - Pulse round scheduling, producer selection, validator signatures (7-of-10).
  - Extend arqnet or adopt OxenMQ-style transport for Pulse messages.
- - Post-fork: skip PoW checks; coinbase/miner_tx layout for SN rewards only; replace LWMA difficulty (next_difficulty_v16) with Pulse rules when FORK_ACTIVE.
+ - Post-fork: coinbase/miner_tx layout for SN rewards only; replace LWMA difficulty (next_difficulty_v16) with Pulse rules when FORK_ACTIVE.
+ - PoW skip is wired in blockchain.cpp for major_version >= network_version_20_pos when FORK_ACTIVE (must add quorum/signature verification before any release).
  - Stagenet/mocknet rehearsal; then uncomment HF rows in hardfork.cpp with real timestamps.
  - Optional: checkpoint relay expansion, wallet/RPC alignment, HF_VERSION_PULSE_POS in cryptonote_config.h
 */
