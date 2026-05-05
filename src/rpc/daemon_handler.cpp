@@ -582,6 +582,9 @@ namespace rpc
       uint64_t const fh = arqma::pulse_fork::planned_fork_height_for_net(net_type);
       res.info.pos_pulse_blocks_since_fork = (arqma::pulse_fork::FORK_ACTIVE && fh > 0 && res.info.height > fh) ? (res.info.height - fh) : 0;
       res.info.pos_pulse_next_round_wire_hint = res.info.height % 256;
+      res.info.pos_pulse_cum_diff_uses_60s_lwma =
+          arqma::pulse_fork::FORK_ACTIVE
+          && chain.get_current_hard_fork_version() >= cryptonote::network_version_20_pos;
     }
 
     res.status = Message::STATUS_OK;

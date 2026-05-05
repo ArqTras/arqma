@@ -716,6 +716,8 @@ namespace cryptonote
       uint64_t pos_pulse_blocks_since_fork;
       /** Tooling hint: suggested pulse.round (height mod 256) for producer UX only; daemon does not enforce. */
       uint64_t pos_pulse_next_round_wire_hint;
+      /** True when the next block cumulative-difficulty step uses next_difficulty_pulse_pos (60s LWMA) vs pre-PoS v16. */
+      bool pos_pulse_cum_diff_uses_60s_lwma;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(status)
@@ -765,6 +767,7 @@ namespace cryptonote
         KV_SERIALIZE(pos_expects_sn_storage_server)
         KV_SERIALIZE(pos_pulse_blocks_since_fork)
         KV_SERIALIZE(pos_pulse_next_round_wire_hint)
+        KV_SERIALIZE(pos_pulse_cum_diff_uses_60s_lwma)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<response_t> response;

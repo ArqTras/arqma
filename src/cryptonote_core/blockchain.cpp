@@ -1413,6 +1413,14 @@ bool Blockchain::verify_pulse_fork_block_rules(const cryptonote::block &bl, cryp
     return false;
   }
 
+  static constexpr pulse_random_value pulse_random_all_zero{};
+  if (bl.pulse.random_value == pulse_random_all_zero)
+  {
+    MERROR_VER("Pulse-era block rejected (" << context << "): pulse random_value must be non-zero for round preimage binding");
+    bvc.m_verification_failed = true;
+    return false;
+  }
+
   if (bl.pulse_validator_signatures.size() < arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD)
   {
     MERROR_VER("Pulse-era block rejected (" << context << "): insufficient validator signature entries (need "

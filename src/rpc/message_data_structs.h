@@ -209,6 +209,7 @@ namespace rpc
     bool pos_expects_sn_storage_server = false;
     uint64_t pos_pulse_blocks_since_fork = 0;
     uint64_t pos_pulse_next_round_wire_hint = 0;
+    bool pos_pulse_cum_diff_uses_60s_lwma = false;
   };
 
   struct output_distribution

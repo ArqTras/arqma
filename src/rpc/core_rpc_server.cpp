@@ -223,6 +223,7 @@ namespace cryptonote
     res.pos_expects_sn_storage_server = false;
     res.pos_pulse_blocks_since_fork = 0;
     res.pos_pulse_next_round_wire_hint = 0;
+    res.pos_pulse_cum_diff_uses_60s_lwma = false;
     bool r;
     if (use_bootstrap_daemon_if_necessary<COMMAND_RPC_GET_INFO>(invoke_http_mode::JON, "/getinfo", req, res, r))
     {
@@ -301,6 +302,7 @@ namespace cryptonote
       res.pos_expects_sn_storage_server = false;
       res.pos_pulse_blocks_since_fork = 0;
       res.pos_pulse_next_round_wire_hint = 0;
+      res.pos_pulse_cum_diff_uses_60s_lwma = false;
     }
     else
     {
@@ -315,6 +317,9 @@ namespace cryptonote
       if (arqma::pulse_fork::FORK_ACTIVE && fh > 0 && res.height > fh)
         res.pos_pulse_blocks_since_fork = res.height - fh;
       res.pos_pulse_next_round_wire_hint = res.height % 256;
+      res.pos_pulse_cum_diff_uses_60s_lwma =
+          arqma::pulse_fork::FORK_ACTIVE
+          && m_core.get_blockchain_storage().get_current_hard_fork_version() >= cryptonote::network_version_20_pos;
     }
 
     res.status = CORE_RPC_STATUS_OK;
