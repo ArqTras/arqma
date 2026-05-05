@@ -4437,6 +4437,7 @@ bool simple_wallet::refresh_main(uint64_t start_height, enum ResetType reset, bo
     if (is_init)
       print_accounts();
     show_balance_unlocked();
+    maybe_print_daemon_pos_info();
   }
   catch (const tools::error::daemon_busy&)
   {
@@ -8180,6 +8181,39 @@ bool simple_wallet::get_description(const std::vector<std::string> &args)
   return true;
 }
 //----------------------------------------------------------------------------------------------------
+void simple_wallet::maybe_print_daemon_pos_info()
+{
+  cryptonote::COMMAND_RPC_GET_INFO::request info_req{};
+  cryptonote::COMMAND_RPC_GET_INFO::response info_res{};
+  if (!m_wallet->invoke_http_json_rpc("/json_rpc", "get_info", info_req, info_res,
+          std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::minutes(3) + std::chrono::seconds(30))))
+    return;
+  if (info_res.status != CORE_RPC_STATUS_OK)
+    return;
+  if (!(info_res.pos_fork_active || info_res.pos_planned_fork_height > 0))
+    return;
+
+  if (info_res.pos_fork_active)
+    message_writer() << tr("PoS fork is active on this daemon (PoW mining disabled per consensus rules).");
+  if (!info_res.pos_planned_hf_name.empty() && info_res.pos_planned_fork_height > 0)
+  {
+    message_writer() << tr("Planned PoS hard fork: ") << info_res.pos_planned_hf_name
+        << tr(", transition height (mainnet/stagenet): ") << info_res.pos_planned_fork_height
+        << tr(", target block time (s): ") << info_res.pos_target_block_time_sec;
+  }
+  if (info_res.pos_expects_sn_storage_server)
+    message_writer() << tr("Planned PoS: service-node quorum design expects arqma-storage-server paired with arqmad (storage_server_ping RPC).");
+  if (info_res.pos_pulse_blocks_since_fork > 0)
+    message_writer() << tr("PoS rehearsal: blocks since planned fork height: ") << info_res.pos_pulse_blocks_since_fork;
+  if (info_res.pos_pulse_arqnet_vote_buffer_blocks > 0)
+    message_writer() << tr("arqnet Pulse vote buffer (distinct proposed blocks): ") << info_res.pos_pulse_arqnet_vote_buffer_blocks;
+  if (info_res.pos_fork_active || info_res.pos_pulse_cum_diff_uses_60s_lwma || info_res.pos_pulse_blocks_since_fork > 0)
+  {
+    message_writer() << tr("Pulse tooling hint (pulse.round modulus): ") << info_res.pos_pulse_next_round_wire_hint
+                       << ", " << tr("cumulative-diff 60s LWMA for next block: ") << (info_res.pos_pulse_cum_diff_uses_60s_lwma ? tr("yes") : tr("no"));
+  }
+}
+//----------------------------------------------------------------------------------------------------
 bool simple_wallet::status(const std::vector<std::string> &args)
 {
   uint64_t local_height = m_wallet->get_blockchain_current_height();
@@ -8204,33 +8238,7 @@ bool simple_wallet::status(const std::vector<std::string> &args)
     fail_msg_writer() << "Refreshed " << local_height << "/?, daemon connection error";
   }
 
-  cryptonote::COMMAND_RPC_GET_INFO::request info_req{};
-  cryptonote::COMMAND_RPC_GET_INFO::response info_res{};
-  if (m_wallet->invoke_http_json_rpc("/json_rpc", "get_info", info_req, info_res,
-          std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::minutes(3) + std::chrono::seconds(30)))
-      && info_res.status == CORE_RPC_STATUS_OK
-      && (info_res.pos_fork_active || info_res.pos_planned_fork_height > 0))
-  {
-    if (info_res.pos_fork_active)
-      message_writer() << tr("PoS fork is active on this daemon (PoW mining disabled per consensus rules).");
-    if (!info_res.pos_planned_hf_name.empty() && info_res.pos_planned_fork_height > 0)
-    {
-      message_writer() << tr("Planned PoS hard fork: ") << info_res.pos_planned_hf_name
-          << tr(", transition height (mainnet/stagenet): ") << info_res.pos_planned_fork_height
-          << tr(", target block time (s): ") << info_res.pos_target_block_time_sec;
-    }
-    if (info_res.pos_expects_sn_storage_server)
-      message_writer() << tr("Planned PoS: service-node quorum design expects arqma-storage-server paired with arqmad (storage_server_ping RPC).");
-    if (info_res.pos_pulse_blocks_since_fork > 0)
-      message_writer() << tr("PoS rehearsal: blocks since planned fork height: ") << info_res.pos_pulse_blocks_since_fork;
-    if (info_res.pos_pulse_arqnet_vote_buffer_blocks > 0)
-      message_writer() << tr("arqnet Pulse vote buffer (distinct proposed blocks): ") << info_res.pos_pulse_arqnet_vote_buffer_blocks;
-    if (info_res.pos_fork_active || info_res.pos_pulse_cum_diff_uses_60s_lwma || info_res.pos_pulse_blocks_since_fork > 0)
-    {
-      message_writer() << tr("Pulse tooling hint (pulse.round modulus): ") << info_res.pos_pulse_next_round_wire_hint
-                         << ", " << tr("cumulative-diff 60s LWMA for next block: ") << (info_res.pos_pulse_cum_diff_uses_60s_lwma ? tr("yes") : tr("no"));
-    }
-  }
+  maybe_print_daemon_pos_info();
 
   return true;
 }

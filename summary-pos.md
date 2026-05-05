@@ -151,7 +151,7 @@ The root **`summary-pos.md`** tracks this narrative; **`docs:`** commits that on
 
  **`simplewallet`** **`start_mining`** and **`wallet_rpc_server`** **`start_mining`** proxy the daemon **`/start_mining`** endpoint; when PoW is disabled the daemon sets **`res.status`** to **`arqma::pulse_fork::POW_MINING_DISABLED_RPC_MESSAGE`**, which surfaces as the wallet error string (trusted daemon required for wallet-RPC).
 
- After **`status`** (not **`refresh`**), **`simplewallet`** calls **`get_info`** and, when **`pos_fork_active`** or **`pos_planned_fork_height > 0`**, prints planned fork metadata, storage-server expectation, optional rehearsal depth, **`pos_pulse_arqnet_vote_buffer_blocks`**, **`pos_pulse_next_round_wire_hint`**, and **`pos_pulse_cum_diff_uses_60s_lwma`**.
+ After **`status`** or a successful **`refresh`**, **`simplewallet`** calls **`get_info`** (via **`maybe_print_daemon_pos_info`**) and, when **`pos_fork_active`** or **`pos_planned_fork_height > 0`**, prints planned fork metadata, storage-server expectation, optional rehearsal depth, **`pos_pulse_arqnet_vote_buffer_blocks`**, **`pos_pulse_next_round_wire_hint`**, and **`pos_pulse_cum_diff_uses_60s_lwma`**.
 
 ---
 
@@ -168,7 +168,7 @@ Audit of **in-tree** components for **PoW refusal**, **Pulse template / vote RPC
 | **`get_info` (HTTP)** | **`core_rpc_server::on_get_info`** | Full **`pos_*` / `pos_pulse_*`** when **not** restricted; restricted mode clears planned-fork constants and **`pos_pulse_*`** hints **except** **`pos_fork_active`** remains set from **`FORK_ACTIVE`**. | OK |
 | **`get_info` / DaemonInfo (ZMQ)** | **`daemon_handler::handle(GetInfo)`** | Fills the same **`pos_*` / `pos_pulse_*`** family as unrestricted HTTP (no “restricted RPC” split on this path). | OK |
 | **`get_pulse_block_template` / `get_pulse_arqnet_votes`** | **`core_rpc_server`** | Require **`FORK_ACTIVE`**, ideal HF **`>= network_version_20_pos`**, no bootstrap daemon. | OK |
-| **`simplewallet`** | **`start_mining`**, **`status`** | Mining refusal text from daemon **`status`**; PoS telemetry lines after **`status`** via **`get_info`** (see above). | OK |
+| **`simplewallet`** | **`start_mining`**, **`status`**, **`refresh`** | Mining refusal text from daemon **`status`**; PoS telemetry via **`maybe_print_daemon_pos_info`** after **`status`** or successful **`refresh`**. | OK |
 | **`wallet_rpc_server`** | **`on_start_mining`** | Forwards **`/start_mining`**; **`er.message`** = daemon **`status`** on failure (includes PoS refusal string). | OK |
 | **Wallet API (C++)** | **`wallet/api/wallet_manager.cpp`**, **`wallet2_api.h`** | **`startMining` / `stopMining`**: failure → **`errorString()`** (daemon **`status`** or transport). **`daemonPosInfo(DaemonPosInfo&)`**: one **`/getinfo`** round-trip; fills all **`pos_*` / `pos_pulse_*`** mirror fields. | OK |
 | **`arqmad` CLI `status`** | **`daemon/rpc_command_executor.cpp`** **`show_status()`** | After the main status line, prints a **PoS/Pulse** line when **`pos_fork_active`** or **`pos_planned_fork_height > 0`** (planned HF, rehearsal, arqnet buffer, round hint, 60s LWMA flag). | OK |
@@ -181,7 +181,7 @@ Audit of **in-tree** components for **PoW refusal**, **Pulse template / vote RPC
 1. **HTTP rehearsal (producer-side tooling)** — **`contrib/pulse-rehearsal/pulse_http_rehearsal.py`**: **`get_info`**, **`get_pulse_block_template`**, **`get_pulse_arqnet_votes`**, optional **`--dump-template-hex PATH`** (stdout when PATH is a single hyphen) to feed **`pulse_submit_block.py`**. **`contrib/pulse-rehearsal/pulse_submit_block.py`**: **`submit_block`** with hex blob (file or stdin). Shared **`pulse_tools_common.py`** (`json_rpc`). Example:  
    `python3 contrib/pulse-rehearsal/pulse_http_rehearsal.py --url http://127.0.0.1:19994/json_rpc --pulse-template --merge-arqnet-votes --dump-template-hex tpl.hex`  
    then `python3 contrib/pulse-rehearsal/pulse_submit_block.py --url http://127.0.0.1:19994/json_rpc tpl.hex` (after any required mining / nonce work outside these scripts). Arqnet ZMQ stays **SN / external orchestration**.
-2. **Automated tests** — **`tests/unit_tests/pulse_round.cpp`**: GTest for **`cryptonote::pulse::merge_vote_matches_validator_bitset`** plus existing round / difficulty checks (`PulseRound.*`, `PulseDifficulty.*`). Helpers: **`contrib/pulse-rehearsal/build_unit_tests.ps1`** (`-Run` runs **`--gtest_filter=Pulse*`**), **`contrib/pulse-rehearsal/build_unit_tests.sh`**. Requires **`BUILD_TESTS=ON`** and a working CMake toolchain (fresh build dir if an old tree has no **`unit_tests`** target).
+2. **Automated tests** — **`tests/unit_tests/pulse_round.cpp`**: GTest for **`cryptonote::pulse::merge_vote_matches_validator_bitset`** plus existing round / difficulty checks (`PulseRound.*`, `PulseDifficulty.*`). Helpers: **`contrib/pulse-rehearsal/build_unit_tests.ps1`** (`-Run` runs **`--gtest_filter=Pulse*`**), **`contrib/pulse-rehearsal/build_unit_tests.sh`**. CI: **`.github/workflows/pulse-tests.yml`** (Ubuntu 22.04, **`BUILD_TESTS=ON`**, runs **`Pulse*`**). Requires **`BUILD_TESTS=ON`** and a working CMake toolchain (fresh build dir if an old tree has no **`unit_tests`** target).
 3. **Mainnet / governance (no code flip in-tree)** — Follow **[Mainnet go-live checklist](#mainnet-go-live-checklist-enable-full-pos--pulse)** (`hardfork.cpp` row, **`FORK_ACTIVE`**, economics, rehearsal). This pack does **not** activate mainnet PoS by itself.
 4. **Anti-spam on arqnet Pulse** — **`arqnet.cpp`**: sliding window per sender hex; limits **`PULSE_QUORUM_PEER_RATE_MAX_EVENTS`** / **`PULSE_QUORUM_PEER_RATE_WINDOW_SEC`** in **`src/arqnet/pulse_wire.h`**. **`pulse_cap`** is not rate-limited.
 
@@ -252,6 +252,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | 2026-05-05 | *(working tree)* | **`summary-pos.md`**: PoS integration audit | File-level table (HTTP/ZMQ/wallet/daemon CLI); fix **`simplewallet`** doc (**`status`** vs **`refresh`**); optional follow-ups for **`getblocktemplate`** UX and **`show_status`**. |
 | 2026-05-05 | *(working tree)* | PoS UX follow-ups implemented | **`on_getblocktemplate`**: **`CORE_RPC_ERROR_CODE_POW_MINING_DISABLED`** (-14); **`show_status`** PoS line; **`WalletManager`** **`errorString()`** on mining RPC failure; **`summary-pos.md`** audit table updated. |
 | 2026-05-05 | *(working tree)* | **`WalletManager::daemonPosInfo`** | **`DaemonPosInfo`** + **`daemonPosInfo()`** in **`wallet2_api.h`** / **`wallet_manager.*`**; **`summary-pos.md`**. |
+| 2026-05-05 | *(working tree)* | CI + rehearsal + **`simplewallet`** refresh | **`.github/workflows/pulse-tests.yml`**; **`pulse_http_rehearsal.py`** extended **`--info`** keys; **`maybe_print_daemon_pos_info`** after **`refresh`**; **`summary-pos.md`**. |
 
 ---
 
@@ -266,6 +267,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 - `contrib/pulse-rehearsal/pulse_submit_block.py` — JSON-RPC **`submit_block`** for a hex block blob.
 - `contrib/pulse-rehearsal/pulse_tools_common.py` — shared **`json_rpc`** for rehearsal scripts.
 - `contrib/pulse-rehearsal/build_unit_tests.ps1` / `build_unit_tests.sh` — configure **`BUILD_TESTS=ON`** and build **`unit_tests`**.
+- `.github/workflows/pulse-tests.yml` — GitHub Actions: build **`unit_tests`**, run **`--gtest_filter=Pulse*`** (skips doc-only paths).
 - `src/cryptonote_core/cryptonote_core.cpp` / `.h` — **`get_pulse_block_template`**, **`copy_pulse_arqnet_vote_accumulator`**, **`clear_pulse_arqnet_vote_accumulator`**, **`get_pulse_arqnet_vote_buffer_distinct_block_count`**.
 - `src/cryptonote_core/service_node_list.cpp` / `.h` — **`try_get_block_winner_for_service_node`**, **`validate_miner_tx`** (before **`network_version_20_pos`**: scheduled winner; PoS era: checkpointing-quorum producer at **`height-1`** + payout check).
 - `src/crypto/hash.h` — **`hash4`**, **`null_hash4`**.
