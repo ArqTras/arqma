@@ -62,7 +62,7 @@ inline constexpr char NOTICE_LOG[] =
 
 /*
  Next steps (from roadmap; incremental port in progress):
- - Wire format: pulse_header + reward + sn_winner_tail (header varints) + pulse_validator_signatures on block when major_version >= network_version_20_pos (see cryptonote_basic.h, crypto::hash4); JSON block dump not yet extended.
+ - Wire format: pulse_header + reward + sn_winner_tail (header varints) + pulse_validator_signatures on block when major_version >= network_version_20_pos (see cryptonote_basic.h, crypto::hash4); JSON via json_object (block dump / RPC tooling).
  - Pulse round scheduling, producer selection, validator signatures (7-of-10).
  - Extend arqnet or adopt OxenMQ-style transport for Pulse messages.
  - Post-fork: coinbase/miner_tx layout for SN rewards only; replace LWMA difficulty (next_difficulty_v16) with Pulse rules when FORK_ACTIVE.

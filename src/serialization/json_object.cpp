@@ -29,6 +29,7 @@
 
 #include "json_object.h"
 
+#include <cstring>
 #include <boost/range/adaptor/transformed.hpp>
 #include <boost/variant/apply_visitor.hpp>
 #include <limits>
@@ -271,6 +272,73 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::transaction& tx)
     throw BAD_INPUT();
 }
 
+void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const crypto::hash4& h)
+{
+  const std::string blob(h.data, sizeof(h.data));
+  toJsonValue(dest, boost::string_ref{epee::string_tools::buff_to_hex_nodelimer(blob)});
+}
+
+void fromJsonValue(const rapidjson::Value& val, crypto::hash4& h)
+{
+  if (!val.IsString())
+    throw WRONG_TYPE("string");
+  std::string bin;
+  if (!epee::string_tools::parse_hexstr_to_binbuff(val.GetString(), bin) || bin.size() != sizeof(h.data))
+    throw BAD_INPUT();
+  std::memcpy(h.data, bin.data(), sizeof(h.data));
+}
+
+void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const cryptonote::pulse_random_value& v)
+{
+  const std::string blob(reinterpret_cast<const char*>(v.data), sizeof(v.data));
+  toJsonValue(dest, boost::string_ref{epee::string_tools::buff_to_hex_nodelimer(blob)});
+}
+
+void fromJsonValue(const rapidjson::Value& val, cryptonote::pulse_random_value& v)
+{
+  if (!val.IsString())
+    throw WRONG_TYPE("string");
+  std::string bin;
+  if (!epee::string_tools::parse_hexstr_to_binbuff(val.GetString(), bin) || bin.size() != sizeof(v.data))
+    throw BAD_INPUT();
+  std::memcpy(v.data, bin.data(), sizeof(v.data));
+}
+
+void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const cryptonote::pulse_header& p)
+{
+  dest.StartObject();
+  INSERT_INTO_JSON_OBJECT(dest, random_value, p.random_value);
+  INSERT_INTO_JSON_OBJECT(dest, round, p.round);
+  INSERT_INTO_JSON_OBJECT(dest, validator_bitset, p.validator_bitset);
+  dest.EndObject();
+}
+
+void fromJsonValue(const rapidjson::Value& val, cryptonote::pulse_header& p)
+{
+  if (!val.IsObject())
+    throw WRONG_TYPE("json object");
+  GET_FROM_JSON_OBJECT(val, p.random_value, random_value);
+  GET_FROM_JSON_OBJECT(val, p.round, round);
+  GET_FROM_JSON_OBJECT(val, p.validator_bitset, validator_bitset);
+}
+
+void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const cryptonote::pulse_validator_signature_entry& e)
+{
+  dest.StartObject();
+  INSERT_INTO_JSON_OBJECT(dest, voter_index, e.voter_index);
+  INSERT_INTO_JSON_OBJECT(dest, signature, e.signature);
+  dest.EndObject();
+}
+
+void fromJsonValue(const rapidjson::Value& val, cryptonote::pulse_validator_signature_entry& e)
+{
+  if (!val.IsObject())
+    throw WRONG_TYPE("json object");
+  memset(e.padding, 0, sizeof(e.padding));
+  GET_FROM_JSON_OBJECT(val, e.voter_index, voter_index);
+  GET_FROM_JSON_OBJECT(val, e.signature, signature);
+}
+
 void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const cryptonote::block& b)
 {
   dest.StartObject();
@@ -280,6 +348,15 @@ void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const crypton
   INSERT_INTO_JSON_OBJECT(dest, timestamp, b.timestamp);
   INSERT_INTO_JSON_OBJECT(dest, prev_id, b.prev_id);
   INSERT_INTO_JSON_OBJECT(dest, nonce, b.nonce);
+
+  if (b.major_version >= cryptonote::network_version_20_pos)
+  {
+    INSERT_INTO_JSON_OBJECT(dest, pulse, b.pulse);
+    INSERT_INTO_JSON_OBJECT(dest, reward, b.reward);
+    INSERT_INTO_JSON_OBJECT(dest, sn_winner_tail, b.sn_winner_tail);
+    INSERT_INTO_JSON_OBJECT(dest, pulse_validator_signatures, b.pulse_validator_signatures);
+  }
+
   INSERT_INTO_JSON_OBJECT(dest, miner_tx, b.miner_tx);
   INSERT_INTO_JSON_OBJECT(dest, tx_hashes, b.tx_hashes);
 
@@ -299,6 +376,24 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::block& b)
   GET_FROM_JSON_OBJECT(val, b.timestamp, timestamp);
   GET_FROM_JSON_OBJECT(val, b.prev_id, prev_id);
   GET_FROM_JSON_OBJECT(val, b.nonce, nonce);
+
+  b.pulse = {};
+  b.reward = 0;
+  b.sn_winner_tail = crypto::null_hash4;
+  b.pulse_validator_signatures.clear();
+
+  if (b.major_version >= cryptonote::network_version_20_pos)
+  {
+    if (val.HasMember("pulse"))
+      fromJsonValue(val["pulse"], b.pulse);
+    if (val.HasMember("reward"))
+      fromJsonValue(val["reward"], b.reward);
+    if (val.HasMember("sn_winner_tail"))
+      fromJsonValue(val["sn_winner_tail"], b.sn_winner_tail);
+    if (val.HasMember("pulse_validator_signatures"))
+      fromJsonValue(val["pulse_validator_signatures"], b.pulse_validator_signatures);
+  }
+
   GET_FROM_JSON_OBJECT(val, b.miner_tx, miner_tx);
   GET_FROM_JSON_OBJECT(val, b.tx_hashes, tx_hashes);
 }

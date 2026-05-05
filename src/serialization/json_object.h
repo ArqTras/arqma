@@ -207,6 +207,18 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::transaction& tx);
 void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const cryptonote::block& b);
 void fromJsonValue(const rapidjson::Value& val, cryptonote::block& b);
 
+void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const crypto::hash4& h);
+void fromJsonValue(const rapidjson::Value& val, crypto::hash4& h);
+
+void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const cryptonote::pulse_random_value& v);
+void fromJsonValue(const rapidjson::Value& val, cryptonote::pulse_random_value& v);
+
+void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const cryptonote::pulse_header& p);
+void fromJsonValue(const rapidjson::Value& val, cryptonote::pulse_header& p);
+
+void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const cryptonote::pulse_validator_signature_entry& e);
+void fromJsonValue(const rapidjson::Value& val, cryptonote::pulse_validator_signature_entry& e);
+
 void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const cryptonote::txin_v& txin);
 void fromJsonValue(const rapidjson::Value& val, cryptonote::txin_v& txin);
 
