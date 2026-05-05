@@ -1460,6 +1460,26 @@ bool Blockchain::verify_pulse_fork_block_rules(const cryptonote::block &bl, cryp
     return false;
   }
 
+  {
+    bool any_quorum_large_enough = false;
+    for (std::shared_ptr<const service_nodes::quorum> const &qp : try_quorums)
+    {
+      if (qp && qp->validators.size() >= arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD)
+      {
+        any_quorum_large_enough = true;
+        break;
+      }
+    }
+    if (!any_quorum_large_enough)
+    {
+      MERROR_VER("Pulse-era block rejected (" << context << "): no checkpointing quorum has at least "
+                                              << arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD
+                                              << " validators at height " << quorum_height);
+      bvc.m_verification_failed = true;
+      return false;
+    }
+  }
+
   for (std::shared_ptr<const service_nodes::quorum> const &qptr : try_quorums)
   {
     if (!qptr || qptr->validators.empty())
