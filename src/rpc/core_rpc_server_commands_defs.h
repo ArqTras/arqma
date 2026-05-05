@@ -1010,6 +1010,52 @@ namespace cryptonote
     typedef epee::misc_utils::struct_init<response_t> response;
   };
 
+  /** Pulse quorum votes received via arqnet for a proposed block hash (in-process buffer; tooling / producer). */
+  struct COMMAND_RPC_GET_PULSE_ARQNET_VOTES
+  {
+    struct request_t
+    {
+      /** 64 hex chars = `crypto::hash` of the proposed Pulse block. */
+      std::string block_hash;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(block_hash)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+
+    struct vote_row
+    {
+      uint64_t voter_index;
+      std::string signature;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(voter_index)
+        KV_SERIALIZE(signature)
+      END_KV_SERIALIZE_MAP()
+    };
+
+    struct response_t
+    {
+      bool found;
+      uint64_t chain_height;
+      std::string block_hash;
+      std::vector<vote_row> votes;
+      std::string status;
+      bool untrusted;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(found)
+        KV_SERIALIZE(chain_height)
+        KV_SERIALIZE(block_hash)
+        KV_SERIALIZE(votes)
+        KV_SERIALIZE(status)
+        KV_SERIALIZE(untrusted)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<response_t> response;
+  };
+
   struct COMMAND_RPC_SUBMITBLOCK
   {
     typedef std::vector<std::string> request;

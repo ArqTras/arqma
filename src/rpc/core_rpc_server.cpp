@@ -1590,6 +1590,77 @@ namespace cryptonote
     return true;
   }
   //------------------------------------------------------------------------------------------------------------------------------
+  bool core_rpc_server::on_get_pulse_arqnet_votes(
+      const COMMAND_RPC_GET_PULSE_ARQNET_VOTES::request& req,
+      COMMAND_RPC_GET_PULSE_ARQNET_VOTES::response& res,
+      epee::json_rpc::error& error_resp,
+      const connection_context *ctx)
+  {
+    PERF_TIMER(on_get_pulse_arqnet_votes);
+
+    {
+      std::shared_lock bootstrap_lock{m_bootstrap_daemon_mutex};
+      if (m_should_use_bootstrap_daemon)
+      {
+        error_resp.code = CORE_RPC_ERROR_CODE_WRONG_PARAM;
+        error_resp.message = "get_pulse_arqnet_votes is not supported when the bootstrap daemon is in use";
+        return false;
+      }
+    }
+
+    if (!check_core_ready())
+    {
+      error_resp.code = CORE_RPC_ERROR_CODE_CORE_BUSY;
+      error_resp.message = "Core is busy";
+      return false;
+    }
+
+    if (!arqma::pulse_fork::FORK_ACTIVE)
+    {
+      error_resp.code = CORE_RPC_ERROR_CODE_WRONG_PARAM;
+      error_resp.message = "PoS/Pulse is disabled in this build (arqma::pulse_fork::FORK_ACTIVE is false)";
+      return false;
+    }
+
+    constexpr size_t hash_hex_len = sizeof(crypto::hash) * 2;
+    if (req.block_hash.size() != hash_hex_len)
+    {
+      error_resp.code = CORE_RPC_ERROR_CODE_WRONG_PARAM;
+      error_resp.message = "block_hash must be exactly 64 hex characters";
+      return false;
+    }
+    crypto::hash bh{};
+    if (!epee::string_tools::hex_to_pod(req.block_hash, bh))
+    {
+      error_resp.code = CORE_RPC_ERROR_CODE_WRONG_PARAM;
+      error_resp.message = "block_hash is not valid hex";
+      return false;
+    }
+
+    uint64_t chain_h = 0;
+    std::vector<cryptonote::pulse_validator_signature_entry> entries;
+    bool const copied = m_core.copy_pulse_arqnet_vote_accumulator(bh, chain_h, entries);
+
+    res.block_hash = req.block_hash;
+    res.chain_height = chain_h;
+    res.found = copied;
+    res.votes.clear();
+    if (copied)
+    {
+      res.votes.reserve(entries.size());
+      for (cryptonote::pulse_validator_signature_entry const &e : entries)
+      {
+        COMMAND_RPC_GET_PULSE_ARQNET_VOTES::vote_row row{};
+        row.voter_index = e.voter_index;
+        row.signature = string_tools::pod_to_hex(e.signature);
+        res.votes.push_back(std::move(row));
+      }
+    }
+    res.status = CORE_RPC_STATUS_OK;
+    res.untrusted = false;
+    return true;
+  }
+  //------------------------------------------------------------------------------------------------------------------------------
   bool core_rpc_server::on_submitblock(const COMMAND_RPC_SUBMITBLOCK::request& req, COMMAND_RPC_SUBMITBLOCK::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)
   {
     PERF_TIMER(on_submitblock);

@@ -124,6 +124,8 @@ The ordinary **`target`** field is **`Blockchain::get_difficulty_target()`**: me
 
 **Pulse block template RPC** — **`get_pulse_block_template`** / **`getpulseblocktemplate`** (`COMMAND_RPC_GET_PULSE_BLOCK_TEMPLATE`): JSON-RPC **`params`** include **`pulse_round`** (0–255), **`validator_bitset`** (≤65535), and optional **`producer_pubkey`** (64 hex chars = service-node pubkey). Without **`producer_pubkey`**, the producer is **`get_block_winner()`**; with it, payouts are built for that **registered, active** SN via **`service_node_list::try_get_block_winner_for_service_node`**. Response mirrors **`getblocktemplate`**. Requires **`FORK_ACTIVE`** and ideal HF **`>= network_version_20_pos`**. Not forwarded to bootstrap daemon.
 
+**Pulse arqnet vote buffer RPC** — **`get_pulse_arqnet_votes`** / **`getpulsearqnetvotes`** (`COMMAND_RPC_GET_PULSE_ARQNET_VOTES`): **`params.block_hash`** = 64 hex chars (`crypto::hash` of the **proposed** block). Response: **`found`**, **`chain_height`** (vote wire **`h`**), **`votes`** = `{ voter_index, signature hex }[]`, **`status`**. **`found`** is **`false`** when this process has no accumulator entry (arqnet off, wrong hash, or no votes yet). Requires **`FORK_ACTIVE`**; unsupported with bootstrap daemon (same pattern as **`get_pulse_block_template`**).
+
 **Consensus (Pulse):** When **`FORK_ACTIVE`** and block HF is **`>= network_version_20_pos`**, **`service_node_list::validate_miner_tx`** accepts a coinbase SN winner that is **registered, active**, and appears on the **checkpointing quorum** (validators **or** workers) for **`height - 1`**, including **alt-quorum** candidates (same family as **`verify_pulse_fork_block_rules`**). Earlier HF still requires the scheduled **`get_block_winner()`** pubkey.
 
 ### arqnet Pulse wire (SN ↔ SN, ZMQ quorum channel)
@@ -202,6 +204,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | 2026-05-05 | *(working tree)* | arqnet **`pulse_proposal`** / **`pulse_vote`** | Serialized block sanity + optional **`verify_pulse_fork_block_rules`**; per-validator **`check_signature`** with quorum **`vi`** = sender pubkey; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | arqnet relay **`rh`** + vote accumulator | Quorum **`peer_info::relay_to_peers`** after success; **`core::copy_pulse_arqnet_vote_accumulator`** / **`clear_…`** + **`arqnet_pulse_vote_buffer_*`**; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | arqnet inbound Pulse dedup | **`arqnet.cpp`**: success-only **~45 s** / **4096** cap cache — **`bh`** for **`pulse_proposal`**, **`cn_fast_hash`** pack for **`pulse_vote`**; duplicates skip verify, accumulator double-append, and **`rh`** relay; **`summary-pos.md`**. |
+| 2026-05-05 | *(working tree)* | RPC **`get_pulse_arqnet_votes`** | JSON-RPC read of **`core::copy_pulse_arqnet_vote_accumulator`** by **`block_hash`**; **`core_rpc_server_commands_defs.h`** / **`core_rpc_server.*`**; **`summary-pos.md`**. |
 
 ---
 
@@ -215,5 +218,5 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 - `src/cryptonote_core/cryptonote_core.cpp` / `.h` — **`get_pulse_block_template`**, **`copy_pulse_arqnet_vote_accumulator`**, **`clear_pulse_arqnet_vote_accumulator`**.
 - `src/cryptonote_core/service_node_list.cpp` / `.h` — **`try_get_block_winner_for_service_node`**, **`validate_miner_tx`** (before **`network_version_20_pos`**: scheduled winner; PoS era: checkpointing-quorum producer at **`height-1`** + payout check).
 - `src/crypto/hash.h` — **`hash4`**, **`null_hash4`**.
-- `src/rpc/core_rpc_server*.cpp/.h`, `core_rpc_server_commands_defs.h`, `daemon_handler.cpp`, `message_data_structs.h`, `serialization/json_object.cpp` — telemetry, **`get_pulse_block_template`**, and JSON parity.
+- `src/rpc/core_rpc_server*.cpp/.h`, `core_rpc_server_commands_defs.h`, `daemon_handler.cpp`, `message_data_structs.h`, `serialization/json_object.cpp` — telemetry, **`get_pulse_block_template`**, **`get_pulse_arqnet_votes`**, and JSON parity.
 - `src/arqnet/pulse_wire.h`, `src/cryptonote_protocol/arqnet.cpp` — Pulse **arqnet** commands (**`pulse_cap`**, **`pulse_proposal`**, **`pulse_vote`**, **`rh`** relay, in-memory vote buffer).

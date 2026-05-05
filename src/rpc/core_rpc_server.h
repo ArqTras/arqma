@@ -134,6 +134,8 @@ namespace cryptonote
         MAP_JON_RPC_WE("getblocktemplate",                         on_getblocktemplate,                        COMMAND_RPC_GETBLOCKTEMPLATE)
         MAP_JON_RPC_WE("get_pulse_block_template",                 on_get_pulse_block_template,                COMMAND_RPC_GET_PULSE_BLOCK_TEMPLATE)
         MAP_JON_RPC_WE("getpulseblocktemplate",                    on_get_pulse_block_template,                COMMAND_RPC_GET_PULSE_BLOCK_TEMPLATE)
+        MAP_JON_RPC_WE("get_pulse_arqnet_votes",                   on_get_pulse_arqnet_votes,                  COMMAND_RPC_GET_PULSE_ARQNET_VOTES)
+        MAP_JON_RPC_WE("getpulsearqnetvotes",                      on_get_pulse_arqnet_votes,                  COMMAND_RPC_GET_PULSE_ARQNET_VOTES)
         MAP_JON_RPC_WE("submit_block",                             on_submitblock,                             COMMAND_RPC_SUBMITBLOCK)
         MAP_JON_RPC_WE("submitblock",                              on_submitblock,                             COMMAND_RPC_SUBMITBLOCK)
         MAP_JON_RPC_WE_IF("generateblocks",                        on_generateblocks,                          COMMAND_RPC_GENERATEBLOCKS, !m_restricted)
@@ -225,6 +227,7 @@ namespace cryptonote
     bool on_getblockhash(const COMMAND_RPC_GETBLOCKHASH::request& req, COMMAND_RPC_GETBLOCKHASH::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
     bool on_getblocktemplate(const COMMAND_RPC_GETBLOCKTEMPLATE::request& req, COMMAND_RPC_GETBLOCKTEMPLATE::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
     bool on_get_pulse_block_template(const COMMAND_RPC_GET_PULSE_BLOCK_TEMPLATE::request& req, COMMAND_RPC_GET_PULSE_BLOCK_TEMPLATE::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
+    bool on_get_pulse_arqnet_votes(const COMMAND_RPC_GET_PULSE_ARQNET_VOTES::request& req, COMMAND_RPC_GET_PULSE_ARQNET_VOTES::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
     bool on_submitblock(const COMMAND_RPC_SUBMITBLOCK::request& req, COMMAND_RPC_SUBMITBLOCK::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
     bool on_generateblocks(const COMMAND_RPC_GENERATEBLOCKS::request& req, COMMAND_RPC_GENERATEBLOCKS::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
     bool on_get_last_block_header(const COMMAND_RPC_GET_LAST_BLOCK_HEADER::request& req, COMMAND_RPC_GET_LAST_BLOCK_HEADER::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
