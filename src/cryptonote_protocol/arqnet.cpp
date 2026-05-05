@@ -151,6 +151,13 @@ struct pulse_seen_recent {
     seen.insert_or_assign(fp, now);
     prune_unlocked(now);
   }
+
+  /** Drop \p fp from the success window (e.g. block hash after chain accept). */
+  void forget(crypto::hash const &fp)
+  {
+    std::lock_guard<std::mutex> lk(mu);
+    seen.erase(fp);
+  }
 };
 
 pulse_seen_recent g_pulse_seen_inbound;
@@ -937,7 +944,10 @@ void init_core_callbacks()
       [](void *, crypto::hash const &block_hash, uint64_t *height_out, std::vector<cryptonote::pulse_validator_signature_entry> *out_entries) -> bool {
         return g_pulse_vote_accum.copy(block_hash, height_out, out_entries);
       };
-  cryptonote::arqnet_pulse_vote_buffer_clear = [](void *, crypto::hash const &block_hash) { g_pulse_vote_accum.clear(block_hash); };
+  cryptonote::arqnet_pulse_vote_buffer_clear = [](void *, crypto::hash const &block_hash) {
+    g_pulse_vote_accum.clear(block_hash);
+    g_pulse_seen_inbound.forget(block_hash);
+  };
   cryptonote::arqnet_pulse_vote_buffer_distinct_block_count =
       [](void *) -> size_t { return g_pulse_vote_accum.distinct_block_count(); };
 
