@@ -229,6 +229,7 @@ namespace cryptonote
     res.pos_pulse_blocks_since_fork = 0;
     res.pos_pulse_next_round_wire_hint = 0;
     res.pos_pulse_cum_diff_uses_60s_lwma = false;
+    res.pos_pulse_arqnet_vote_buffer_blocks = 0;
     bool r;
     if (use_bootstrap_daemon_if_necessary<COMMAND_RPC_GET_INFO>(invoke_http_mode::JON, "/getinfo", req, res, r))
     {
@@ -308,6 +309,7 @@ namespace cryptonote
       res.pos_pulse_blocks_since_fork = 0;
       res.pos_pulse_next_round_wire_hint = 0;
       res.pos_pulse_cum_diff_uses_60s_lwma = false;
+      res.pos_pulse_arqnet_vote_buffer_blocks = 0;
     }
     else
     {
@@ -337,6 +339,8 @@ namespace cryptonote
         res.pos_pulse_cum_diff_uses_60s_lwma =
             arqma::pulse_fork::FORK_ACTIVE
             && bs.get_ideal_hard_fork_version(next_h) >= cryptonote::network_version_20_pos;
+        res.pos_pulse_arqnet_vote_buffer_blocks =
+            static_cast<uint64_t>(m_core.get_pulse_arqnet_vote_buffer_distinct_block_count());
       }
     }
 

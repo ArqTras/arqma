@@ -97,6 +97,12 @@ struct pulse_vote_accumulator {
     std::lock_guard<std::mutex> lk(mu);
     by_bh.erase(bh);
   }
+
+  size_t distinct_block_count() const
+  {
+    std::lock_guard<std::mutex> lk(mu);
+    return by_bh.size();
+  }
 };
 
 pulse_vote_accumulator g_pulse_vote_accum;
@@ -932,6 +938,8 @@ void init_core_callbacks()
         return g_pulse_vote_accum.copy(block_hash, height_out, out_entries);
       };
   cryptonote::arqnet_pulse_vote_buffer_clear = [](void *, crypto::hash const &block_hash) { g_pulse_vote_accum.clear(block_hash); };
+  cryptonote::arqnet_pulse_vote_buffer_distinct_block_count =
+      [](void *) -> size_t { return g_pulse_vote_accum.distinct_block_count(); };
 
   SNNetwork::register_command("vote_ob", SNNetwork::command_type::quorum, handle_obligation_vote);
   SNNetwork::register_command("ping", SNNetwork::command_type::public_, handle_ping);

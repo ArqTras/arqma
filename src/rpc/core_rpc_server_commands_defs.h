@@ -718,6 +718,8 @@ namespace cryptonote
       uint64_t pos_pulse_next_round_wire_hint;
       /** True when the next block cumulative-difficulty step uses next_difficulty_pulse_pos (60s LWMA) vs pre-PoS v16. */
       bool pos_pulse_cum_diff_uses_60s_lwma;
+      /** Distinct block hashes in the in-process arqnet **`pulse_vote`** accumulator (0–64); 0 when restricted or arqnet unwired. */
+      uint64_t pos_pulse_arqnet_vote_buffer_blocks;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(status)
@@ -768,6 +770,7 @@ namespace cryptonote
         KV_SERIALIZE(pos_pulse_blocks_since_fork)
         KV_SERIALIZE(pos_pulse_next_round_wire_hint)
         KV_SERIALIZE(pos_pulse_cum_diff_uses_60s_lwma)
+        KV_SERIALIZE(pos_pulse_arqnet_vote_buffer_blocks)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<response_t> response;

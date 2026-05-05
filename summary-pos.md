@@ -119,6 +119,7 @@ When **`FORK_ACTIVE`** and that ideal **`version >= network_version_20_pos`**, d
 | **`pos_pulse_blocks_since_fork`** | When `FORK_ACTIVE` and height exceeds planned fork rehearsal height — blocks elapsed since that rehearsal boundary (**informational**). |
 | **`pos_pulse_next_round_wire_hint`** | When **`cryptonote::pulse::get_round_timings`** returns a value, **`cryptonote::pulse::convert_time_to_round(now, r0)`** (0–255); otherwise falls back to **`height % 256`**. **Not enforced** by consensus — operator UX only. |
 | **`pos_pulse_cum_diff_uses_60s_lwma`** | **`true`** when **`FORK_ACTIVE`** and **ideal** HF for **`get_current_blockchain_height()`** (the next block’s height) is **`>= network_version_20_pos`**, aligned with **`get_difficulty_for_next_block`** (restricted RPC returns **`false`**). |
+| **`pos_pulse_arqnet_vote_buffer_blocks`** | Distinct proposed-block hashes (**`bh`**) in the in-process arqnet vote accumulator (0–**64**); **`0`** on restricted **`get_info`** or when arqnet is not wired. **`core::get_pulse_arqnet_vote_buffer_distinct_block_count`**. |
 
 The ordinary **`target`** field is **`Blockchain::get_difficulty_target()`**: median spacing target seconds from **`get_current_diff_target`** applied to **ideal** HF for **`get_current_blockchain_height()`** (same height basis as cumulative-diff tuning), so **`DIFFICULTY_TARGET_V20_POS`** applies from the first PoS-major height onward, not one block late.
 
@@ -207,6 +208,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | 2026-05-05 | *(working tree)* | RPC **`get_pulse_arqnet_votes`** | JSON-RPC read of **`core::copy_pulse_arqnet_vote_accumulator`** by **`block_hash`**; **`core_rpc_server_commands_defs.h`** / **`core_rpc_server.*`**; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | **`get_pulse_block_template`**: merge arqnet votes | Optional **`pulse_random_value`** + **`merge_arqnet_votes`** on **`COMMAND_RPC_GET_PULSE_BLOCK_TEMPLATE`**; **`core_rpc_server.cpp`**; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | Clear arqnet vote buffer on accepted Pulse block | **`core::add_new_block`**: after success, **`clear_pulse_arqnet_vote_accumulator`** for **`major_version >= network_version_20_pos`**; **`summary-pos.md`**. |
+| 2026-05-05 | *(working tree)* | **`get_info`**: arqnet vote buffer size | **`pos_pulse_arqnet_vote_buffer_blocks`**; **`arqnet_pulse_vote_buffer_distinct_block_count`** + **`core::get_pulse_arqnet_vote_buffer_distinct_block_count`**; ZMQ **`DaemonInfo`**; **`simplewallet`** refresh line; **`summary-pos.md`**. |
 
 ---
 
@@ -217,7 +219,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 - `src/cryptonote_basic/difficulty.cpp` / `.h` — LWMA cores; **`next_difficulty_pulse_pos`**.
 - `src/cryptonote_core/blockchain.cpp` / `.h` — PoW skip, **`verify_pulse_fork_block_rules`**, Pulse coinbase/header checks, template sanitisation, **`create_next_pulse_block_template`**.
 - `src/cryptonote_core/pulse.cpp` / `.h` — **`get_round_timings`**, **`convert_time_to_round`**.
-- `src/cryptonote_core/cryptonote_core.cpp` / `.h` — **`get_pulse_block_template`**, **`copy_pulse_arqnet_vote_accumulator`**, **`clear_pulse_arqnet_vote_accumulator`**.
+- `src/cryptonote_core/cryptonote_core.cpp` / `.h` — **`get_pulse_block_template`**, **`copy_pulse_arqnet_vote_accumulator`**, **`clear_pulse_arqnet_vote_accumulator`**, **`get_pulse_arqnet_vote_buffer_distinct_block_count`**.
 - `src/cryptonote_core/service_node_list.cpp` / `.h` — **`try_get_block_winner_for_service_node`**, **`validate_miner_tx`** (before **`network_version_20_pos`**: scheduled winner; PoS era: checkpointing-quorum producer at **`height-1`** + payout check).
 - `src/crypto/hash.h` — **`hash4`**, **`null_hash4`**.
 - `src/rpc/core_rpc_server*.cpp/.h`, `core_rpc_server_commands_defs.h`, `daemon_handler.cpp`, `message_data_structs.h`, `serialization/json_object.cpp` — telemetry, **`get_pulse_block_template`**, **`get_pulse_arqnet_votes`**, and JSON parity.

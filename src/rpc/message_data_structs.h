@@ -210,6 +210,7 @@ namespace rpc
     uint64_t pos_pulse_blocks_since_fork = 0;
     uint64_t pos_pulse_next_round_wire_hint = 0;
     bool pos_pulse_cum_diff_uses_60s_lwma = false;
+    uint64_t pos_pulse_arqnet_vote_buffer_blocks = 0;
   };
 
   struct output_distribution

@@ -247,6 +247,7 @@ namespace cryptonote
       uint64_t *block_height_out,
       std::vector<pulse_validator_signature_entry> *out_entries) = nullptr;
   void (*arqnet_pulse_vote_buffer_clear)(void *self, crypto::hash const &block_hash) = nullptr;
+  size_t (*arqnet_pulse_vote_buffer_distinct_block_count)(void *self) = nullptr;
   static bool init_core_callback_stubs()
   {
     arqnet_new = [](core &, const std::string &) -> void * { need_core_init(); };
@@ -1536,6 +1537,13 @@ namespace cryptonote
     if (!m_arqnet_obj || !arqnet_pulse_vote_buffer_clear)
       return;
     arqnet_pulse_vote_buffer_clear(m_arqnet_obj, block_hash);
+  }
+  //-----------------------------------------------------------------------------------------------
+  size_t core::get_pulse_arqnet_vote_buffer_distinct_block_count() const
+  {
+    if (!m_arqnet_obj || !arqnet_pulse_vote_buffer_distinct_block_count)
+      return 0;
+    return arqnet_pulse_vote_buffer_distinct_block_count(m_arqnet_obj);
   }
   //-----------------------------------------------------------------------------------------------
   bool core::find_blockchain_supplement(const std::list<crypto::hash>& qblock_ids, NOTIFY_RESPONSE_CHAIN_ENTRY::request& resp) const

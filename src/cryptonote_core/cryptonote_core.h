@@ -83,6 +83,8 @@ namespace cryptonote
       uint64_t *block_height_out,
       std::vector<pulse_validator_signature_entry> *out_entries);
   extern void (*arqnet_pulse_vote_buffer_clear)(void *self, crypto::hash const &block_hash);
+  /** Filled by arqnet after init; returns distinct **`bh`** count in the **`pulse_vote`** accumulator (0 if arqnet not inited). */
+  extern size_t (*arqnet_pulse_vote_buffer_distinct_block_count)(void *self);
   extern bool init_core_callback_complete;
 
   /************************************************************************/
@@ -254,6 +256,8 @@ namespace cryptonote
      bool copy_pulse_arqnet_vote_accumulator(
          crypto::hash const &block_hash, uint64_t &block_height_out, std::vector<pulse_validator_signature_entry> &out_entries) const;
      void clear_pulse_arqnet_vote_accumulator(crypto::hash const &block_hash);
+     /** Distinct proposed-block hashes currently holding arqnet **`pulse_vote`** rows (cap 64); 0 if arqnet not wired. */
+     size_t get_pulse_arqnet_vote_buffer_distinct_block_count() const;
 
      /**
       * @brief called when a transaction is relayed

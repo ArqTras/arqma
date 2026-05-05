@@ -8223,6 +8223,8 @@ bool simple_wallet::status(const std::vector<std::string> &args)
       message_writer() << tr("Planned PoS: service-node quorum design expects arqma-storage-server paired with arqmad (storage_server_ping RPC).");
     if (info_res.pos_pulse_blocks_since_fork > 0)
       message_writer() << tr("PoS rehearsal: blocks since planned fork height: ") << info_res.pos_pulse_blocks_since_fork;
+    if (info_res.pos_pulse_arqnet_vote_buffer_blocks > 0)
+      message_writer() << tr("arqnet Pulse vote buffer (distinct proposed blocks): ") << info_res.pos_pulse_arqnet_vote_buffer_blocks;
     if (info_res.pos_fork_active || info_res.pos_pulse_cum_diff_uses_60s_lwma || info_res.pos_pulse_blocks_since_fork > 0)
     {
       message_writer() << tr("Pulse tooling hint (pulse.round modulus): ") << info_res.pos_pulse_next_round_wire_hint
