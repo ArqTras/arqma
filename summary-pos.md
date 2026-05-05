@@ -112,6 +112,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | `03ba201f` | `next_difficulty_pulse_pos` (60 s LWMA) + RPC `pos_pulse_*` telemetry. |
 | `7f20161e` | `docs:` add **`summary-pos.md`** (living PoS/Pulse summary for maintainers). |
 | `9dc3b9d2` | Reject zero **`pulse_random_value`** when verifying Pulse blocks; add **`pos_pulse_cum_diff_uses_60s_lwma`** to RPC / DaemonInfo / JSON. |
+| `0ebf398c` | **`docs:`** refresh **`summary-pos.md`** after `9dc3b9d2`. |
 
 *(If your branch diverged via history rewrite, re-run `git log --oneline <base>..HEAD` and reconcile this table.)*
 
@@ -124,6 +125,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | 2026-05 | `c8aff143` … `03ba201f` | PoS/Pulse scaffolding series | PoW skip + quorum/crypto checks gated on `FORK_ACTIVE`; Pulse wire format; miner/RPC tooling; cum-diff LWMA pulse target 60 s; telemetry for fork offset and suggested `pulse.round`; Arqma SN + storage-server pairing expectation. |
 | 2026-05-05 | `7f20161e` | Add `summary-pos.md` | Maintainer-facing English summary table + append-only changelog contract. |
 | 2026-05-05 | `9dc3b9d2` | Pulse random preimage + LWMA-flag RPC | Consensus (when active): **`pulse_random_value`** must not be all-zero; operators see **`pos_pulse_cum_diff_uses_60s_lwma`** alongside existing PoS telemetry. |
+| 2026-05-05 | `0ebf398c` | Update `summary-pos.md` | Document commit `9dc3b9d2` behaviour and extend commit index / changelog. |
 
 ---
 
