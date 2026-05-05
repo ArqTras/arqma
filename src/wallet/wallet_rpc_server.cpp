@@ -2859,7 +2859,9 @@ namespace tools
     if (!r || daemon_res.status != CORE_RPC_STATUS_OK)
     {
       er.code = WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR;
-      er.message = "Couldn't start mining due to unknown error.";
+      er.message = daemon_res.status.empty()
+          ? std::string{"Couldn't start mining due to unknown error."}
+          : std::string{daemon_res.status};
       return false;
     }
     return true;

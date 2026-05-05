@@ -36,6 +36,7 @@
  */
 
 #include <thread>
+#include <chrono>
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -8202,6 +8203,24 @@ bool simple_wallet::status(const std::vector<std::string> &args)
   {
     fail_msg_writer() << "Refreshed " << local_height << "/?, daemon connection error";
   }
+
+  cryptonote::COMMAND_RPC_GET_INFO::request info_req{};
+  cryptonote::COMMAND_RPC_GET_INFO::response info_res{};
+  if (m_wallet->invoke_http_json_rpc("/json_rpc", "get_info", info_req, info_res,
+          std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::minutes(3) + std::chrono::seconds(30)))
+      && info_res.status == CORE_RPC_STATUS_OK
+      && (info_res.pos_fork_active || info_res.pos_planned_fork_height > 0))
+  {
+    if (info_res.pos_fork_active)
+      message_writer() << tr("PoS fork is active on this daemon (PoW mining disabled per consensus rules).");
+    if (!info_res.pos_planned_hf_name.empty() && info_res.pos_planned_fork_height > 0)
+    {
+      message_writer() << tr("Planned PoS hard fork: ") << info_res.pos_planned_hf_name
+          << tr(", transition height (mainnet/stagenet): ") << info_res.pos_planned_fork_height
+          << tr(", target block time (s): ") << info_res.pos_target_block_time_sec;
+    }
+  }
+
   return true;
 }
 //----------------------------------------------------------------------------------------------------

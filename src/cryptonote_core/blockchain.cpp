@@ -1543,6 +1543,13 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
     }
   }
 
+  if (arqma::pulse_fork::pow_mining_disabled_for_chain(m_nettype, b.major_version, height))
+  {
+    MINFO("rejecting PoW block template height " << height << ", major_ver " << (unsigned)b.major_version
+          << " (PoS/Pulse era or FORK_ACTIVE rehearsal height)");
+    return false;
+  }
+
   b.timestamp = time(NULL);
 
   uint8_t hf_version = m_hardfork->get_current_version();

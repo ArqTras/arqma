@@ -939,6 +939,17 @@ namespace cryptonote
       return true;
     }
 
+    const uint64_t chain_height_hf = m_core.get_current_blockchain_height();
+    const uint64_t next_height_hf = chain_height_hf + 1;
+    const uint8_t next_major_hf =
+        m_core.get_blockchain_storage().get_ideal_hard_fork_version(next_height_hf);
+    if (arqma::pulse_fork::pow_mining_disabled_for_chain(m_core.get_nettype(), next_major_hf, next_height_hf))
+    {
+      res.status = arqma::pulse_fork::POW_MINING_DISABLED_RPC_MESSAGE;
+      LOG_PRINT_L0(res.status);
+      return true;
+    }
+
     int max_concurrency_count = std::thread::hardware_concurrency() * 4;
 
     // if we couldn't detect threads, set it to a ridiculously high number

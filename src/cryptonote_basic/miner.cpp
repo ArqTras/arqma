@@ -111,7 +111,9 @@ namespace cryptonote
     crypto::hash seed_hash;
     if(!m_phandler->get_block_template(bl, m_mine_address, di, height, expected_reward, ""s, seed_height, seed_hash))
     {
-      LOG_ERROR("Failed to get_block_template(), stopping mining");
+      LOG_ERROR("Failed to get_block_template()");
+      if (is_mining())
+        (void)stop();
       return false;
     }
     set_block_template(bl, di, height);
@@ -190,25 +192,34 @@ namespace cryptonote
     m_mine_address = adr;
     m_threads_total = std::max(threads_count, 1);
     m_starter_nonce = crypto::rand<uint32_t>();
-    std::unique_lock lock{m_threads_lock};
-    if(is_mining())
     {
-      LOG_ERROR("Starting miner but it's already started");
+      std::unique_lock lock{m_threads_lock};
+      if(is_mining())
+      {
+        LOG_ERROR("Starting miner but it's already started");
+        return false;
+      }
+
+      if(!m_threads.empty())
+      {
+        LOG_ERROR("Unable to start miner because there are active mining threads");
+        return false;
+      }
+    }
+
+    if(!request_block_template())
+    {
+      LOG_ERROR("Mining not started: failed to obtain block template (check sync and PoS/Pulse rules)");
       return false;
     }
 
-    if(!m_threads.empty())
     {
-      LOG_ERROR("Unable to start miner because there are active mining threads");
-      return false;
+      std::unique_lock lock{m_threads_lock};
+      m_stop = false;
+
+      for(int i = 0; i < m_threads_total; i++)
+        m_threads.emplace_back([=] { return worker_thread(i); });
     }
-
-    request_block_template();//lets update block template
-
-    m_stop = false;
-
-    for(int i = 0; i < m_threads_total; i++)
-      m_threads.emplace_back([=] { return worker_thread(i); });
 
     MINFO("Mining has started with " << m_threads_total << " threads, good luck!" );
 
