@@ -47,6 +47,7 @@ Affected areas: **`blockchain.cpp`**, **`core_rpc_server.cpp`**, **`daemon_handl
  **`Blockchain::verify_pulse_fork_block_rules`** (`blockchain.cpp`):
 
 - Requires **non-empty** `pulse_header` (no signature-only payloads).
+- Requires **`pulse.random_value`** bytes not all-zero ( preimage binding for the Pulse round ).
 - Requires at least **`PULSE_SIGNATURE_THRESHOLD`** signature entries.
 - Verifies **`crypto::check_signature(block_hash, validator_pubkey, sig)`** against checkpointing quorum validators (`service_node_list::get_quorum(...)`) including **alternate-quorum candidates** where applicable.
 - Block hash excludes validator signatures — correct preimage for validators.
@@ -77,8 +78,11 @@ When **`FORK_ACTIVE`** and **`version >= network_version_20_pos`**, next block d
 | `pos_expects_sn_storage_server` | Operator hint: validators expect **`arqma-storage-server`** (ArqTras fork) paired with **`arqmad`** (e.g. `storage_server_ping`). |
 | **`pos_pulse_blocks_since_fork`** | When `FORK_ACTIVE` and height exceeds planned fork rehearsal height — blocks elapsed since that rehearsal boundary (**informational**). |
 | **`pos_pulse_next_round_wire_hint`** | `height % 256` suggestion for tooling / producer UX for **`pulse.round`** (**not enforced** by daemon consensus). |
+| **`pos_pulse_cum_diff_uses_60s_lwma`** | **`true`** when **`FORK_ACTIVE`** and tip hard-fork major is **`>= network_version_20_pos`**, matching the branch that selects **`next_difficulty_pulse_pos`** for cumulative difficulty (restricted RPC returns **`false`**). |
 
 The ordinary **`target`** difficulty field reflects **`Blockchain::get_difficulty_target()`** — already **`DIFFICULTY_TARGET_V20_POS`** under the same Pulse/LWMA gated conditions.
+
+The root **`summary-pos.md`** tracks this narrative; **`docs:`** commits that only touch `summary-pos.md` have no consensus impact.
 
 ### Wallets / mining UX
 
@@ -106,6 +110,8 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | `36387220` | fix: declare `verify_pulse_fork_block_rules` on `Blockchain`. |
 | `8adfe429` | Clear PoW template Pulse fields; share coinbase/header Pulse checks on alt ingestion. |
 | `03ba201f` | `next_difficulty_pulse_pos` (60 s LWMA) + RPC `pos_pulse_*` telemetry. |
+| `7f20161e` | `docs:` add **`summary-pos.md`** (living PoS/Pulse summary for maintainers). |
+| `9dc3b9d2` | Reject zero **`pulse_random_value`** when verifying Pulse blocks; add **`pos_pulse_cum_diff_uses_60s_lwma`** to RPC / DaemonInfo / JSON. |
 
 *(If your branch diverged via history rewrite, re-run `git log --oneline <base>..HEAD` and reconcile this table.)*
 
@@ -116,6 +122,8 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | Date | Commit | Summary | Functional notes |
 |------|--------|---------|-------------------|
 | 2026-05 | `c8aff143` … `03ba201f` | PoS/Pulse scaffolding series | PoW skip + quorum/crypto checks gated on `FORK_ACTIVE`; Pulse wire format; miner/RPC tooling; cum-diff LWMA pulse target 60 s; telemetry for fork offset and suggested `pulse.round`; Arqma SN + storage-server pairing expectation. |
+| 2026-05-05 | `7f20161e` | Add `summary-pos.md` | Maintainer-facing English summary table + append-only changelog contract. |
+| 2026-05-05 | `9dc3b9d2` | Pulse random preimage + LWMA-flag RPC | Consensus (when active): **`pulse_random_value`** must not be all-zero; operators see **`pos_pulse_cum_diff_uses_60s_lwma`** alongside existing PoS telemetry. |
 
 ---
 
