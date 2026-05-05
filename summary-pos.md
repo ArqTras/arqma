@@ -2,7 +2,7 @@
 
 This document summarises Proof-of-Stake (**PoS**) and **Pulse**-style scaffolding on the **Arqma Network** codebase. Naming is intentionally **Arqma-centric** (no third-party branding in feature descriptions).
 
-**Maintainers:** Append new bullets under **[Changelog (append-only)]** for each merged PoS/Pulse-related change — include UTC date (or sprint), commit hash, one-line summary, and a short functional note.
+**Maintainers:** Append new bullets under **[Changelog (append-only)]** for each merged PoS/Pulse-related change — include UTC date (or sprint), commit hash, one-line summary, and a short functional note. Short **Release / toolchain** notes that touch PoS/Pulse paths (e.g. **`blockchain.cpp`**, **`arqnet.cpp`**) belong in the same changelog.
 
 ---
 
@@ -214,6 +214,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | `9dc3b9d2` | Reject zero **`pulse_random_value`** when verifying Pulse blocks; add **`pos_pulse_cum_diff_uses_60s_lwma`** to RPC / DaemonInfo / JSON. |
 | `0ebf398c` | **`docs:`** refresh **`summary-pos.md`** after `9dc3b9d2`. |
 | `dd8d4eaa` | Require **`validators.size() >= PULSE_SIGNATURE_THRESHOLD`** on some checkpointing quorum; extend **`simplewallet`** refresh PoS lines. |
+| `858007bd` | Release build + compiler hygiene (code); immediate docs tip on **`pos`** removes **`summary-pow.md`**, merges maintainer notes into **`summary-pos.md`**. Pulse helpers: **`network_type`**; **`arqnet`** **`mutable`** mutex; **`rolling_median`** move; RPC **`long double`** staking math. |
 
 *(If your branch diverged via history rewrite, re-run `git log --oneline <base>..HEAD` and reconcile this table.)*
 
@@ -257,6 +258,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | 2026-05-05 | *(working tree)* | **`WalletManager::daemonPosInfo`** | **`DaemonPosInfo`** + **`daemonPosInfo()`** in **`wallet2_api.h`** / **`wallet_manager.*`**; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | CI + rehearsal + **`simplewallet`** refresh | **`.github/workflows/pulse-tests.yml`**; **`pulse_http_rehearsal.py`** extended **`--info`** keys; **`maybe_print_daemon_pos_info`** after **`refresh`**; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | Pulse HTTP E2E + **`submit_block`** errors | **`pulse_http_rehearsal.py`**: **`--watch-submit`**, **`--submit-if-ready`**, **`--submit-anyway`**; **`on_submitblock`** bvc hints; **`summary-pos.md`** technical full path. |
+| 2026-05-06 | `858007bd` | Release build + compiler hygiene (AppleClang) | **`blockchain.cpp`**: free helpers **`pulse_coinbase_matches_pulse_header`**, **`get_difficulty_blocks_count`**, **`get_current_diff_target`** take **`network_type`** from **`Blockchain`** (fixes undeclared **`m_nettype`** in file-scope helpers). **`arqnet.cpp`**: **`mutable std::mutex`** so **`distinct_block_count() const`** can lock. **`contrib/epee/include/rolling_median.h`**: member-wise move instead of **`memcpy`** (fixes **`-Wnontrivial-memcall`**). **`rpc_command_executor.cpp`**: service-node share percentages use **`long double`** for **`STAKING_SHARE_PARTS`** division, **`double`** only at API boundaries (avoids precision warning on near-**`UINT64_MAX`** divisor). **Docs (child commit on `pos`)**: former **`summary-pow.md`** content folded into **`summary-pos.md`**; that file removed; changelog/index rows refreshed for **`858007bd`**. |
 
 ---
 
