@@ -30,7 +30,7 @@ The items below are **engineering and operations steps** required before **mainn
 6. **Service nodes** — Ensure a **minimum active SN set** and **checkpointing quorums** large enough that **`validators.size() >= PULSE_SIGNATURE_THRESHOLD`** can be satisfied on the canonical chain (and document decommission / testnet exemptions).
 7. **Storage server pairing** — Require operators to run the **paired storage server** stack where **`POS_EXPECTS_STORAGE_SERVER_FOR_SERVICE_NODES`** applies; verify **`storage_server_ping`** / reachability policies match validator eligibility.
 8. **Pulse producer / round network** — Extend **arqnet** (**rh** relay hops + **`core::copy_pulse_arqnet_vote_accumulator`**) with production policy: **`random_value`** agreement, merging accumulated votes into **`pulse_validator_signatures`** on the blob, **P2P** submission, and dedup / anti-spam beyond hop-limited gossip (in-tree: short **success-only** inbound dedup on **`pulse_proposal`** / **`pulse_vote`**; broader policy still TBD). Tooling **`create_next_pulse_block_template`** / **`get_pulse_block_template`** remains separate from acceptance.
-9. **Wallets & RPC** — Confirm **wallet**, **mining**, and **RPC** surfaces refuse PoW where **`pow_mining_disabled_for_chain`** applies; extend any operator UIs to use **`pos_pulse_*`** telemetry and Pulse templates where needed.
+9. **Wallets & RPC** — Confirm **wallet**, **mining**, and **RPC** surfaces refuse PoW where **`pow_mining_disabled_for_chain`** applies; extend any operator UIs to use **`pos_pulse_*`** telemetry and Pulse templates where needed. Concrete file-level status: **[PoS integration audit (code surfaces)](#pos-integration-audit-code-surfaces)**.
 10. **Rehearsal** — Run **stagenet** (and optional public testnet) with **`FORK_ACTIVE`** and real HF rows **before** mainnet; monitor **reorgs**, **alt-chain Pulse** blocks, **LWMA** (`next_difficulty_pulse_pos`), and **SNL hook** failures after `add_block`. In CI or locally, configure with **`BUILD_TESTS=ON`** and run **`unit_tests`** (includes **`PulseRound.*`** / **`PulseDifficulty.*`** in `tests/unit_tests/pulse_round.cpp`).
 11. **Release & comms** — Publish **fork height**, **mandatory software version**, SN operator checklist, and rollback / emergency procedures; tag a **release** after final audit.
 
@@ -149,9 +149,32 @@ The root **`summary-pos.md`** tracks this narrative; **`docs:`** commits that on
 
 ### Wallets / mining UX
 
- **`simplewallet`** **status** and **`wallet_rpc_server`** **`start_mining`** forward daemon PoS refusal messages where applicable.
+ **`simplewallet`** **`start_mining`** and **`wallet_rpc_server`** **`start_mining`** proxy the daemon **`/start_mining`** endpoint; when PoW is disabled the daemon sets **`res.status`** to **`arqma::pulse_fork::POW_MINING_DISABLED_RPC_MESSAGE`**, which surfaces as the wallet error string (trusted daemon required for wallet-RPC).
 
- After **`refresh`**, **`simplewallet`** prints optional **PoS rehearsal** block count, **`pos_pulse_next_round_wire_hint`**, and whether **`pos_pulse_cum_diff_uses_60s_lwma`** when PoS telemetry from **`get_info`** is present.
+ After **`status`** (not **`refresh`**), **`simplewallet`** calls **`get_info`** and, when **`pos_fork_active`** or **`pos_planned_fork_height > 0`**, prints planned fork metadata, storage-server expectation, optional rehearsal depth, **`pos_pulse_arqnet_vote_buffer_blocks`**, **`pos_pulse_next_round_wire_hint`**, and **`pos_pulse_cum_diff_uses_60s_lwma`**.
+
+---
+
+## PoS integration audit (code surfaces)
+
+Audit of **in-tree** components for **PoW refusal**, **Pulse template / vote RPC**, and **`pos_*` / `pos_pulse_*` telemetry**. “**OK**” means the path is wired for the intended behaviour; “**Gap**” is UX, API completeness, or missing operator visibility (not necessarily a consensus bug).
+
+| Surface | Location | Behaviour | Status |
+|---------|----------|-----------|--------|
+| PoW block template | **`Blockchain::create_block_template`** (`blockchain.cpp`) | Returns **`false`** when **`pow_mining_disabled_for_chain`** — PoW templates stop at the chain layer. | OK |
+| **`getblocktemplate`** | **`core_rpc_server::on_getblocktemplate`** → **`get_block_template`** | Failure surfaces as JSON-RPC **internal error** (“failed to create block template”); no dedicated “PoW disabled” message (unlike **`start_mining`**). | Gap (operator UX) |
+| **`start_mining` (HTTP)** | **`core_rpc_server::on_start_mining`** | **`pow_mining_disabled_for_chain`** → **`res.status = POW_MINING_DISABLED_RPC_MESSAGE`** (not **`CORE_RPC_STATUS_OK`**). | OK |
+| **`start_mining` (ZMQ)** | **`daemon_handler::handle(StartMining)`** | Same check; **`error_details`** carries **`POW_MINING_DISABLED_RPC_MESSAGE`**. | OK |
+| **`get_info` (HTTP)** | **`core_rpc_server::on_get_info`** | Full **`pos_*` / `pos_pulse_*`** when **not** restricted; restricted mode clears planned-fork constants and **`pos_pulse_*`** hints **except** **`pos_fork_active`** remains set from **`FORK_ACTIVE`**. | OK |
+| **`get_info` / DaemonInfo (ZMQ)** | **`daemon_handler::handle(GetInfo)`** | Fills the same **`pos_*` / `pos_pulse_*`** family as unrestricted HTTP (no “restricted RPC” split on this path). | OK |
+| **`get_pulse_block_template` / `get_pulse_arqnet_votes`** | **`core_rpc_server`** | Require **`FORK_ACTIVE`**, ideal HF **`>= network_version_20_pos`**, no bootstrap daemon. | OK |
+| **`simplewallet`** | **`start_mining`**, **`status`** | Mining refusal text from daemon **`status`**; PoS telemetry lines after **`status`** via **`get_info`** (see above). | OK |
+| **`wallet_rpc_server`** | **`on_start_mining`** | Forwards **`/start_mining`**; **`er.message`** = daemon **`status`** on failure (includes PoS refusal string). | OK |
+| **Wallet API (C++)** | **`wallet/api/wallet_manager.cpp`** | **`startMining` / `stopMining`** return **`bool`** only — callers do not get **`POW_MINING_DISABLED_RPC_MESSAGE`** text; **`get_info`** fields are not exposed as dedicated API getters. | Gap (GUI / bindings) |
+| **`arqmad` CLI `status`** | **`daemon/rpc_command_executor.cpp`** **`show_status()`** | Prints height, hash rate from **`get_info`**, SN ping — **does not** print **`pos_pulse_*`** or planned fork lines. | Gap (operator UX) |
+| **In-process miner** | **`cryptonote_basic/miner.*`** | No local **`pow_mining_disabled`** guard; mining is expected to start only via RPC / ZMQ paths that already check. | OK (by convention) |
+
+**Follow-ups (optional):** (1) **`on_getblocktemplate`**: early **`pow_mining_disabled`** check with a stable **`error_resp.message`** (and optional dedicated error code) matching **`POW_MINING_DISABLED_RPC_MESSAGE`**. (2) **`show_status`**: append one line when **`pos_planned_fork_height > 0`** or **`pos_fork_active`** (mirror **`simplewallet`**). (3) **Wallet API**: surface daemon **`status`** string on failed **`startMining`**, or add thin **`get_daemon_pos_info`** accessors if a GUI must not parse raw **`get_info`**.
 
 ---
 
@@ -228,6 +251,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | 2026-05-05 | *(working tree)* | Rate limit tunables + submit_block script | **`pulse_wire.h`** **`PULSE_QUORUM_PEER_RATE_*`**; **`pulse_submit_block.py`**; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | Pulse rehearsal: shared json_rpc + dump template hex | **`pulse_tools_common.py`**; **`--dump-template-hex`**; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | **`build_unit_tests`** helper scripts | **`contrib/pulse-rehearsal/build_unit_tests.ps1`**, **`build_unit_tests.sh`**; **`summary-pos.md`**. |
+| 2026-05-05 | *(working tree)* | **`summary-pos.md`**: PoS integration audit | File-level table (HTTP/ZMQ/wallet/daemon CLI); fix **`simplewallet`** doc (**`status`** vs **`refresh`**); optional follow-ups for **`getblocktemplate`** UX and **`show_status`**. |
 
 ---
 
