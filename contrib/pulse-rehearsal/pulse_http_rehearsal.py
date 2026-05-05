@@ -3,7 +3,8 @@
 #
 # HTTP JSON-RPC rehearsal for Pulse tooling: get_info, get_pulse_block_template,
 # get_pulse_arqnet_votes. Requires a daemon with PoS telemetry / Pulse RPC enabled
-# (see summary-pos.md). Arqnet quorum (ZMQ SN transport) is out of scope here.
+# (see summary-pos.md). For submit_block use pulse_submit_block.py in this directory.
+# Arqnet quorum (ZMQ SN transport) is out of scope here.
 
 import argparse
 import json

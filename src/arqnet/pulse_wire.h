@@ -47,4 +47,11 @@ inline constexpr std::size_t PULSE_PROPOSAL_MAX_BLOB_BYTES = 1000 * 1000;
 inline constexpr char KEY_RELAY_HOPS[] = "rh";
 inline constexpr int64_t DEFAULT_PULSE_RELAY_HOPS = 3;
 
+/**
+ * Per-sender (hex ZMQ pubkey) flood guard for **`pulse_proposal`** + **`pulse_vote`** combined on one daemon.
+ * Tweak for rehearsal if legitimate bursts hit the cap (`arqnet.cpp`).
+ */
+inline constexpr std::size_t PULSE_QUORUM_PEER_RATE_MAX_EVENTS = 48;
+inline constexpr unsigned PULSE_QUORUM_PEER_RATE_WINDOW_SEC = 10;
+
 } // namespace arqma::pulse_wire

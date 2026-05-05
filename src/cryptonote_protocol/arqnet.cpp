@@ -170,8 +170,8 @@ struct pulse_quorum_peer_rate {
     std::chrono::steady_clock::time_point window_start = std::chrono::steady_clock::time_point::min();
   };
   std::unordered_map<std::string, rec> by_sender_hex;
-  static constexpr size_t max_in_window = 48;
-  static constexpr std::chrono::seconds window_len{10};
+  static constexpr std::size_t max_in_window = arqma::pulse_wire::PULSE_QUORUM_PEER_RATE_MAX_EVENTS;
+  static constexpr std::chrono::seconds window_len{arqma::pulse_wire::PULSE_QUORUM_PEER_RATE_WINDOW_SEC};
 
   bool try_consume(std::string const &sender_hex)
   {
