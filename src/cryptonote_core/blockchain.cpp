@@ -31,6 +31,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstring>
 #include <unordered_set>
 #include <boost/asio/dispatch.hpp>
 #include <boost/filesystem.hpp>
@@ -95,6 +96,60 @@ extern "C" void rx_slow_hash_free_state();
 DISABLE_VS_WARNINGS(4267)
 
 #define MERROR_VER(x) MCERROR("verify", x)
+
+namespace
+{
+/**
+ * PoS-era block: serialized header reward must match total coinbase out; sn_winner_tail ties to SN pubkey in miner extra.
+ * Used from main-chain validate_miner_transaction and alternative-chain ingestion (stored alts skipped full miner validate until reorg).
+ */
+bool pulse_coinbase_matches_pulse_header(block const &b)
+{
+  if (!arqma::pulse_fork::FORK_ACTIVE || b.major_version < cryptonote::network_version_20_pos)
+    return true;
+
+  uint64_t money_in_use = 0;
+  for (auto const &o : b.miner_tx.vout)
+    money_in_use += o.amount;
+
+  if (b.reward != money_in_use)
+  {
+    MERROR_VER(
+        "Pulse-era block miner tx total (" << print_money(money_in_use) << ") does not match block header reward (" << print_money(b.reward)
+                                           << ")");
+    return false;
+  }
+
+  crypto::public_key winner = cryptonote::get_service_node_winner_from_tx_extra(b.miner_tx.extra);
+  if (!winner)
+  {
+    MERROR_VER("Pulse-era block rejected: miner tx_extra has no valid service-node winner");
+    return false;
+  }
+
+  crypto::hash4 expect_tail{};
+  static_assert(sizeof(winner.data) >= 4, "public_key tail");
+  memcpy(expect_tail.data, winner.data + (sizeof(winner.data) - 4), 4);
+  if (!(b.sn_winner_tail == expect_tail))
+  {
+    MERROR_VER("Pulse-era block rejected: sn_winner_tail does not match last 4 bytes of coinbase SN winner pubkey");
+    return false;
+  }
+  return true;
+}
+
+static inline void clear_pow_block_pulse_fields(block &b)
+{
+  if (b.major_version < cryptonote::network_version_20_pos)
+  {
+    b.pulse = {};
+    b.reward = 0;
+    b.sn_winner_tail = crypto::null_hash4;
+    b.pulse_validator_signatures.clear();
+    b.invalidate_hashes();
+  }
+}
+} // namespace
 
 // used to overestimate the block reward when estimating a per kB to use
 #define BLOCK_REWARD_OVERESTIMATE (10 * 1000000000000)
@@ -1325,32 +1380,8 @@ bool Blockchain::validate_miner_transaction(const block& b, size_t cumulative_bl
   CHECK_AND_ASSERT_MES(money_in_use >= fee, false, "Base Reward calculation bug");
   base_reward = money_in_use - fee;
 
-  if (arqma::pulse_fork::FORK_ACTIVE && b.major_version >= cryptonote::network_version_20_pos)
-  {
-    if (b.reward != money_in_use)
-    {
-      MERROR_VER(
-          "Pulse-era block miner tx total (" << print_money(money_in_use) << ") does not match block header reward (" << print_money(b.reward)
-                                             << ")");
-      return false;
-    }
-
-    crypto::public_key winner = cryptonote::get_service_node_winner_from_tx_extra(b.miner_tx.extra);
-    if (!winner)
-    {
-      MERROR_VER("Pulse-era block rejected: miner tx_extra has no valid service-node winner");
-      return false;
-    }
-
-    crypto::hash4 expect_tail{};
-    static_assert(sizeof(winner.data) >= 4, "public_key tail");
-    std::memcpy(expect_tail.data, winner.data + (sizeof(winner.data) - 4), 4);
-    if (!(b.sn_winner_tail == expect_tail))
-    {
-      MERROR_VER("Pulse-era block rejected: sn_winner_tail does not match last 4 bytes of coinbase SN winner pubkey");
-      return false;
-    }
-  }
+  if (!pulse_coinbase_matches_pulse_header(b))
+    return false;
 
 /*
   base_reward = reward_parts.adjusted_base_reward;
@@ -1550,6 +1581,7 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
       MDEBUG("Using cached template");
       m_btc.timestamp = time(NULL); // update timestamp unconditionally
       b = m_btc;
+      clear_pow_block_pulse_fields(b);
       diffic = m_btc_difficulty;
       height = m_btc_height;
       expected_reward = m_btc_expected_reward;
@@ -1657,6 +1689,8 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
       seed_hash = get_block_id_by_height(seed_height);
     }
   }
+
+  clear_pow_block_pulse_fields(b);
 
   if (arqma::pulse_fork::pow_mining_disabled_for_chain(m_nettype, b.major_version, height))
   {
@@ -2011,6 +2045,13 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
     if(!prevalidate_miner_transaction(b, block_height, hard_fork_version))
     {
       MERROR_VER("Block with id: " << epee::string_tools::pod_to_hex(id) << " (as alternative) has incorrect miner transaction.");
+      bvc.m_verification_failed = true;
+      return false;
+    }
+
+    if (!pulse_coinbase_matches_pulse_header(b))
+    {
+      MERROR_VER("Block with id: " << id << " (alternative) failed Pulse-era coinbase / header sanity");
       bvc.m_verification_failed = true;
       return false;
     }
