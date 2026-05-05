@@ -139,16 +139,26 @@ public:
     clear();
   }
 
-  rolling_median_t(rolling_median_t &&m)
+  rolling_median_t(rolling_median_t &&m) noexcept
+    : data(m.data), pos(m.pos), heap(m.heap), N(m.N), idx(m.idx), minCt(m.minCt), maxCt(m.maxCt), sz(m.sz)
   {
-    memcpy(this, &m, sizeof(rolling_median_t));
     m.data = NULL;
   }
-  rolling_median_t &operator=(rolling_median_t &&m)
+  rolling_median_t &operator=(rolling_median_t &&m) noexcept
   {
-    free(data);
-    memcpy(this, &m, sizeof(rolling_median_t));
-    m.data = NULL;
+    if (this != &m)
+    {
+      free(data);
+      data = m.data;
+      pos = m.pos;
+      heap = m.heap;
+      N = m.N;
+      idx = m.idx;
+      minCt = m.minCt;
+      maxCt = m.maxCt;
+      sz = m.sz;
+      m.data = NULL;
+    }
     return *this;
   }
 

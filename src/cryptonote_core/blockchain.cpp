@@ -105,9 +105,9 @@ namespace
  * as pre-PoS — see construct_miner_tx and cryptonote_config GOV_/DEV_/NET_WALLET_ADDRESS.
  * Used from main-chain validate_miner_transaction and alternative-chain ingestion (stored alts skipped full miner validate until reorg).
  */
-bool pulse_coinbase_matches_pulse_header(block const &b)
+bool pulse_coinbase_matches_pulse_header(network_type nettype, block const &b)
 {
-  if (!arqma::pulse_fork::fork_active(m_nettype) || b.major_version < cryptonote::network_version_20_pos)
+  if (!arqma::pulse_fork::fork_active(nettype) || b.major_version < cryptonote::network_version_20_pos)
     return true;
 
   uint64_t money_in_use = 0;
@@ -884,11 +884,11 @@ bool Blockchain::get_block_by_hash(const crypto::hash &h, block &blk, bool *orph
   return false;
 }
 //------------------------------------------------------------------
-size_t get_difficulty_blocks_count(uint8_t version)
+size_t get_difficulty_blocks_count(network_type nettype, uint8_t version)
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
 
-  if (version >= cryptonote::network_version_20_pos && arqma::pulse_fork::fork_active(m_nettype))
+  if (version >= cryptonote::network_version_20_pos && arqma::pulse_fork::fork_active(nettype))
     return DIFFICULTY_BLOCKS_COUNT_V16; /* next_diff Pulse uses DIFFICULTY_TARGET_V20_POS inside same LWMA window. */
 
   if(version < 7)
@@ -903,11 +903,11 @@ size_t get_difficulty_blocks_count(uint8_t version)
   return DIFFICULTY_BLOCKS_COUNT_V16;
 }
 //-----------------------------------------------------------------
-uint8_t get_current_diff_target(uint8_t version)
+uint8_t get_current_diff_target(network_type nettype, uint8_t version)
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
 
-  if (version >= cryptonote::network_version_20_pos && arqma::pulse_fork::fork_active(m_nettype))
+  if (version >= cryptonote::network_version_20_pos && arqma::pulse_fork::fork_active(nettype))
     return DIFFICULTY_TARGET_V20_POS;
 
   if(version < 10)
@@ -951,7 +951,7 @@ difficulty_type Blockchain::get_difficulty_for_next_block()
 
   // Use ideal HF for this chain height so the first block after a version bump (e.g. PoS) picks the right LWMA path.
   uint8_t version = get_ideal_hard_fork_version(height);
-  size_t difficulty_blocks_count = get_difficulty_blocks_count(version);
+  size_t difficulty_blocks_count = get_difficulty_blocks_count(m_nettype, version);
 
   if (m_timestamps_and_difficulties_height != 0 && ((height - m_timestamps_and_difficulties_height) == 1) && m_timestamps.size() >= difficulty_blocks_count)
   {
@@ -1179,7 +1179,7 @@ difficulty_type Blockchain::get_next_difficulty_for_alternative_chain(const std:
   std::vector<uint64_t> timestamps;
   std::vector<difficulty_type> cumulative_difficulties;
   uint8_t version = get_ideal_hard_fork_version(alt_block_height);
-  size_t difficulty_blocks_count = get_difficulty_blocks_count(version);
+  size_t difficulty_blocks_count = get_difficulty_blocks_count(m_nettype, version);
 
   // if the alt chain isn't long enough to calculate the difficulty target
   // based on its blocks alone, need to get more blocks from the main chain
@@ -1387,7 +1387,7 @@ bool Blockchain::validate_miner_transaction(const block& b, size_t cumulative_bl
   CHECK_AND_ASSERT_MES(money_in_use >= fee, false, "Base Reward calculation bug");
   base_reward = money_in_use - fee;
 
-  if (!pulse_coinbase_matches_pulse_header(b))
+  if (!pulse_coinbase_matches_pulse_header(m_nettype, b))
     return false;
 
 /*
@@ -2248,7 +2248,7 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
       return false;
     }
 
-    if (!pulse_coinbase_matches_pulse_header(b))
+    if (!pulse_coinbase_matches_pulse_header(m_nettype, b))
     {
       MERROR_VER("Block with id: " << id << " (alternative) failed Pulse-era coinbase / header sanity");
       bvc.m_verification_failed = true;
@@ -5543,7 +5543,7 @@ uint64_t Blockchain::get_difficulty_target() const
   LOG_PRINT_L3("Blockchain::" << __func__);
   uint64_t const next_h = get_current_blockchain_height();
   uint8_t const version = get_ideal_hard_fork_version(next_h);
-  return get_current_diff_target(version);
+  return get_current_diff_target(m_nettype, version);
 }
 
 std::map<uint64_t, std::tuple<uint64_t, uint64_t, uint64_t>> Blockchain::get_output_histogram(const std::vector<uint64_t> &amounts, bool unlocked, uint64_t recent_cutoff, uint64_t min_count) const

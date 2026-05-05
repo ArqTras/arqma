@@ -42,7 +42,7 @@ struct crypto_hash_hasher {
 };
 
 struct pulse_vote_accumulator {
-  std::mutex mu;
+  mutable std::mutex mu;
   struct rec {
     uint64_t block_height = 0;
     std::unordered_map<uint16_t, cryptonote::pulse_validator_signature_entry> rows;

@@ -2522,7 +2522,7 @@ static void append_printable_service_node_list_entry(cryptonote::network_type ne
   // Print operator information
   if (detailed_view)
   {
-    stream << indent2 << "Operator Cut (\% Of Reward): " << to_string_rounded((entry.portions_for_operator / (double)STAKING_SHARE_PARTS) * 100.0, 2) << "%\n";
+    stream << indent2 << "Operator Cut (\% Of Reward): " << to_string_rounded(static_cast<double>(static_cast<long double>(entry.portions_for_operator) * 100.0L / static_cast<long double>(STAKING_SHARE_PARTS)), 2) << "%\n";
     stream << indent2 << "Operator Address: " << entry.operator_address << "\n";
   }
 
@@ -3436,7 +3436,7 @@ bool t_rpc_command_executor::prepare_registration(bool force_registration)
         const uint64_t amount_left = staking_requirement - state.total_reserved_contributions;
 
         std::cout << "Summary:" << std::endl;
-        std::cout << "Operating costs as % of reward: " << (state.operator_fee_portions * 100.0 / STAKING_SHARE_PARTS) << "%" << std::endl;
+        std::cout << "Operating costs as % of reward: " << static_cast<long double>(state.operator_fee_portions) * 100.0L / static_cast<long double>(STAKING_SHARE_PARTS) << "%" << std::endl;
         printf("%-16s%-9s%-19s%-s\n", "Contributor", "Address", "Contribution", "Contribution(%)");
         printf("%-16s%-9s%-19s%-s\n", "___________", "_______", "____________", "_______________");
 
@@ -3446,7 +3446,7 @@ bool t_rpc_command_executor::prepare_registration(bool force_registration)
           uint64_t amount = get_actual_amount(staking_requirement, state.contributions[i]);
           if(amount_left <= DUST && i == 0)
           amount += amount_left; // add dust to the operator.
-          printf("%-16s%-9s%-19s%-.9f\n", participant_name.c_str(), state.addresses[i].substr(0,6).c_str(), cryptonote::print_money(amount).c_str(), (double)state.contributions[i] * 100 / STAKING_SHARE_PARTS);
+          printf("%-16s%-9s%-19s%-.9f\n", participant_name.c_str(), state.addresses[i].substr(0,6).c_str(), cryptonote::print_money(amount).c_str(), static_cast<double>(static_cast<long double>(state.contributions[i]) * 100.0L / static_cast<long double>(STAKING_SHARE_PARTS)));
         }
 
         if(amount_left > DUST)
