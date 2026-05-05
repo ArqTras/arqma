@@ -1647,6 +1647,9 @@ namespace cryptonote
       crypto::hash const tpl_hash = get_block_hash(b);
       res.pulse_template_block_hash = string_tools::pod_to_hex(tpl_hash);
       res.merged_arqnet_vote_count = b.pulse_validator_signatures.size();
+      res.pulse_signature_threshold = static_cast<uint64_t>(arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD);
+      res.merged_pulse_signatures_meet_threshold =
+          res.merged_arqnet_vote_count >= res.pulse_signature_threshold;
     }
     res.status = CORE_RPC_STATUS_OK;
     res.untrusted = false;

@@ -1003,6 +1003,10 @@ namespace cryptonote
       std::string pulse_template_block_hash;
       /** Count of `pulse_validator_signature_entry` rows in the template blob after optional `merge_arqnet_votes`. */
       uint64_t merged_arqnet_vote_count;
+      /** Consensus quorum signature floor when `FORK_ACTIVE` (same as `arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD`). */
+      uint64_t pulse_signature_threshold;
+      /** True iff `merged_arqnet_vote_count >= pulse_signature_threshold` for this template blob. */
+      bool merged_pulse_signatures_meet_threshold;
       std::string status;
       bool untrusted;
 
@@ -1016,6 +1020,8 @@ namespace cryptonote
         KV_SERIALIZE(blockhashing_blob)
         KV_SERIALIZE(pulse_template_block_hash)
         KV_SERIALIZE(merged_arqnet_vote_count)
+        KV_SERIALIZE(pulse_signature_threshold)
+        KV_SERIALIZE(merged_pulse_signatures_meet_threshold)
         KV_SERIALIZE(seed_hash)
         KV_SERIALIZE(next_seed_hash)
         KV_SERIALIZE(status)
