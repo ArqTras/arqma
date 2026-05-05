@@ -136,7 +136,7 @@ Bindings live in **`src/arqnet/pulse_wire.h`**; handlers in **`src/cryptonote_pr
 
 **Inbound dedup (success-only window):** after a **successful** accept, the daemon records **`bh`** (proposals) or **`cn_fast_hash(bh ‖ sig ‖ vi ‖ h)`** (votes) in an in-memory set with **~45 s** TTL and cap **4096** entries (LRU-ish eviction). A **later** duplicate within TTL gets **`ok=1`** + **`bh`** without re-running quorum / Pulse verify, **without** appending to the vote accumulator again, and **without** firing **relay** — so spam retries and mesh echo do not multiply work. **Rejected** messages are **not** entered (a failed proposal or bad vote can be retried immediately).
 
-**Vote accumulator (per process):** each accepted **`pulse_vote`** **also** stores **`pulse_validator_signature_entry`** in an in-memory map keyed by **`bh`** (bounded, **64** block hashes, LRU by touch time). Read / clear via **`cryptonote::core::copy_pulse_arqnet_vote_accumulator`** / **`clear_pulse_arqnet_vote_accumulator`** (**`cryptonote_core.h`**) — backed by **`arqnet_pulse_vote_buffer_*`** function pointers set in **`init_core_callbacks`** (no-op if arqnet not initialized).
+**Vote accumulator (per process):** each accepted **`pulse_vote`** **also** stores **`pulse_validator_signature_entry`** in an in-memory map keyed by **`bh`** (bounded, **64** block hashes, LRU by touch time). Read / clear via **`cryptonote::core::copy_pulse_arqnet_vote_accumulator`** / **`clear_pulse_arqnet_vote_accumulator`** (**`cryptonote_core.h`**) — backed by **`arqnet_pulse_vote_buffer_*`** function pointers set in **`init_core_callbacks`** (no-op if arqnet not initialized). After **`core::add_new_block`** succeeds for a block with **`major_version >= network_version_20_pos`**, the daemon calls **`clear_pulse_arqnet_vote_accumulator(get_block_hash(b))`** so accepted main- or alt-chain Pulse blocks do not leave stale quorum votes in RAM.
 
 | Command | Payload (bt_dict parts) | Handler behaviour |
 |---------|--------------------------|-------------------|
@@ -206,6 +206,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | 2026-05-05 | *(working tree)* | arqnet inbound Pulse dedup | **`arqnet.cpp`**: success-only **~45 s** / **4096** cap cache — **`bh`** for **`pulse_proposal`**, **`cn_fast_hash`** pack for **`pulse_vote`**; duplicates skip verify, accumulator double-append, and **`rh`** relay; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | RPC **`get_pulse_arqnet_votes`** | JSON-RPC read of **`core::copy_pulse_arqnet_vote_accumulator`** by **`block_hash`**; **`core_rpc_server_commands_defs.h`** / **`core_rpc_server.*`**; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | **`get_pulse_block_template`**: merge arqnet votes | Optional **`pulse_random_value`** + **`merge_arqnet_votes`** on **`COMMAND_RPC_GET_PULSE_BLOCK_TEMPLATE`**; **`core_rpc_server.cpp`**; **`summary-pos.md`**. |
+| 2026-05-05 | *(working tree)* | Clear arqnet vote buffer on accepted Pulse block | **`core::add_new_block`**: after success, **`clear_pulse_arqnet_vote_accumulator`** for **`major_version >= network_version_20_pos`**; **`summary-pos.md`**. |
 
 ---
 

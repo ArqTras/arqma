@@ -1664,6 +1664,11 @@ namespace cryptonote
     if (result)
     {
       relay_service_node_votes(); // NOTE: not working while syncing.
+      if (b.major_version >= network_version_20_pos)
+      {
+        crypto::hash const block_id = get_block_hash(b);
+        clear_pulse_arqnet_vote_accumulator(block_id);
+      }
     }
     return result;
   }
