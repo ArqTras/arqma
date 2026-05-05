@@ -1595,13 +1595,26 @@ namespace cryptonote
           MDEBUG("merge_arqnet_votes: vote accumulator chain_height " << acc_chain_height << " != template height " << height);
         b.pulse_validator_signatures.clear();
         size_t const cap = config::block_settings::MAX_PULSE_VALIDATOR_SIGNATURES;
+        uint16_t const vmask = static_cast<uint16_t>(req.validator_bitset);
         b.pulse_validator_signatures.reserve(std::min(acc.size(), cap));
+        size_t skipped_bit_mismatch = 0;
         for (cryptonote::pulse_validator_signature_entry const &e : acc)
         {
           if (b.pulse_validator_signatures.size() >= cap)
             break;
+          if (e.voter_index < 16)
+          {
+            if (((vmask >> e.voter_index) & 1u) == 0u)
+            {
+              ++skipped_bit_mismatch;
+              continue;
+            }
+          }
           b.pulse_validator_signatures.push_back(e);
         }
+        if (skipped_bit_mismatch)
+          MDEBUG("merge_arqnet_votes: skipped " << skipped_bit_mismatch
+                                                << " vote(s) (voter_index < 16 but template validator_bitset bit clear)");
       }
       else
         MDEBUG("merge_arqnet_votes: no accumulator data for block hash " << bh);
