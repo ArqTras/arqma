@@ -90,6 +90,12 @@ namespace boost
   }
 
   template <class Archive>
+  inline void serialize(Archive &a, crypto::hash4 &x, const boost::serialization::version_type ver)
+  {
+    a & reinterpret_cast<char (&)[sizeof(x.data)]>(x.data);
+  }
+
+  template <class Archive>
   inline void serialize(Archive &a, cryptonote::txout_to_script &x, const boost::serialization::version_type ver)
   {
     a & x.keys;
@@ -228,7 +234,11 @@ namespace boost
     a & b.prev_id;
     a & b.nonce;
     if (b.major_version >= cryptonote::network_version_20_pos)
+    {
       a & b.pulse;
+      a & b.reward;
+      a & b.sn_winner_tail;
+    }
     //------------------
     a & b.miner_tx;
     a & b.tx_hashes;

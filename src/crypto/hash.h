@@ -58,6 +58,18 @@ namespace crypto {
     char data[8];
   };
 
+  /** Last four bytes of a service-node public key tail (Oxen Pulse batching / HF20 header). */
+  struct hash4
+  {
+    char data[4]{};
+    template <bool W, template <bool> class Archive>
+    bool do_serialize(Archive<W> &ar)
+    {
+      ar.serialize_blob(data, sizeof(data));
+      return ar.stream().good();
+    }
+  };
+
   /*
     Cryptonight hash functions
   */
@@ -97,7 +109,9 @@ namespace crypto {
 
   constexpr static crypto::hash null_hash = {};
   constexpr static crypto::hash8 null_hash8 = {};
+  constexpr static crypto::hash4 null_hash4 = {};
 }
 
 CRYPTO_MAKE_HASHABLE(hash)
 CRYPTO_MAKE_COMPARABLE(hash8)
+CRYPTO_MAKE_COMPARABLE(hash4)

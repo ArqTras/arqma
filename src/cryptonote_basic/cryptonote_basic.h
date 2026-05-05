@@ -423,6 +423,10 @@ namespace cryptonote
     crypto::hash prev_id;
     uint32_t nonce;
     pulse_header pulse{};
+    /** Oxen-aligned: total Pulse/SN-side reward (+fees semantics TBD); varint after pulse; enters block hash preimage. */
+    uint64_t reward = 0;
+    /** Oxen-aligned: last 4 bytes of declared SN winner pubkey (sanity tie-in; not sole authority bit). */
+    crypto::hash4 sn_winner_tail{};
 
     /** True when this block carries non-empty Pulse header fields (implies PoS era once HF is enabled). */
     bool has_pulse_header_data() const noexcept
@@ -439,6 +443,8 @@ namespace cryptonote
       if (major_version >= network_version_20_pos)
       {
         FIELDS(pulse)
+        VARINT_FIELD(reward)
+        FIELD(sn_winner_tail)
       }
     END_SERIALIZE()
   };
