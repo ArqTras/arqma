@@ -1629,6 +1629,12 @@ namespace cryptonote
     std::string const hashing_blob = get_block_hashing_blob(b);
     res.blocktemplate_blob = string_tools::buff_to_hex_nodelimer(block_blob);
     res.blockhashing_blob = string_tools::buff_to_hex_nodelimer(hashing_blob);
+    b.invalidate_hashes();
+    {
+      crypto::hash const tpl_hash = get_block_hash(b);
+      res.pulse_template_block_hash = string_tools::pod_to_hex(tpl_hash);
+      res.merged_arqnet_vote_count = b.pulse_validator_signatures.size();
+    }
     res.status = CORE_RPC_STATUS_OK;
     res.untrusted = false;
     return true;

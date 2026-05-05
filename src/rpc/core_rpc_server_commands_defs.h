@@ -999,6 +999,10 @@ namespace cryptonote
       std::string next_seed_hash;
       std::string blocktemplate_blob;
       std::string blockhashing_blob;
+      /** `get_block_hash(b)` for the returned template (hex); quorum votes on arqnet use this id. */
+      std::string pulse_template_block_hash;
+      /** Count of `pulse_validator_signature_entry` rows in the template blob after optional `merge_arqnet_votes`. */
+      uint64_t merged_arqnet_vote_count;
       std::string status;
       bool untrusted;
 
@@ -1010,6 +1014,8 @@ namespace cryptonote
         KV_SERIALIZE(seed_height)
         KV_SERIALIZE(blocktemplate_blob)
         KV_SERIALIZE(blockhashing_blob)
+        KV_SERIALIZE(pulse_template_block_hash)
+        KV_SERIALIZE(merged_arqnet_vote_count)
         KV_SERIALIZE(seed_hash)
         KV_SERIALIZE(next_seed_hash)
         KV_SERIALIZE(status)
