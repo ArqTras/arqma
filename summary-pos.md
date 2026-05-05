@@ -259,6 +259,19 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | 2026-05-05 | *(working tree)* | CI + rehearsal + **`simplewallet`** refresh | **`.github/workflows/pulse-tests.yml`**; **`pulse_http_rehearsal.py`** extended **`--info`** keys; **`maybe_print_daemon_pos_info`** after **`refresh`**; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | Pulse HTTP E2E + **`submit_block`** errors | **`pulse_http_rehearsal.py`**: **`--watch-submit`**, **`--submit-if-ready`**, **`--submit-anyway`**; **`on_submitblock`** bvc hints; **`summary-pos.md`** technical full path. |
 | 2026-05-06 | `858007bd` | Release build + compiler hygiene (AppleClang) | **`blockchain.cpp`**: free helpers **`pulse_coinbase_matches_pulse_header`**, **`get_difficulty_blocks_count`**, **`get_current_diff_target`** take **`network_type`** from **`Blockchain`** (fixes undeclared **`m_nettype`** in file-scope helpers). **`arqnet.cpp`**: **`mutable std::mutex`** so **`distinct_block_count() const`** can lock. **`contrib/epee/include/rolling_median.h`**: member-wise move instead of **`memcpy`** (fixes **`-Wnontrivial-memcall`**). **`rpc_command_executor.cpp`**: service-node share percentages use **`long double`** for **`STAKING_SHARE_PARTS`** division, **`double`** only at API boundaries (avoids precision warning on near-**`UINT64_MAX`** divisor). **Docs (child commit on `pos`)**: former **`summary-pow.md`** content folded into **`summary-pos.md`**; that file removed; changelog/index rows refreshed for **`858007bd`**. |
+| 2026-05-06 | *(ci tip on `pos`)* | **`pulse-tests`**: Ubuntu **`pkg-config`** for **`libunbound`** | CI run **`25406313340`** failed at CMake: **`Package 'hogweed', required by 'libunbound', not found`**. Fix: **`libnettle-dev`** + **`libhogweed-dev`** installed before **`libunbound-dev`** in **`.github/workflows/pulse-tests.yml`**. Snapshot: **`gh run list --repo ArqTras/arqma`** (last 40) — **`ci/gh-actions/depends`** success on same push; **`dockerhub-latest`** / other workflows had no recent runs in that window. |
+
+---
+
+## GitHub Actions status (manual snapshot)
+
+Queried **2026-05-06** with **`gh run list --repo ArqTras/arqma --limit 40`**.
+
+| Workflow | Run (UTC) | Conclusion | Note |
+|----------|-----------|--------------|------|
+| **`ci/pulse-unit-tests`** | [25406313340](https://github.com/ArqTras/arqma/actions/runs/25406313340) `2026-05-05T22:42:15Z` | **failure** | Job **`pulse-gtest`**: **`cmake`** stopped at **`pkg_check_modules(libunbound)`** — missing **`hogweed`** for **`pkg-config`**. |
+| **`ci/gh-actions/depends`** | [25406313329](https://github.com/ArqTras/arqma/actions/runs/25406313329) `2026-05-05T22:42:15Z` | success | Same push as failed Pulse job. |
+| **`ci/gh-actions/depends`** | [25403575224](https://github.com/ArqTras/arqma/actions/runs/25403575224) `2026-05-05T21:34:18Z` | success | Earlier **`pos`** push. |
 
 ---
 
