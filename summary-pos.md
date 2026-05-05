@@ -259,7 +259,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | 2026-05-05 | *(working tree)* | CI + rehearsal + **`simplewallet`** refresh | **`.github/workflows/pulse-tests.yml`**; **`pulse_http_rehearsal.py`** extended **`--info`** keys; **`maybe_print_daemon_pos_info`** after **`refresh`**; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | Pulse HTTP E2E + **`submit_block`** errors | **`pulse_http_rehearsal.py`**: **`--watch-submit`**, **`--submit-if-ready`**, **`--submit-anyway`**; **`on_submitblock`** bvc hints; **`summary-pos.md`** technical full path. |
 | 2026-05-06 | `858007bd` | Release build + compiler hygiene (AppleClang) | **`blockchain.cpp`**: free helpers **`pulse_coinbase_matches_pulse_header`**, **`get_difficulty_blocks_count`**, **`get_current_diff_target`** take **`network_type`** from **`Blockchain`** (fixes undeclared **`m_nettype`** in file-scope helpers). **`arqnet.cpp`**: **`mutable std::mutex`** so **`distinct_block_count() const`** can lock. **`contrib/epee/include/rolling_median.h`**: member-wise move instead of **`memcpy`** (fixes **`-Wnontrivial-memcall`**). **`rpc_command_executor.cpp`**: service-node share percentages use **`long double`** for **`STAKING_SHARE_PARTS`** division, **`double`** only at API boundaries (avoids precision warning on near-**`UINT64_MAX`** divisor). **Docs (child commit on `pos`)**: former **`summary-pow.md`** content folded into **`summary-pos.md`**; that file removed; changelog/index rows refreshed for **`858007bd`**. |
-| 2026-05-06 | *(ci tip on `pos`)* | **`pulse-tests`**: Ubuntu **`pkg-config`** for **`libunbound`** | CI run **`25406313340`** failed at CMake: **`Package 'hogweed', required by 'libunbound', not found`**. Fix: **`libnettle-dev`** + **`libhogweed-dev`** installed before **`libunbound-dev`** in **`.github/workflows/pulse-tests.yml`**. Snapshot: **`gh run list --repo ArqTras/arqma`** (last 40) — **`ci/gh-actions/depends`** success on same push; **`dockerhub-latest`** / other workflows had no recent runs in that window. |
+| 2026-05-06 | *(ci tip on `pos`)* | **`pulse-tests`**: apt **`nettle-dev`** + slim **`unit_tests`** | **`25406313340`**: missing **`hogweed`** for **`libunbound`** **`pkg-config`** — install **`nettle-dev`** on Jammy (not transitional **`libnettle-dev`** / missing **`libhogweed-dev`**). **`25406983520`**: **`unit_tests`** compile failed on legacy **`ban.cpp`** / **`blockchain_db.cpp`** / **`address_from_url.cpp`** vs current core — CI sets **`ARQMA_CI_PULSE_GTEST=ON`** so **`unit_tests`** is **`pulse_gtest_main.cpp`** + **`pulse_round.cpp`** only (**`tests/unit_tests/CMakeLists.txt`**). |
 
 ---
 
@@ -269,7 +269,8 @@ Queried **2026-05-06** with **`gh run list --repo ArqTras/arqma --limit 40`**.
 
 | Workflow | Run (UTC) | Conclusion | Note |
 |----------|-----------|--------------|------|
-| **`ci/pulse-unit-tests`** | [25406313340](https://github.com/ArqTras/arqma/actions/runs/25406313340) `2026-05-05T22:42:15Z` | **failure** | Job **`pulse-gtest`**: **`cmake`** stopped at **`pkg_check_modules(libunbound)`** — missing **`hogweed`** for **`pkg-config`**. |
+| **`ci/pulse-unit-tests`** | [25406313340](https://github.com/ArqTras/arqma/actions/runs/25406313340) `2026-05-05T22:42:15Z` | **failure** | **`pkg_check_modules(libunbound)`** — missing **`hogweed`**. |
+| **`ci/pulse-unit-tests`** | [25406983520](https://github.com/ArqTras/arqma/actions/runs/25406983520) `2026-05-05T23:00:57Z` | **failure** | **`unit_tests`** compile: legacy tests vs current **`cryptonote_protocol`** / **`BlockchainDB`** API. |
 | **`ci/gh-actions/depends`** | [25406313329](https://github.com/ArqTras/arqma/actions/runs/25406313329) `2026-05-05T22:42:15Z` | success | Same push as failed Pulse job. |
 | **`ci/gh-actions/depends`** | [25403575224](https://github.com/ArqTras/arqma/actions/runs/25403575224) `2026-05-05T21:34:18Z` | success | Earlier **`pos`** push. |
 
@@ -285,8 +286,8 @@ Queried **2026-05-06** with **`gh run list --repo ArqTras/arqma --limit 40`**.
 - `contrib/pulse-rehearsal/pulse_http_rehearsal.py` — HTTP JSON-RPC Pulse rehearsal (**`get_info`**, **`get_pulse_block_template`**, **`get_pulse_arqnet_votes`**).
 - `contrib/pulse-rehearsal/pulse_submit_block.py` — JSON-RPC **`submit_block`** for a hex block blob.
 - `contrib/pulse-rehearsal/pulse_tools_common.py` — shared **`json_rpc`** for rehearsal scripts.
-- `contrib/pulse-rehearsal/build_unit_tests.ps1` / `build_unit_tests.sh` — configure **`BUILD_TESTS=ON`** and build **`unit_tests`**.
-- `.github/workflows/pulse-tests.yml` — GitHub Actions: build **`unit_tests`**, run **`--gtest_filter=Pulse*`** (skips doc-only paths).
+- `contrib/pulse-rehearsal/build_unit_tests.ps1` / `build_unit_tests.sh` — configure **`BUILD_TESTS=ON`**, **`ARQMA_CI_PULSE_GTEST=ON`**, build **`unit_tests`** (Pulse-only sources unless you override).
+- `.github/workflows/pulse-tests.yml` — GitHub Actions: **`ARQMA_CI_PULSE_GTEST=ON`**, build **`unit_tests`**, run **`--gtest_filter=Pulse*`** (skips doc-only paths).
 - `src/cryptonote_core/cryptonote_core.cpp` / `.h` — **`get_pulse_block_template`**, **`copy_pulse_arqnet_vote_accumulator`**, **`clear_pulse_arqnet_vote_accumulator`**, **`get_pulse_arqnet_vote_buffer_distinct_block_count`**.
 - `src/cryptonote_core/service_node_list.cpp` / `.h` — **`try_get_block_winner_for_service_node`**, **`validate_miner_tx`** (before **`network_version_20_pos`**: scheduled winner; PoS era: checkpointing-quorum producer at **`height-1`** + payout check).
 - `src/crypto/hash.h` — **`hash4`**, **`null_hash4`**.

@@ -27,6 +27,13 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# CI pulse workflow: full legacy unit_tests sources no longer compile against current core;
+# this slim binary only links Pulse* tests (see .github/workflows/pulse-tests.yml).
+option(ARQMA_CI_PULSE_GTEST "Build unit_tests with Pulse-only sources (for CI)." OFF)
+
+if (ARQMA_CI_PULSE_GTEST)
+  set(unit_tests_sources pulse_gtest_main.cpp pulse_round.cpp)
+else ()
 set(unit_tests_sources
   apply_permutation.cpp
   address_from_url.cpp
@@ -72,6 +79,7 @@ set(unit_tests_sources
   pulse_round.cpp
   vercmp.cpp
   ringdb.cpp)
+endif ()
 
 set(unit_tests_headers
   unit_tests_utils.h)
@@ -106,9 +114,10 @@ if (NOT MSVC)
       COMPILE_FLAGS " -Wno-undef -Wno-sign-compare")
 endif ()
 
-SET_PROPERTY(SOURCE main.cpp PROPERTY COMPILE_FLAGS -DDEFAULT_DATA_DIR="\\"${CMAKE_SOURCE_DIR}/tests/data\\"")
-
-SET_PROPERTY(SOURCE memwipe.cpp PROPERTY COMPILE_FLAGS -Ofast)
+if (NOT ARQMA_CI_PULSE_GTEST)
+  SET_PROPERTY(SOURCE main.cpp PROPERTY COMPILE_FLAGS -DDEFAULT_DATA_DIR="\\"${CMAKE_SOURCE_DIR}/tests/data\\"")
+  SET_PROPERTY(SOURCE memwipe.cpp PROPERTY COMPILE_FLAGS -Ofast)
+endif ()
 
 add_test(
   NAME    unit_tests

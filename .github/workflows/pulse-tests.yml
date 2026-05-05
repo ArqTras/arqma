@@ -44,6 +44,7 @@ jobs:
           cmake -S . -B build-ci \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_TESTS=ON \
+            -DARQMA_CI_PULSE_GTEST=ON \
             -DBUILD_DOCUMENTATION=OFF
           cmake --build build-ci --target unit_tests -j"$(nproc)"
 

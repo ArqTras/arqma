@@ -14,7 +14,7 @@ $Out = Join-Path $RepoRoot $BuildDir
 Write-Host "Source: $RepoRoot"
 Write-Host "Build:  $Out"
 
-& cmake -S $RepoRoot -B $Out -D BUILD_TESTS=ON
+& cmake -S $RepoRoot -B $Out -D BUILD_TESTS=ON -D ARQMA_CI_PULSE_GTEST=ON
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 & cmake --build $Out --target unit_tests --parallel
