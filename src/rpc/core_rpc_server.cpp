@@ -221,6 +221,8 @@ namespace cryptonote
     res.pos_quorum_validators_min = 0;
     res.pos_signature_threshold = 0;
     res.pos_expects_sn_storage_server = false;
+    res.pos_pulse_blocks_since_fork = 0;
+    res.pos_pulse_next_round_wire_hint = 0;
     bool r;
     if (use_bootstrap_daemon_if_necessary<COMMAND_RPC_GET_INFO>(invoke_http_mode::JON, "/getinfo", req, res, r))
     {
@@ -297,6 +299,8 @@ namespace cryptonote
       res.pos_quorum_validators_min = 0;
       res.pos_signature_threshold = 0;
       res.pos_expects_sn_storage_server = false;
+      res.pos_pulse_blocks_since_fork = 0;
+      res.pos_pulse_next_round_wire_hint = 0;
     }
     else
     {
@@ -306,6 +310,11 @@ namespace cryptonote
       res.pos_quorum_validators_min = arqma::pulse_fork::PULSE_QUORUM_VALIDATORS_MIN;
       res.pos_signature_threshold = arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD;
       res.pos_expects_sn_storage_server = arqma::pulse_fork::POS_EXPECTS_STORAGE_SERVER_FOR_SERVICE_NODES;
+
+      uint64_t const fh = arqma::pulse_fork::planned_fork_height_for_net(net_type);
+      if (arqma::pulse_fork::FORK_ACTIVE && fh > 0 && res.height > fh)
+        res.pos_pulse_blocks_since_fork = res.height - fh;
+      res.pos_pulse_next_round_wire_hint = res.height % 256;
     }
 
     res.status = CORE_RPC_STATUS_OK;

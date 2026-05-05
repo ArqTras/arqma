@@ -578,6 +578,10 @@ namespace rpc
       res.info.pos_quorum_validators_min = arqma::pulse_fork::PULSE_QUORUM_VALIDATORS_MIN;
       res.info.pos_signature_threshold = arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD;
       res.info.pos_expects_sn_storage_server = arqma::pulse_fork::POS_EXPECTS_STORAGE_SERVER_FOR_SERVICE_NODES;
+
+      uint64_t const fh = arqma::pulse_fork::planned_fork_height_for_net(net_type);
+      res.info.pos_pulse_blocks_since_fork = (arqma::pulse_fork::FORK_ACTIVE && fh > 0 && res.info.height > fh) ? (res.info.height - fh) : 0;
+      res.info.pos_pulse_next_round_wire_hint = res.info.height % 256;
     }
 
     res.status = Message::STATUS_OK;

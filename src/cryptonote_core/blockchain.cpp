@@ -887,7 +887,7 @@ size_t get_difficulty_blocks_count(uint8_t version)
   LOG_PRINT_L3("Blockchain::" << __func__);
 
   if (version >= cryptonote::network_version_20_pos && arqma::pulse_fork::FORK_ACTIVE)
-    return DIFFICULTY_BLOCKS_COUNT_V16; // Replace with Pulse-specific window when PoS difficulty is implemented.
+    return DIFFICULTY_BLOCKS_COUNT_V16; /* next_diff Pulse uses DIFFICULTY_TARGET_V20_POS inside same LWMA window. */
 
   if(version < 7)
     return DIFFICULTY_BLOCKS_COUNT;
@@ -990,6 +990,8 @@ difficulty_type Blockchain::get_difficulty_for_next_block()
   }
 
   if(version >= 16) {
+    if (arqma::pulse_fork::FORK_ACTIVE && version >= cryptonote::network_version_20_pos)
+      return next_difficulty_pulse_pos(timestamps, difficulties);
     return next_difficulty_v16(timestamps, difficulties);
   } else if(version >= 10) {
     return next_difficulty_lwma_4(timestamps, difficulties);
@@ -1228,6 +1230,8 @@ difficulty_type Blockchain::get_next_difficulty_for_alternative_chain(const std:
 
   // FIXME: This will fail if fork activation heights are subject to voting
   if(version >= 16) {
+    if (arqma::pulse_fork::FORK_ACTIVE && version >= cryptonote::network_version_20_pos)
+      return next_difficulty_pulse_pos(timestamps, cumulative_difficulties);
     return next_difficulty_v16(timestamps, cumulative_difficulties);
   } else if(version >= 10) {
     return next_difficulty_lwma_4(timestamps, cumulative_difficulties);

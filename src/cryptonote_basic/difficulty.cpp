@@ -374,11 +374,9 @@ namespace cryptonote {
     }
     return  next_D;
   }
-//v16 diffculty algo
-  difficulty_type next_difficulty_v16(std::vector<uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties) {
-
-    // When PoS replaces PoW, Pulse uses a separate difficulty model; this LWMA path stays for pre-fork and as a placeholder.
-    uint64_t  T = DIFFICULTY_TARGET_V16;
+//v16 difficulty LWMA core (T = target spacing in seconds; N follows DIFFICULTY_WINDOW_V16).
+  static difficulty_type next_difficulty_v16_for_target(vector<uint64_t> timestamps, vector<difficulty_type> cumulative_difficulties, uint64_t T_target) {
+    uint64_t  T = T_target;
     uint64_t  N = DIFFICULTY_WINDOW_V16; // N=45, 60, and 90 for T=600, 120, 60.
     uint64_t  L(0), ST(0), next_D, prev_D, avg_D, i;
 
@@ -441,5 +439,13 @@ namespace cryptonote {
       next_D = ((next_D+500)/1000)*1000 + std::min(static_cast<uint64_t>(999), (TS[N]-TS[N-10])/10);
     }
     return next_D;
+  }
+
+  difficulty_type next_difficulty_v16(std::vector<uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties) {
+    return next_difficulty_v16_for_target(std::move(timestamps), std::move(cumulative_difficulties), DIFFICULTY_TARGET_V16);
+  }
+
+  difficulty_type next_difficulty_pulse_pos(std::vector<uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties) {
+    return next_difficulty_v16_for_target(std::move(timestamps), std::move(cumulative_difficulties), DIFFICULTY_TARGET_V20_POS);
   }
 }

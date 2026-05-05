@@ -1427,6 +1427,8 @@ void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const crypton
   INSERT_INTO_JSON_OBJECT(dest, pos_quorum_validators_min, info.pos_quorum_validators_min);
   INSERT_INTO_JSON_OBJECT(dest, pos_signature_threshold, info.pos_signature_threshold);
   INSERT_INTO_JSON_OBJECT(dest, pos_expects_sn_storage_server, info.pos_expects_sn_storage_server);
+  INSERT_INTO_JSON_OBJECT(dest, pos_pulse_blocks_since_fork, info.pos_pulse_blocks_since_fork);
+  INSERT_INTO_JSON_OBJECT(dest, pos_pulse_next_round_wire_hint, info.pos_pulse_next_round_wire_hint);
 
   dest.EndObject();
 }
@@ -1445,6 +1447,8 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::rpc::DaemonInfo& inf
   info.pos_quorum_validators_min = 0;
   info.pos_signature_threshold = 0;
   info.pos_expects_sn_storage_server = false;
+  info.pos_pulse_blocks_since_fork = 0;
+  info.pos_pulse_next_round_wire_hint = 0;
 
   GET_FROM_JSON_OBJECT(val, info.height, height);
   GET_FROM_JSON_OBJECT(val, info.target_height, target_height);
@@ -1493,6 +1497,16 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::rpc::DaemonInfo& inf
     fromJsonValue(val["pos_expects_sn_storage_server"], info.pos_expects_sn_storage_server);
   else
     info.pos_expects_sn_storage_server = false;
+
+  if (val.HasMember("pos_pulse_blocks_since_fork"))
+    fromJsonValue(val["pos_pulse_blocks_since_fork"], info.pos_pulse_blocks_since_fork);
+  else
+    info.pos_pulse_blocks_since_fork = 0;
+
+  if (val.HasMember("pos_pulse_next_round_wire_hint"))
+    fromJsonValue(val["pos_pulse_next_round_wire_hint"], info.pos_pulse_next_round_wire_hint);
+  else
+    info.pos_pulse_next_round_wire_hint = 0;
 }
 
 void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const cryptonote::rpc::output_distribution& dist)

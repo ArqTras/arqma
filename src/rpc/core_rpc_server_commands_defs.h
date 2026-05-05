@@ -712,6 +712,10 @@ namespace cryptonote
       uint64_t pos_signature_threshold;
       /** Planned Pulse/PoS: service validators still need paired arqma-storage-server (RFC storage_server_ping). */
       bool pos_expects_sn_storage_server;
+      /** When FORK_ACTIVE and height beyond pos_planned_fork_height: elapsed canonical blocks past that rehearsal height (0 otherwise). */
+      uint64_t pos_pulse_blocks_since_fork;
+      /** Tooling hint: suggested pulse.round (height mod 256) for producer UX only; daemon does not enforce. */
+      uint64_t pos_pulse_next_round_wire_hint;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(status)
@@ -759,6 +763,8 @@ namespace cryptonote
         KV_SERIALIZE(pos_quorum_validators_min)
         KV_SERIALIZE(pos_signature_threshold)
         KV_SERIALIZE(pos_expects_sn_storage_server)
+        KV_SERIALIZE(pos_pulse_blocks_since_fork)
+        KV_SERIALIZE(pos_pulse_next_round_wire_hint)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<response_t> response;

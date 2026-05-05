@@ -59,4 +59,6 @@ namespace cryptonote
     difficulty_type next_difficulty_lwma_3(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties);
     difficulty_type next_difficulty_lwma_4(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties);
     difficulty_type next_difficulty_v16(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties);
+    /** LWMA v16 derivative using DIFFICULTY_TARGET_V20_POS — for cumulative difficulty when Pulse skips PoW. */
+    difficulty_type next_difficulty_pulse_pos(std::vector<std::uint64_t> timestamps, std::vector<difficulty_type> cumulative_difficulties);
 }
