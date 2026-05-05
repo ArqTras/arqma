@@ -359,10 +359,10 @@ namespace cryptonote
   };
 
   /************************************************************************/
-  /* Pulse/PoS (incremental Oxen-aligned wire format, hf16_pulse slice)   */
+  /* Pulse/PoS (incremental Arqma wire format — PoS consensus slice).   */
   /************************************************************************/
 
-  /** Serialized as 16 raw bytes like Oxen's pulse_random_value. */
+  /** Serialized as 16 raw bytes (canonical Arqma pulse_random_value). */
   struct pulse_random_value
   {
     unsigned char data[16]{};
@@ -399,7 +399,7 @@ namespace cryptonote
     END_SERIALIZE()
   };
 
-  /** One Pulse quorum validator vote on the block (Oxen quorum_signature-compatible on wire). */
+  /** One Pulse quorum validator vote on the block (quorum_signature-compatible on wire for Arqma Pulse). */
   struct pulse_validator_signature_entry
   {
     uint16_t voter_index{0};
@@ -423,9 +423,9 @@ namespace cryptonote
     crypto::hash prev_id;
     uint32_t nonce;
     pulse_header pulse{};
-    /** Oxen-aligned: total Pulse/SN-side reward (+fees semantics TBD); varint after pulse; enters block hash preimage. */
+    /** Total Pulse/SN-side reward (+fees semantics TBD); varint after pulse; enters block hash preimage. */
     uint64_t reward = 0;
-    /** Oxen-aligned: last 4 bytes of declared SN winner pubkey (sanity tie-in; not sole authority bit). */
+    /** Last 4 bytes of declared SN winner pubkey (sanity tie-in; not sole authority bit). */
     crypto::hash4 sn_winner_tail{};
 
     /** True when this block carries non-empty Pulse header fields (implies PoS era once HF is enabled). */
@@ -470,7 +470,7 @@ namespace cryptonote
     std::vector<crypto::hash> tx_hashes;
     std::vector<pulse_validator_signature_entry> pulse_validator_signatures;
 
-    /** Pulse metadata present (Oxen-compatible: pulse header blob and/or validator signatures after tx_hashes). */
+    /** Pulse metadata present (pulse header blob and/or validator signatures after tx_hashes). */
     bool has_pulse() const noexcept
     {
       return major_version >= network_version_20_pos

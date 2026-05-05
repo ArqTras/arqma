@@ -58,7 +58,7 @@ namespace crypto {
     char data[8];
   };
 
-  /** Last four bytes of a service-node public key tail (Oxen Pulse batching / HF20 header). */
+  /** Last four bytes of a service-node public key tail (Arqma Pulse / PoS block header). */
   struct hash4
   {
     char data[4]{};
