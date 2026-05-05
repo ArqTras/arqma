@@ -29,6 +29,7 @@
 
 set(cryptonote_core_sources
   blockchain.cpp
+  pulse.cpp
   cryptonote_core.cpp
   service_node_rules.cpp
   service_node_list.cpp

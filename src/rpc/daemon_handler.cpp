@@ -31,6 +31,8 @@
 
 #include <thread>
 
+#include <chrono>
+
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
@@ -39,6 +41,7 @@
 // but including here for clarity
 #include "cryptonote_core/cryptonote_core.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
+#include "cryptonote_core/pulse.h"
 #include "ringct/rctSigs.h"
 #include "version.h"
 #include "common/arqma_pulse_fork.h"
@@ -582,9 +585,21 @@ namespace rpc
       uint64_t const fh = arqma::pulse_fork::planned_fork_height_for_net(net_type);
       res.info.pos_pulse_blocks_since_fork = (arqma::pulse_fork::FORK_ACTIVE && fh > 0 && res.info.height > fh) ? (res.info.height - fh) : 0;
       res.info.pos_pulse_next_round_wire_hint = res.info.height % 256;
+      {
+        uint64_t const next_h = chain.get_current_blockchain_height();
+        uint64_t prev_ts = 0;
+        if (next_h > 0)
+          prev_ts = chain.get_db().get_block_timestamp(next_h - 1);
+        if (auto timings = cryptonote::pulse::get_round_timings(chain, next_h, prev_ts))
+        {
+          uint8_t rnd = 0;
+          if (cryptonote::pulse::convert_time_to_round(net_type, std::chrono::system_clock::now(), timings->r0_timestamp, &rnd))
+            res.info.pos_pulse_next_round_wire_hint = rnd;
+        }
+      }
       res.info.pos_pulse_cum_diff_uses_60s_lwma =
           arqma::pulse_fork::FORK_ACTIVE
-          && chain.get_current_hard_fork_version() >= cryptonote::network_version_20_pos;
+          && chain.get_ideal_hard_fork_version(chain.get_current_blockchain_height()) >= cryptonote::network_version_20_pos;
     }
 
     res.status = Message::STATUS_OK;

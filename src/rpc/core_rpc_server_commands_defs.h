@@ -959,6 +959,57 @@ namespace cryptonote
     typedef epee::misc_utils::struct_init<response_t> response;
   };
 
+  /** PoS/Pulse block template (main chain tip). Uses `core::get_pulse_block_template` with `service_node_list::get_block_winner()`. */
+  struct COMMAND_RPC_GET_PULSE_BLOCK_TEMPLATE
+  {
+    struct request_t
+    {
+      /** Pulse round index 0–255 (must match `convert_time_to_round` for the block). */
+      uint64_t pulse_round;
+      /** Validator participation bitset for the round (16-bit on wire). */
+      uint64_t validator_bitset;
+      /** Optional hex-encoded service-node **service** pubkey; if non-empty, templates coinbase for this active SN instead of `get_block_winner()`. */
+      std::string producer_pubkey;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(pulse_round)
+        KV_SERIALIZE(validator_bitset)
+        KV_SERIALIZE(producer_pubkey)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+
+    struct response_t
+    {
+      uint64_t difficulty;
+      uint64_t height;
+      uint64_t expected_reward;
+      std::string prev_hash;
+      uint64_t seed_height;
+      std::string seed_hash;
+      std::string next_seed_hash;
+      std::string blocktemplate_blob;
+      std::string blockhashing_blob;
+      std::string status;
+      bool untrusted;
+
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(difficulty)
+        KV_SERIALIZE(height)
+        KV_SERIALIZE(expected_reward)
+        KV_SERIALIZE(prev_hash)
+        KV_SERIALIZE(seed_height)
+        KV_SERIALIZE(blocktemplate_blob)
+        KV_SERIALIZE(blockhashing_blob)
+        KV_SERIALIZE(seed_hash)
+        KV_SERIALIZE(next_seed_hash)
+        KV_SERIALIZE(status)
+        KV_SERIALIZE(untrusted)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<response_t> response;
+  };
+
   struct COMMAND_RPC_SUBMITBLOCK
   {
     typedef std::vector<std::string> request;

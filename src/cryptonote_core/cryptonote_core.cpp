@@ -241,6 +241,12 @@ namespace cryptonote
   void *(*arqnet_new)(core &, const std::string &bind);
   void (*arqnet_delete)(void *&self);
   void (*arqnet_relay_obligation_votes)(void *self, const std::vector<service_nodes::quorum_vote_t> &);
+  bool (*arqnet_pulse_vote_buffer_copy)(
+      void *self,
+      crypto::hash const &block_hash,
+      uint64_t *block_height_out,
+      std::vector<pulse_validator_signature_entry> *out_entries) = nullptr;
+  void (*arqnet_pulse_vote_buffer_clear)(void *self, crypto::hash const &block_hash) = nullptr;
   static bool init_core_callback_stubs()
   {
     arqnet_new = [](core &, const std::string &) -> void * { need_core_init(); };
@@ -1501,6 +1507,35 @@ namespace cryptonote
   bool core::get_block_template(block& b, const crypto::hash *prev_block, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const std::string& ex_nonce, uint64_t &seed_height, crypto::hash &seed_hash)
   {
     return m_blockchain_storage.create_block_template(b, prev_block, adr, diffic, height, expected_reward, ex_nonce, seed_height, seed_hash);
+  }
+  //-----------------------------------------------------------------------------------------------
+  bool core::get_pulse_block_template(
+      block &b,
+      service_nodes::block_winner const &pulse_producer,
+      uint8_t pulse_round,
+      uint16_t validator_bitset,
+      uint64_t &height,
+      uint64_t &expected_reward,
+      uint64_t &seed_height,
+      crypto::hash &seed_hash)
+  {
+    return m_blockchain_storage.create_next_pulse_block_template(
+        b, pulse_producer, pulse_round, validator_bitset, height, expected_reward, seed_height, seed_hash);
+  }
+  //-----------------------------------------------------------------------------------------------
+  bool core::copy_pulse_arqnet_vote_accumulator(
+      crypto::hash const &block_hash, uint64_t &block_height_out, std::vector<pulse_validator_signature_entry> &out_entries) const
+  {
+    if (!m_arqnet_obj || !arqnet_pulse_vote_buffer_copy)
+      return false;
+    return arqnet_pulse_vote_buffer_copy(m_arqnet_obj, block_hash, &block_height_out, &out_entries);
+  }
+  //-----------------------------------------------------------------------------------------------
+  void core::clear_pulse_arqnet_vote_accumulator(crypto::hash const &block_hash)
+  {
+    if (!m_arqnet_obj || !arqnet_pulse_vote_buffer_clear)
+      return;
+    arqnet_pulse_vote_buffer_clear(m_arqnet_obj, block_hash);
   }
   //-----------------------------------------------------------------------------------------------
   bool core::find_blockchain_supplement(const std::list<crypto::hash>& qblock_ids, NOTIFY_RESPONSE_CHAIN_ENTRY::request& resp) const

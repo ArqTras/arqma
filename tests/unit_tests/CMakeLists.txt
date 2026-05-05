@@ -69,6 +69,7 @@ set(unit_tests_sources
   varint.cpp
   ringct.cpp
   output_selection.cpp
+  pulse_round.cpp
   vercmp.cpp
   ringdb.cpp)
 

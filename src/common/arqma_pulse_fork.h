@@ -35,6 +35,10 @@ inline constexpr uint64_t STAGENET_LAST_HF_HEIGHT = 220ULL;
 inline constexpr uint64_t STAGENET_FORK_HEIGHT_PLANNED = STAGENET_LAST_HF_HEIGHT + 100ULL;
 
 inline constexpr unsigned PULSE_TARGET_BLOCK_TIME_SEC = 60;
+/** Oxen-style intra-block round slot size; used with convert_time_to_round and miner_fallback (255 rounds). */
+inline constexpr unsigned PULSE_ROUND_TIMEOUT_SEC = 10;
+/** Oxen-style clamp: r0 may shift within [prev+T−adj, prev+T+adj] around ideal schedule. */
+inline constexpr unsigned PULSE_MAX_START_ADJUSTMENT_SEC = 5;
 inline constexpr std::size_t PULSE_QUORUM_VALIDATORS_MIN = 10;
 inline constexpr std::size_t PULSE_SIGNATURE_THRESHOLD = 7;
 
@@ -64,12 +68,13 @@ inline constexpr char NOTICE_LOG[] =
  Next steps (from roadmap; incremental port in progress):
  - Wire format: pulse_header + reward + sn_winner_tail (header varints) + pulse_validator_signatures on block when major_version >= network_version_20_pos (see cryptonote_basic.h, crypto::hash4); JSON via json_object (block dump / RPC tooling).
  - Pulse round scheduling, producer selection, and signer tooling (daemon validates quorum signatures when FORK_ACTIVE).
- - Extend arqnet or add a suitable message-queue transport for Pulse round traffic.
- - Post-fork coinbase reshaping remains TBD; when FORK_ACTIVE + HF >= v20, next cumulative difficulty uses next_difficulty_pulse_pos (60s LWMA) instead of DIFFICULTY_TARGET_V16.
- - PoW skip when FORK_ACTIVE + block major_version >= network_version_20_pos; verify_pulse_fork_block_rules enforces quorum signatures against checkpointing validators.
+ - Extend arqnet Pulse (**`pulse_proposal`** / **`pulse_vote`** relay and round state**) beyond point-to-point validate-only paths.
+ - When FORK_ACTIVE + HF >= v20, cumulative difficulty uses next_difficulty_pulse_pos (60s LWMA) instead of DIFFICULTY_TARGET_V16. Governance / dev / net coinbase outputs (mainnet GOV_/DEV_/NET_WALLET_ADDRESS) stay on the HF16+ path in construct_miner_tx — do not strip for Pulse without a coordinated consensus + validation change.
+ - PoW skip when FORK_ACTIVE + block major_version >= network_version_20_pos; quorum signatures are enforced by verify_pulse_fork_block_rules from service_node_list::block_added / alt_block_added (oxen-core style: after DB accept, in the SNL hook), not alongside PoW skipping.
  - Stagenet/mocknet rehearsal; then uncomment HF rows in hardfork.cpp with real timestamps.
  - Finalize Arqma quorum crypto + Pulse producer scheduling; tighten storage/arqnet liveness checks for validators if spec requires.
  - Optional: checkpoint relay expansion, wallet/RPC alignment, HF_VERSION_PULSE_POS in cryptonote_config.h
+ - Coinbase: Pulse header `reward` is the full miner_tx total (miner + SN + gov + dev + net); last three vouts remain gov/dev/net for hf >= 16.
 */
 
 inline constexpr uint64_t planned_fork_height_for_net(cryptonote::network_type net)

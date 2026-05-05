@@ -265,6 +265,7 @@ namespace config
     } }; // Bender's nightmare
   std::string const GENESIS_TX = "011201ff00011e026bc5c7db8a664f652d78adb587ac4d759c6757258b64ef9cba3c0354e64fb2e42101abca6a39c561d0897be183eb0143990eba201aa7d2c652ab0555d28bb4b70728";
   uint32_t const GENESIS_NONCE = 19993;
+  /** Coinbase governance / dev / net destinations (HF16+). Same split and vout order apply through PoS/Pulse (network_version_20_pos): `construct_miner_tx` appends these after miner + SN payouts; do not remove without updating `validate_miner_transaction` and Pulse coinbase checks. */
   std::string const GOV_WALLET_ADDRESS = "ar2dJ21SCuNiJndoQBf5ojhbdA7K8B3sREpnWSg4pHedXcwMbvUkYREAapZJMn3cVRj6VqDqDkj9bFoXLJViCmFs2qWkdufHt";
   std::string const DEV_WALLET_ADDRESS = "ar2qmaDevL5BaCgfNFz872NZmR6bDq1fKc1Qz2AiLU633yNs3vXi1JWh5q7vXq4dmY6E6PwRohqEdWtQPFEdZXjB38DtYQCXt";
   std::string const NET_WALLET_ADDRESS = "ar3k85DeZBxBccvHouqaHnfvmZ4CVWLG5BC8JQ5F1bB1FhjGBz4qiV85jaNwgqXu7eQ9cB6dCvqVheZaFu97SNoe1FDsPih3K";

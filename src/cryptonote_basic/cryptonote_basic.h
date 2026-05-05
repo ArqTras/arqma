@@ -384,6 +384,7 @@ namespace cryptonote
   {
     pulse_random_value random_value{};
     uint8_t round{0};
+    /** Participation mask for validator indices 0..15; see Blockchain::verify_pulse_fork_block_rules. */
     uint16_t validator_bitset{0};
 
     bool empty() const noexcept

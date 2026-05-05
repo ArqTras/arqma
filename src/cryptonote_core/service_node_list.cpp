@@ -49,6 +49,7 @@ extern "C" {
 #include "common/util.h"
 #include "common/random.h"
 #include "common/lock.h"
+#include "common/arqma_pulse_fork.h"
 #include "blockchain.h"
 #include "service_node_quorum_cop.h"
 #include "net/local_ip.h"
@@ -1023,6 +1024,13 @@ namespace service_nodes
     if (block.major_version < cryptonote::network_version_16)
       return true;
 
+    if (arqma::pulse_fork::FORK_ACTIVE && block.major_version >= cryptonote::network_version_20_pos)
+    {
+      cryptonote::block_verification_context bvc{};
+      if (!m_blockchain.verify_pulse_fork_block_rules(block, bvc, "snlist_main"))
+        return false;
+    }
+
     std::lock_guard lock(m_sn_mutex);
     process_block(block, txs);
 
@@ -1387,6 +1395,25 @@ namespace service_nodes
     return expired_nodes;
   }
   //----------------------------------------------------------------------------
+  static block_winner block_winner_payouts_for_active_sn(crypto::public_key const &key, service_node_info const &info)
+  {
+    block_winner result{};
+    result.key = key;
+    result.payouts.reserve(info.contributors.size());
+    uint64_t const remaining_portions = STAKING_SHARE_PARTS - info.portions_for_operator;
+    for (const auto &contributor : info.contributors)
+    {
+      uint64_t hi, lo, resulthi, resultlo;
+      lo = mul128(contributor.amount, remaining_portions, &hi);
+      div128_64(hi, lo, info.staking_requirement, &resulthi, &resultlo);
+
+      if (contributor.address == info.operator_address)
+        resultlo += info.portions_for_operator;
+      result.payouts.push_back({contributor.address, resultlo});
+    }
+    return result;
+  }
+  //----------------------------------------------------------------------------
   block_winner service_node_list::state_t::get_block_winner() const
   {
     block_winner result = {};
@@ -1410,30 +1437,39 @@ namespace service_nodes
     }
 
     if (result.key == crypto::null_pkey)
-    {
-      result = service_nodes::null_block_winner;
-      return result;
-    }
+      return service_nodes::null_block_winner;
 
-    result.payouts.reserve(info->contributors.size());
-    const uint64_t remaining_portions = STAKING_SHARE_PARTS - info->portions_for_operator;
-    for (const auto& contributor : info->contributors)
-    {
-      uint64_t hi, lo, resulthi, resultlo;
-      lo = mul128(contributor.amount, remaining_portions, &hi);
-      div128_64(hi, lo, info->staking_requirement, &resulthi, &resultlo);
-
-      if(contributor.address == info->operator_address)
-        resultlo += info->portions_for_operator;
-      result.payouts.push_back({contributor.address, resultlo});
-    }
-    return result;
+    return block_winner_payouts_for_active_sn(result.key, *info);
+  }
+  //----------------------------------------------------------------------------
+  bool service_node_list::try_get_block_winner_for_service_node(crypto::public_key const &sn_service_pubkey, block_winner &out) const
+  {
+    std::lock_guard lock(m_sn_mutex);
+    auto it = m_state.service_nodes_infos.find(sn_service_pubkey);
+    if (it == m_state.service_nodes_infos.end())
+      return false;
+    service_node_info const &sninfo = *it->second;
+    if (!sninfo.is_active())
+      return false;
+    out = block_winner_payouts_for_active_sn(sn_service_pubkey, sninfo);
+    return true;
   }
 
   template<typename T>
   static constexpr bool within_one(T a, T b)
   {
     return (a > b ? a - b : b - a) <= T{1};
+  }
+
+  static bool pubkey_in_checkpointing_quorum(quorum const &q, crypto::public_key const &pk)
+  {
+    for (crypto::public_key const &k : q.validators)
+      if (k == pk)
+        return true;
+    for (crypto::public_key const &k : q.workers)
+      if (k == pk)
+        return true;
+    return false;
   }
   //----------------------------------------------------------------------------
   bool service_node_list::validate_miner_tx(const crypto::hash& prev_id, const cryptonote::transaction& miner_tx, uint64_t height, uint8_t hard_fork_version, cryptonote::block_reward_parts const &reward_parts) const
@@ -1445,12 +1481,67 @@ namespace service_nodes
     uint64_t base_reward = reward_parts.original_base_reward;
     uint64_t total_service_node_reward = cryptonote::service_node_reward_formula(base_reward, hard_fork_version);
 
-    block_winner winner = m_state.get_block_winner();
-    crypto::public_key check_winner_pubkey = cryptonote::get_service_node_winner_from_tx_extra(miner_tx.extra);
-    if(winner.key != check_winner_pubkey)
+    crypto::public_key const check_winner_pubkey = cryptonote::get_service_node_winner_from_tx_extra(miner_tx.extra);
+
+    block_winner winner{};
+
+    bool const pulse_coinbase_schedule =
+        arqma::pulse_fork::FORK_ACTIVE && hard_fork_version >= cryptonote::network_version_20_pos && height >= 1;
+
+    if (!pulse_coinbase_schedule)
     {
-      MERROR("Service Node reward winner is incorrect! Expected: " << winner.key << ", block has: " << check_winner_pubkey);
-      return false;
+      winner = m_state.get_block_winner();
+      if (winner.key != check_winner_pubkey)
+      {
+        MERROR(
+            "Service Node reward winner is incorrect! Expected: "
+            << winner.key << ", block has: " << check_winner_pubkey);
+        return false;
+      }
+    }
+    else
+    {
+      auto info_it = m_state.service_nodes_infos.find(check_winner_pubkey);
+      if (info_it == m_state.service_nodes_infos.end())
+      {
+        MERROR("Pulse-era coinbase: service-node winner pubkey not registered");
+        return false;
+      }
+      if (!info_it->second->is_active())
+      {
+        MERROR("Pulse-era coinbase: service-node producer is not active");
+        return false;
+      }
+
+      uint64_t const quorum_height = height - 1;
+      std::vector<std::shared_ptr<const quorum>> alt_quorums;
+      std::shared_ptr<const quorum> main_quorum =
+          get_quorum(quorum_type::checkpointing, quorum_height, true, &alt_quorums);
+
+      bool in_quorum = main_quorum && pubkey_in_checkpointing_quorum(*main_quorum, check_winner_pubkey);
+      if (!in_quorum)
+      {
+        for (std::shared_ptr<const quorum> const &candidate : alt_quorums)
+        {
+          if (candidate && pubkey_in_checkpointing_quorum(*candidate, check_winner_pubkey))
+          {
+            in_quorum = true;
+            break;
+          }
+        }
+      }
+
+      if (!in_quorum)
+      {
+        MERROR(
+            "Pulse-era coinbase: producer "
+            << check_winner_pubkey
+            << " is not listed on checkpointing quorum (validators/workers) for height "
+            << quorum_height);
+        return false;
+      }
+
+      winner = block_winner_payouts_for_active_sn(check_winner_pubkey, *info_it->second);
     }
 
     if ((miner_tx.vout.size() - 3) < winner.payouts.size())
@@ -1534,6 +1625,13 @@ namespace service_nodes
     {
       LOG_PRINT_L1("Unexpected state_t's hash: " << starting_state->block_hash << ", does not match the block prev hash: " << block.prev_id);
       return false;
+    }
+
+    if (arqma::pulse_fork::FORK_ACTIVE && block.major_version >= cryptonote::network_version_20_pos)
+    {
+      cryptonote::block_verification_context bvc{};
+      if (!m_blockchain.verify_pulse_fork_block_rules(block, bvc, "snlist_alt"))
+        return false;
     }
 
     state_t alt_state = *starting_state;

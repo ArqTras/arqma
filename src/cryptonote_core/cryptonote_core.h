@@ -76,6 +76,13 @@ namespace cryptonote
   extern void *(*arqnet_new)(core &core, const std::string &bind);
   extern void (*arqnet_delete)(void *&self);
   extern void (*arqnet_relay_obligation_votes)(void *self, const std::vector<service_nodes::quorum_vote_t> &votes);
+  /** Filled by arqnet after init; snapshots **`pulse_vote`** payloads validated on this daemon (sorted by **`voter_index`**). */
+  extern bool (*arqnet_pulse_vote_buffer_copy)(
+      void *self,
+      crypto::hash const &block_hash,
+      uint64_t *block_height_out,
+      std::vector<pulse_validator_signature_entry> *out_entries);
+  extern void (*arqnet_pulse_vote_buffer_clear)(void *self, crypto::hash const &block_hash);
   extern bool init_core_callback_complete;
 
   /************************************************************************/
@@ -229,6 +236,24 @@ namespace cryptonote
       */
      virtual bool get_block_template(block& b, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const std::string& ex_nonce, uint64_t &seed_height, crypto::hash &seed_hash);
      virtual bool get_block_template(block& b, const crypto::hash *prev_block, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const std::string& ex_nonce, uint64_t &seed_height, crypto::hash &seed_hash);
+
+     /**
+      * @brief Build a main-chain Pulse/PoS block template (see `Blockchain::create_next_pulse_block_template`).
+      */
+     bool get_pulse_block_template(
+         block &b,
+         service_nodes::block_winner const &pulse_producer,
+         uint8_t pulse_round,
+         uint16_t validator_bitset,
+         uint64_t &height,
+         uint64_t &expected_reward,
+         uint64_t &seed_height,
+         crypto::hash &seed_hash);
+
+     /** Copy Pulse validator signatures learned via arqnet **`pulse_vote`** for \p block_hash (`out_entries` sorted). */
+     bool copy_pulse_arqnet_vote_accumulator(
+         crypto::hash const &block_hash, uint64_t &block_height_out, std::vector<pulse_validator_signature_entry> &out_entries) const;
+     void clear_pulse_arqnet_vote_accumulator(crypto::hash const &block_hash);
 
      /**
       * @brief called when a transaction is relayed
