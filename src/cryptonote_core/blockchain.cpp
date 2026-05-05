@@ -31,6 +31,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <unordered_set>
 #include <boost/asio/dispatch.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/range/adaptor/reversed.hpp>
@@ -55,7 +56,9 @@
 #include "common/boost_serialization_helper.h"
 #include "common/threadpool.h"
 #include "warnings.h"
+#include "crypto/crypto.h"
 #include "crypto/hash.h"
+#include "cryptonote_basic/cryptonote_format_utils.h"
 #include "cryptonote_core.h"
 #include "ringct/rctSigs.h"
 #include "common/perf_timer.h"
@@ -92,35 +95,6 @@ extern "C" void rx_slow_hash_free_state();
 DISABLE_VS_WARNINGS(4267)
 
 #define MERROR_VER(x) MCERROR("verify", x)
-
-namespace
-{
-  inline bool pulse_era_fork_active_block(cryptonote::block const& bl)
-  {
-    return arqma::pulse_fork::FORK_ACTIVE && bl.major_version >= cryptonote::network_version_20_pos;
-  }
-
-  bool enforce_pulse_placeholder_block_rules(cryptonote::block const& bl, cryptonote::block_verification_context& bvc, char const* context)
-  {
-    if (!pulse_era_fork_active_block(bl))
-      return true;
-    if (!bl.has_pulse())
-    {
-      MERROR_VER("Pulse-era block rejected (" << context << "): missing non-empty Pulse header/signature payload");
-      bvc.m_verification_failed = true;
-      return false;
-    }
-    if (bl.pulse_validator_signatures.size() < arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD)
-    {
-      MERROR_VER("Pulse-era block rejected (" << context << "): insufficient validator signatures (need "
-                                              << arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD << ", have "
-                                              << bl.pulse_validator_signatures.size() << ")");
-      bvc.m_verification_failed = true;
-      return false;
-    }
-    return true;
-  }
-} // namespace
 
 // used to overestimate the block reward when estimating a per kB to use
 #define BLOCK_REWARD_OVERESTIMATE (10 * 1000000000000)
@@ -1351,6 +1325,33 @@ bool Blockchain::validate_miner_transaction(const block& b, size_t cumulative_bl
   CHECK_AND_ASSERT_MES(money_in_use >= fee, false, "Base Reward calculation bug");
   base_reward = money_in_use - fee;
 
+  if (arqma::pulse_fork::FORK_ACTIVE && b.major_version >= cryptonote::network_version_20_pos)
+  {
+    if (b.reward != money_in_use)
+    {
+      MERROR_VER(
+          "Pulse-era block miner tx total (" << print_money(money_in_use) << ") does not match block header reward (" << print_money(b.reward)
+                                             << ")");
+      return false;
+    }
+
+    crypto::public_key winner = cryptonote::get_service_node_winner_from_tx_extra(b.miner_tx.extra);
+    if (!winner)
+    {
+      MERROR_VER("Pulse-era block rejected: miner tx_extra has no valid service-node winner");
+      return false;
+    }
+
+    crypto::hash4 expect_tail{};
+    static_assert(sizeof(winner.data) >= 4, "public_key tail");
+    std::memcpy(expect_tail.data, winner.data + (sizeof(winner.data) - 4), 4);
+    if (!(b.sn_winner_tail == expect_tail))
+    {
+      MERROR_VER("Pulse-era block rejected: sn_winner_tail does not match last 4 bytes of coinbase SN winner pubkey");
+      return false;
+    }
+  }
+
 /*
   base_reward = reward_parts.adjusted_base_reward;
   if(base_reward + fee < money_in_use)
@@ -1363,6 +1364,91 @@ bool Blockchain::validate_miner_transaction(const block& b, size_t cumulative_bl
   base_reward = money_in_use - fee;
 */
   return true;
+}
+//------------------------------------------------------------------
+bool Blockchain::verify_pulse_fork_block_rules(const cryptonote::block &bl, cryptonote::block_verification_context &bvc, const char *context) const
+{
+  if (!arqma::pulse_fork::FORK_ACTIVE || bl.major_version < cryptonote::network_version_20_pos)
+    return true;
+
+  if (!bl.has_pulse_header_data())
+  {
+    MERROR_VER("Pulse-era block rejected (" << context << "): pulse_header must be non-empty (random_value / round / validator bitset)");
+    bvc.m_verification_failed = true;
+    return false;
+  }
+
+  if (bl.pulse_validator_signatures.size() < arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD)
+  {
+    MERROR_VER("Pulse-era block rejected (" << context << "): insufficient validator signature entries (need "
+                                            << arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD << ", have "
+                                            << bl.pulse_validator_signatures.size() << ")");
+    bvc.m_verification_failed = true;
+    return false;
+  }
+
+  crypto::hash const block_hash = cryptonote::get_block_hash(bl);
+  uint64_t const block_height = cryptonote::get_block_height(bl);
+  if (block_height == 0)
+  {
+    MERROR_VER("Pulse-era block rejected (" << context << "): cannot resolve checkpointing quorum at height 0");
+    bvc.m_verification_failed = true;
+    return false;
+  }
+
+  uint64_t const quorum_height = block_height - 1;
+  std::vector<std::shared_ptr<const service_nodes::quorum>> alt_quorums;
+  std::shared_ptr<const service_nodes::quorum> main_quorum =
+      m_service_node_list.get_quorum(service_nodes::quorum_type::checkpointing, quorum_height, true, &alt_quorums);
+
+  std::vector<std::shared_ptr<const service_nodes::quorum>> try_quorums;
+  if (main_quorum)
+    try_quorums.push_back(main_quorum);
+  for (std::shared_ptr<const service_nodes::quorum> const &aq : alt_quorums)
+  {
+    if (aq && aq != main_quorum)
+      try_quorums.push_back(aq);
+  }
+
+  if (try_quorums.empty())
+  {
+    MERROR_VER("Pulse-era block rejected (" << context << "): no checkpointing quorum at height " << quorum_height);
+    bvc.m_verification_failed = true;
+    return false;
+  }
+
+  for (std::shared_ptr<const service_nodes::quorum> const &qptr : try_quorums)
+  {
+    if (!qptr || qptr->validators.empty())
+      continue;
+
+    std::unordered_set<uint16_t> used_voter;
+    size_t good = 0;
+    for (cryptonote::pulse_validator_signature_entry const &entry : bl.pulse_validator_signatures)
+    {
+      if (entry.voter_index >= qptr->validators.size())
+        continue;
+
+      if (!crypto::check_signature(block_hash, qptr->validators[entry.voter_index], entry.signature))
+        continue;
+
+      auto const inserted = used_voter.insert(entry.voter_index);
+      if (!inserted.second)
+        continue;
+
+      ++good;
+      if (good >= arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD)
+        return true;
+    }
+  }
+
+  MERROR_VER(
+      "Pulse-era block rejected (" << context << "): fewer than "
+                                   << arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD
+                                   << " valid checkpointing-validator signatures against known quorums at height "
+                                   << quorum_height);
+  bvc.m_verification_failed = true;
+  return false;
 }
 //------------------------------------------------------------------
 // get the block weights of the last <count> blocks, and return by reference <sz>.
@@ -1917,8 +2003,8 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
     }
     else
     {
-      MDEBUG("PoW skipped for alternative block (Pulse placeholder; height " << block_height << ")");
-      if (!enforce_pulse_placeholder_block_rules(b, bvc, "alt"))
+      MDEBUG("PoW skipped for alternative block (Pulse rules; height " << block_height << ")");
+      if (!verify_pulse_fork_block_rules(b, bvc, "alt"))
         return false;
     }
 
@@ -3998,8 +4084,8 @@ bool Blockchain::handle_block_to_main_chain(const block& bl, const crypto::hash&
           "PoW skipped for major_version="
           << (unsigned)bl.major_version
           << " at height " << blockchain_height
-          << " (Pulse placeholder — require validator/signature checks before releasing FORK_ACTIVE)");
-      if (!enforce_pulse_placeholder_block_rules(bl, bvc, "main"))
+          << " (Pulse rules: quorum signature verification)");
+      if (!verify_pulse_fork_block_rules(bl, bvc, "main"))
         return false;
     }
     else

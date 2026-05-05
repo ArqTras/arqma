@@ -19,7 +19,7 @@
 
 namespace arqma::pulse_fork {
 
-/** Master switch — keep false until PoS validation and block production are implemented. */
+/** Master switch — keep false in production builds until PoS goes live on the chosen network schedule. */
 inline constexpr bool FORK_ACTIVE = false;
 
 inline constexpr char HF_RELEASE_NAME[] = "ARQMA-V11.0.0-PoS";
@@ -63,10 +63,10 @@ inline constexpr char NOTICE_LOG[] =
 /*
  Next steps (from roadmap; incremental port in progress):
  - Wire format: pulse_header + reward + sn_winner_tail (header varints) + pulse_validator_signatures on block when major_version >= network_version_20_pos (see cryptonote_basic.h, crypto::hash4); JSON via json_object (block dump / RPC tooling).
- - Pulse round scheduling, producer selection, validator signatures (7-of-10).
+ - Pulse round scheduling, producer selection, and signer tooling (daemon validates quorum signatures when FORK_ACTIVE).
  - Extend arqnet or add a suitable message-queue transport for Pulse round traffic.
  - Post-fork: coinbase/miner_tx layout for SN rewards only; replace LWMA difficulty (next_difficulty_v16) with Pulse rules when FORK_ACTIVE.
- - PoW skip is wired in blockchain.cpp for major_version >= network_version_20_pos when FORK_ACTIVE (must add quorum/signature verification before any release).
+ - PoW skip when FORK_ACTIVE + block major_version >= network_version_20_pos; verify_pulse_fork_block_rules enforces quorum signatures against checkpointing validators.
  - Stagenet/mocknet rehearsal; then uncomment HF rows in hardfork.cpp with real timestamps.
  - Finalize Arqma quorum crypto + Pulse producer scheduling; tighten storage/arqnet liveness checks for validators if spec requires.
  - Optional: checkpoint relay expansion, wallet/RPC alignment, HF_VERSION_PULSE_POS in cryptonote_config.h
