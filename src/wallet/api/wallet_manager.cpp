@@ -349,6 +349,37 @@ bool WalletManagerImpl::stopMining()
     return true;
 }
 
+bool WalletManagerImpl::daemonPosInfo(DaemonPosInfo &info)
+{
+    m_errorString.clear();
+    cryptonote::COMMAND_RPC_GET_INFO::request ireq;
+    cryptonote::COMMAND_RPC_GET_INFO::response ires;
+
+    if (!epee::net_utils::invoke_http_json("/getinfo", ireq, ires, m_http_client))
+    {
+      m_errorString = "Failed to connect to daemon for get_info";
+      return false;
+    }
+    if (ires.status != CORE_RPC_STATUS_OK)
+    {
+      m_errorString = ires.status.empty() ? std::string{"get_info failed"} : ires.status;
+      return false;
+    }
+
+    info.pos_fork_active = ires.pos_fork_active;
+    info.pos_planned_hf_name = std::move(ires.pos_planned_hf_name);
+    info.pos_planned_fork_height = ires.pos_planned_fork_height;
+    info.pos_target_block_time_sec = ires.pos_target_block_time_sec;
+    info.pos_quorum_validators_min = ires.pos_quorum_validators_min;
+    info.pos_signature_threshold = ires.pos_signature_threshold;
+    info.pos_expects_sn_storage_server = ires.pos_expects_sn_storage_server;
+    info.pos_pulse_blocks_since_fork = ires.pos_pulse_blocks_since_fork;
+    info.pos_pulse_next_round_wire_hint = ires.pos_pulse_next_round_wire_hint;
+    info.pos_pulse_cum_diff_uses_60s_lwma = ires.pos_pulse_cum_diff_uses_60s_lwma;
+    info.pos_pulse_arqnet_vote_buffer_blocks = ires.pos_pulse_arqnet_vote_buffer_blocks;
+    return true;
+}
+
 std::string WalletManagerImpl::resolveOpenAlias(const std::string &address, bool &dnssec_valid) const
 {
     std::vector<std::string> addresses = tools::dns_utils::addresses_from_url(address, dnssec_valid);

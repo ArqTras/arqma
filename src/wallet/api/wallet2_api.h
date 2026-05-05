@@ -955,6 +955,24 @@ struct Wallet
 };
 
 /**
+ * @brief PoS/Pulse subset of daemon `get_info` for wallet-manager consumers (single query via \ref WalletManagerBase::daemonPosInfo).
+ */
+struct DaemonPosInfo
+{
+    bool pos_fork_active = false;
+    std::string pos_planned_hf_name;
+    uint64_t pos_planned_fork_height = 0;
+    uint64_t pos_target_block_time_sec = 0;
+    uint64_t pos_quorum_validators_min = 0;
+    uint64_t pos_signature_threshold = 0;
+    bool pos_expects_sn_storage_server = false;
+    uint64_t pos_pulse_blocks_since_fork = 0;
+    uint64_t pos_pulse_next_round_wire_hint = 0;
+    bool pos_pulse_cum_diff_uses_60s_lwma = false;
+    uint64_t pos_pulse_arqnet_vote_buffer_blocks = 0;
+};
+
+/**
  * @brief WalletManager - provides functions to manage wallets
  */
 struct WalletManagerBase
@@ -1188,6 +1206,9 @@ struct WalletManagerBase
 
     //! stops mining. On failure, \ref errorString() carries the daemon `status` when available.
     virtual bool stopMining() = 0;
+
+    //! Fills \p info from daemon `get_info` PoS/Pulse fields (one HTTP round-trip). On failure returns false and sets \ref errorString().
+    virtual bool daemonPosInfo(DaemonPosInfo &info) = 0;
 
     //! resolves an OpenAlias address to a monero address
     virtual std::string resolveOpenAlias(const std::string &address, bool &dnssec_valid) const = 0;

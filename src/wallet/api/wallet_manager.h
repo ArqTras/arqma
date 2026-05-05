@@ -91,6 +91,7 @@ public:
     bool isMining() override;
     bool startMining(const std::string &address, uint32_t threads = 1) override;
     bool stopMining() override;
+    bool daemonPosInfo(DaemonPosInfo &info) override;
     std::string resolveOpenAlias(const std::string &address, bool &dnssec_valid) const override;
 
 private:

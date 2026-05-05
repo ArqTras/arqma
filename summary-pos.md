@@ -170,11 +170,9 @@ Audit of **in-tree** components for **PoW refusal**, **Pulse template / vote RPC
 | **`get_pulse_block_template` / `get_pulse_arqnet_votes`** | **`core_rpc_server`** | Require **`FORK_ACTIVE`**, ideal HF **`>= network_version_20_pos`**, no bootstrap daemon. | OK |
 | **`simplewallet`** | **`start_mining`**, **`status`** | Mining refusal text from daemon **`status`**; PoS telemetry lines after **`status`** via **`get_info`** (see above). | OK |
 | **`wallet_rpc_server`** | **`on_start_mining`** | Forwards **`/start_mining`**; **`er.message`** = daemon **`status`** on failure (includes PoS refusal string). | OK |
-| **Wallet API (C++)** | **`wallet/api/wallet_manager.cpp`** | **`startMining` / `stopMining`**: on failure **`errorString()`** is set to daemon **`status`** (includes PoW-disabled text) or a transport message; success clears it. No separate typed getters for **`pos_*`** (GUI may still call daemon **`get_info`**). | OK |
+| **Wallet API (C++)** | **`wallet/api/wallet_manager.cpp`**, **`wallet2_api.h`** | **`startMining` / `stopMining`**: failure → **`errorString()`** (daemon **`status`** or transport). **`daemonPosInfo(DaemonPosInfo&)`**: one **`/getinfo`** round-trip; fills all **`pos_*` / `pos_pulse_*`** mirror fields. | OK |
 | **`arqmad` CLI `status`** | **`daemon/rpc_command_executor.cpp`** **`show_status()`** | After the main status line, prints a **PoS/Pulse** line when **`pos_fork_active`** or **`pos_planned_fork_height > 0`** (planned HF, rehearsal, arqnet buffer, round hint, 60s LWMA flag). | OK |
 | **In-process miner** | **`cryptonote_basic/miner.*`** | No local **`pow_mining_disabled`** guard; mining is expected to start only via RPC / ZMQ paths that already check. | OK (by convention) |
-
-**Optional later:** thin **`WalletManager`** accessors for selected **`get_info.pos_*`** fields if a GUI should avoid raw HTTP.
 
 ---
 
@@ -253,6 +251,7 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 | 2026-05-05 | *(working tree)* | **`build_unit_tests`** helper scripts | **`contrib/pulse-rehearsal/build_unit_tests.ps1`**, **`build_unit_tests.sh`**; **`summary-pos.md`**. |
 | 2026-05-05 | *(working tree)* | **`summary-pos.md`**: PoS integration audit | File-level table (HTTP/ZMQ/wallet/daemon CLI); fix **`simplewallet`** doc (**`status`** vs **`refresh`**); optional follow-ups for **`getblocktemplate`** UX and **`show_status`**. |
 | 2026-05-05 | *(working tree)* | PoS UX follow-ups implemented | **`on_getblocktemplate`**: **`CORE_RPC_ERROR_CODE_POW_MINING_DISABLED`** (-14); **`show_status`** PoS line; **`WalletManager`** **`errorString()`** on mining RPC failure; **`summary-pos.md`** audit table updated. |
+| 2026-05-05 | *(working tree)* | **`WalletManager::daemonPosInfo`** | **`DaemonPosInfo`** + **`daemonPosInfo()`** in **`wallet2_api.h`** / **`wallet_manager.*`**; **`summary-pos.md`**. |
 
 ---
 
@@ -273,5 +272,5 @@ Listed **oldest → newest**. Bodies abbreviated; refer to **`git show <hash>`**
 - `src/rpc/core_rpc_server_error_codes.h` — RPC error codes including **`CORE_RPC_ERROR_CODE_POW_MINING_DISABLED`** (**`-14`**) for **`getblocktemplate`** when PoW is disabled.
 - `src/rpc/core_rpc_server*.cpp/.h`, `core_rpc_server_commands_defs.h`, `daemon_handler.cpp`, `message_data_structs.h`, `serialization/json_object.cpp` — telemetry, **`get_pulse_block_template`**, **`get_pulse_arqnet_votes`**, and JSON parity.
 - `src/daemon/rpc_command_executor.cpp` — **`show_status`** PoS/Pulse summary line from **`get_info`**.
-- `src/wallet/api/wallet_manager.cpp`, `wallet2_api.h` — **`WalletManager::errorString()`** after **`startMining` / `stopMining`** failures.
+- `src/wallet/api/wallet_manager.cpp`, `wallet2_api.h` — **`WalletManager::errorString()`** after **`startMining` / `stopMining`** failures; **`DaemonPosInfo`** / **`daemonPosInfo()`** (PoS subset of **`get_info`**).
 - `src/arqnet/pulse_wire.h`, `src/cryptonote_protocol/arqnet.cpp` — Pulse **arqnet** commands (**`pulse_cap`**, **`pulse_proposal`**, **`pulse_vote`**, **`rh`** relay, in-memory vote buffer).
