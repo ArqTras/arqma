@@ -8,6 +8,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "cryptonote_config.h"
+
 #ifndef ARQMA_ANNOUNCE_PLANNED_POS_TRANSITION
 /** Log a one-time notice about the planned PoS transition at daemon startup (before fork goes live). */
 #define ARQMA_ANNOUNCE_PLANNED_POS_TRANSITION 1
@@ -51,5 +53,18 @@ inline constexpr char NOTICE_LOG[] =
  - Stagenet/mocknet rehearsal; then uncomment HF rows in hardfork.cpp with real timestamps.
  - Optional: checkpoint relay expansion, wallet/RPC alignment, HF_VERSION_PULSE_POS in cryptonote_config.h
 */
+
+inline constexpr uint64_t planned_fork_height_for_net(cryptonote::network_type net)
+{
+  switch (net)
+  {
+    case cryptonote::MAINNET:
+      return MAINNET_FORK_HEIGHT_PLANNED;
+    case cryptonote::STAGENET:
+      return STAGENET_FORK_HEIGHT_PLANNED;
+    default:
+      return 0;
+  }
+}
 
 } // namespace arqma::pulse_fork

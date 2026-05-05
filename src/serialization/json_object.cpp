@@ -1325,6 +1325,12 @@ void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const crypton
   INSERT_INTO_JSON_OBJECT(dest, block_size_median, info.block_size_median);
   INSERT_INTO_JSON_OBJECT(dest, block_weight_median, info.block_weight_median);
   INSERT_INTO_JSON_OBJECT(dest, start_time, info.start_time);
+  INSERT_INTO_JSON_OBJECT(dest, pos_fork_active, info.pos_fork_active);
+  INSERT_INTO_JSON_OBJECT(dest, pos_planned_hf_name, info.pos_planned_hf_name);
+  INSERT_INTO_JSON_OBJECT(dest, pos_planned_fork_height, info.pos_planned_fork_height);
+  INSERT_INTO_JSON_OBJECT(dest, pos_target_block_time_sec, info.pos_target_block_time_sec);
+  INSERT_INTO_JSON_OBJECT(dest, pos_quorum_validators_min, info.pos_quorum_validators_min);
+  INSERT_INTO_JSON_OBJECT(dest, pos_signature_threshold, info.pos_signature_threshold);
 
   dest.EndObject();
 }
@@ -1335,6 +1341,13 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::rpc::DaemonInfo& inf
   {
     throw WRONG_TYPE("json object");
   }
+
+  info.pos_fork_active = false;
+  info.pos_planned_hf_name.clear();
+  info.pos_planned_fork_height = 0;
+  info.pos_target_block_time_sec = 0;
+  info.pos_quorum_validators_min = 0;
+  info.pos_signature_threshold = 0;
 
   GET_FROM_JSON_OBJECT(val, info.height, height);
   GET_FROM_JSON_OBJECT(val, info.target_height, target_height);
@@ -1358,6 +1371,26 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::rpc::DaemonInfo& inf
   GET_FROM_JSON_OBJECT(val, info.block_size_median, block_size_median);
   GET_FROM_JSON_OBJECT(val, info.block_weight_median, block_weight_median);
   GET_FROM_JSON_OBJECT(val, info.start_time, start_time);
+
+  if (val.HasMember("pos_fork_active"))
+    fromJsonValue(val["pos_fork_active"], info.pos_fork_active);
+  else
+    info.pos_fork_active = false;
+
+  if (val.HasMember("pos_planned_hf_name"))
+    fromJsonValue(val["pos_planned_hf_name"], info.pos_planned_hf_name);
+
+  if (val.HasMember("pos_planned_fork_height"))
+    fromJsonValue(val["pos_planned_fork_height"], info.pos_planned_fork_height);
+
+  if (val.HasMember("pos_target_block_time_sec"))
+    fromJsonValue(val["pos_target_block_time_sec"], info.pos_target_block_time_sec);
+
+  if (val.HasMember("pos_quorum_validators_min"))
+    fromJsonValue(val["pos_quorum_validators_min"], info.pos_quorum_validators_min);
+
+  if (val.HasMember("pos_signature_threshold"))
+    fromJsonValue(val["pos_signature_threshold"], info.pos_signature_threshold);
 }
 
 void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const cryptonote::rpc::output_distribution& dist)

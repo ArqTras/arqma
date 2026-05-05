@@ -41,6 +41,7 @@
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "ringct/rctSigs.h"
 #include "version.h"
+#include "common/arqma_pulse_fork.h"
 
 namespace cryptonote
 {
@@ -556,6 +557,16 @@ namespace rpc
     res.info.start_time = (uint64_t)m_core.get_start_time();
     res.info.version = ARQMA_VERSION_STR;
     res.info.syncing = m_p2p.get_payload_object().currently_busy_syncing();
+
+    {
+      const cryptonote::network_type net_type = m_core.get_nettype();
+      res.info.pos_fork_active = arqma::pulse_fork::FORK_ACTIVE;
+      res.info.pos_planned_hf_name = arqma::pulse_fork::HF_RELEASE_NAME;
+      res.info.pos_planned_fork_height = arqma::pulse_fork::planned_fork_height_for_net(net_type);
+      res.info.pos_target_block_time_sec = arqma::pulse_fork::PULSE_TARGET_BLOCK_TIME_SEC;
+      res.info.pos_quorum_validators_min = arqma::pulse_fork::PULSE_QUORUM_VALIDATORS_MIN;
+      res.info.pos_signature_threshold = arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD;
+    }
 
     res.status = Message::STATUS_OK;
     res.error_details = "";

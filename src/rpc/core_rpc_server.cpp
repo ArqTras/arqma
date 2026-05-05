@@ -42,6 +42,7 @@ using namespace epee;
 #include "common/updates.h"
 #include "common/download.h"
 #include "common/arqma.h"
+#include "common/arqma_pulse_fork.h"
 #include "common/util.h"
 #include "common/perf_timer.h"
 #include "common/random.h"
@@ -213,6 +214,12 @@ namespace cryptonote
   bool core_rpc_server::on_get_info(const COMMAND_RPC_GET_INFO::request& req, COMMAND_RPC_GET_INFO::response& res, const connection_context *ctx)
   {
     PERF_TIMER(on_get_info);
+    res.pos_fork_active = false;
+    res.pos_planned_hf_name.clear();
+    res.pos_planned_fork_height = 0;
+    res.pos_target_block_time_sec = 0;
+    res.pos_quorum_validators_min = 0;
+    res.pos_signature_threshold = 0;
     bool r;
     if (use_bootstrap_daemon_if_necessary<COMMAND_RPC_GET_INFO>(invoke_http_mode::JON, "/getinfo", req, res, r))
     {
@@ -279,6 +286,24 @@ namespace cryptonote
     res.update_available = m_core.is_update_available();
     res.version = restricted ? std::to_string(ARQMA_VERSION[0]) : ARQMA_VERSION_STR;
     res.syncing = m_p2p.get_payload_object().currently_busy_syncing();
+
+    res.pos_fork_active = arqma::pulse_fork::FORK_ACTIVE;
+    if (restricted)
+    {
+      res.pos_planned_hf_name.clear();
+      res.pos_planned_fork_height = 0;
+      res.pos_target_block_time_sec = 0;
+      res.pos_quorum_validators_min = 0;
+      res.pos_signature_threshold = 0;
+    }
+    else
+    {
+      res.pos_planned_hf_name = arqma::pulse_fork::HF_RELEASE_NAME;
+      res.pos_planned_fork_height = arqma::pulse_fork::planned_fork_height_for_net(net_type);
+      res.pos_target_block_time_sec = arqma::pulse_fork::PULSE_TARGET_BLOCK_TIME_SEC;
+      res.pos_quorum_validators_min = arqma::pulse_fork::PULSE_QUORUM_VALIDATORS_MIN;
+      res.pos_signature_threshold = arqma::pulse_fork::PULSE_SIGNATURE_THRESHOLD;
+    }
 
     res.status = CORE_RPC_STATUS_OK;
     return true;

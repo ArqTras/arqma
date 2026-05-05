@@ -47,6 +47,7 @@
 #include "blockchain_db/blockchain_db.h"
 #include "cryptonote_basic/cryptonote_boost_serialization.h"
 #include "cryptonote_config.h"
+#include "common/arqma_pulse_fork.h"
 #include "cryptonote_basic/miner.h"
 #include "misc_language.h"
 #include "file_io_utils.h"
@@ -842,6 +843,9 @@ size_t get_difficulty_blocks_count(uint8_t version)
 uint8_t get_current_diff_target(uint8_t version)
 {
   LOG_PRINT_L3("Blockchain::" << __func__);
+
+  if (version >= cryptonote::network_version_20_pos && arqma::pulse_fork::FORK_ACTIVE)
+    return DIFFICULTY_TARGET_V20_POS;
 
   if(version < 10)
     return DIFFICULTY_TARGET_V2;

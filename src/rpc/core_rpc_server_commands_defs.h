@@ -703,6 +703,14 @@ namespace cryptonote
       std::string version;
       bool syncing;
 
+      /** Planned PoS (ARQMA-V11.0.0-PoS) — informational until fork activates. */
+      bool pos_fork_active;
+      std::string pos_planned_hf_name;
+      uint64_t pos_planned_fork_height;
+      uint64_t pos_target_block_time_sec;
+      uint64_t pos_quorum_validators_min;
+      uint64_t pos_signature_threshold;
+
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(status)
         KV_SERIALIZE(height)
@@ -742,6 +750,12 @@ namespace cryptonote
         KV_SERIALIZE(update_available)
         KV_SERIALIZE(version)
         KV_SERIALIZE(syncing)
+        KV_SERIALIZE(pos_fork_active)
+        KV_SERIALIZE(pos_planned_hf_name)
+        KV_SERIALIZE(pos_planned_fork_height)
+        KV_SERIALIZE(pos_target_block_time_sec)
+        KV_SERIALIZE(pos_quorum_validators_min)
+        KV_SERIALIZE(pos_signature_threshold)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<response_t> response;

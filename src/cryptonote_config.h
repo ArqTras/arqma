@@ -103,6 +103,8 @@ using namespace std::literals;
 #define DIFFICULTY_WINDOW_V11                           90
 
 #define DIFFICULTY_TARGET_V16                           DIFFICULTY_TARGET_V11
+/** Target block time (seconds) after PoS/Pulse fork (network_version_20_pos) when arqma::pulse_fork::FORK_ACTIVE. */
+#define DIFFICULTY_TARGET_V20_POS                       60
 #define DIFFICULTY_WINDOW_V16                           DIFFICULTY_WINDOW_V11
 #define BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW_V16           11
 #define CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT_V16          CRYPTONOTE_BLOCK_FUTURE_TIME_LIMIT_V11

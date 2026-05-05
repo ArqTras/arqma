@@ -198,6 +198,14 @@ namespace rpc
     uint64_t start_time;
     std::string version;
     bool syncing;
+
+    /** Planned PoS fork (ARQMA-V11.0.0-PoS) — see common/arqma_pulse_fork.h */
+    bool pos_fork_active = false;
+    std::string pos_planned_hf_name;
+    uint64_t pos_planned_fork_height = 0;
+    uint64_t pos_target_block_time_sec = 0;
+    uint64_t pos_quorum_validators_min = 0;
+    uint64_t pos_signature_threshold = 0;
   };
 
   struct output_distribution
