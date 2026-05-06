@@ -199,7 +199,7 @@ namespace rpc
     std::string version;
     bool syncing;
 
-    /** Planned PoS fork (ARQMA-V11.0.0-PoS) — see common/arqma_pulse_fork.h */
+    /** PoW/PoS Hybrid telemetry — see common/arqma_pulse_fork.h */
     bool pos_fork_active = false;
     std::string pos_planned_hf_name;
     uint64_t pos_planned_fork_height = 0;

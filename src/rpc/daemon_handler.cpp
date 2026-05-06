@@ -600,7 +600,7 @@ namespace rpc
       }
       res.info.pos_pulse_cum_diff_uses_60s_lwma =
           arqma::pulse_fork::fork_active(net_type)
-          && chain.get_ideal_hard_fork_version(chain.get_current_blockchain_height()) >= cryptonote::network_version_20_pos;
+          && chain.get_ideal_hard_fork_version(chain.get_current_blockchain_height()) >= cryptonote::network_version_20;
       res.info.pos_pulse_arqnet_vote_buffer_blocks =
           static_cast<uint64_t>(m_core.get_pulse_arqnet_vote_buffer_distinct_block_count());
     }

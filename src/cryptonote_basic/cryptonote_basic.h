@@ -429,10 +429,10 @@ namespace cryptonote
     /** Last 4 bytes of declared SN winner pubkey (sanity tie-in; not sole authority bit). */
     crypto::hash4 sn_winner_tail{};
 
-    /** True when this block carries non-empty Pulse header fields (implies PoS era once HF is enabled). */
+    /** True when this block carries non-empty Pulse header fields (Pulse slot in PoW/PoS Hybrid once HF >= network_version_20). */
     bool has_pulse_header_data() const noexcept
     {
-      return major_version >= network_version_20_pos && !pulse.empty();
+      return major_version >= network_version_20 && !pulse.empty();
     }
 
     BEGIN_SERIALIZE()
@@ -441,7 +441,7 @@ namespace cryptonote
       VARINT_FIELD(timestamp)
       FIELD(prev_id)
       FIELD(nonce)
-      if (major_version >= network_version_20_pos)
+      if (major_version >= network_version_20)
       {
         FIELDS(pulse)
         VARINT_FIELD(reward)
@@ -474,7 +474,7 @@ namespace cryptonote
     /** Pulse metadata present (pulse header blob and/or validator signatures after tx_hashes). */
     bool has_pulse() const noexcept
     {
-      return major_version >= network_version_20_pos
+      return major_version >= network_version_20
           && (has_pulse_header_data() || !pulse_validator_signatures.empty());
     }
 
@@ -490,7 +490,7 @@ namespace cryptonote
       FIELD(tx_hashes)
       if(tx_hashes.size() > config::tx_settings::MAX_TRANSACTIONS_IN_BLOCK)
         return false;
-      if (major_version >= network_version_20_pos)
+      if (major_version >= network_version_20)
       {
         FIELD(pulse_validator_signatures)
         if (!typename Archive<W>::is_saving() &&

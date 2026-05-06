@@ -955,7 +955,7 @@ struct Wallet
 };
 
 /**
- * @brief PoS/Pulse subset of daemon `get_info` for wallet-manager consumers (single query via \ref WalletManagerBase::daemonPosInfo).
+ * @brief PoW/PoS Hybrid subset of daemon `get_info` for wallet-manager consumers (single query via \ref WalletManagerBase::daemonPosInfo).
  */
 struct DaemonPosInfo
 {
@@ -1201,13 +1201,13 @@ struct WalletManagerBase
     //! returns true iff mining
     virtual bool isMining() = 0;
 
-    //! starts mining with the set number of threads. On failure, \ref errorString() is set (daemon `status`, e.g. PoS/Pulse PoW disabled, or transport error).
+    //! starts mining with the set number of threads. On failure, \ref errorString() is set (daemon `status`, e.g. PoW/PoS Hybrid Pulse slot PoW unavailable, or transport error).
     virtual bool startMining(const std::string &address, uint32_t threads = 1) = 0;
 
     //! stops mining. On failure, \ref errorString() carries the daemon `status` when available.
     virtual bool stopMining() = 0;
 
-    //! Fills \p info from daemon `get_info` PoS/Pulse fields (one HTTP round-trip). On failure returns false and sets \ref errorString().
+    //! Fills \p info from daemon `get_info` PoW/PoS Hybrid fields (one HTTP round-trip). On failure returns false and sets \ref errorString().
     virtual bool daemonPosInfo(DaemonPosInfo &info) = 0;
 
     //! resolves an OpenAlias address to a monero address

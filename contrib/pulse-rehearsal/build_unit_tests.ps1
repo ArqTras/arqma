@@ -1,10 +1,10 @@
 # Copyright (c) 2026, The Arqma Network
-# Configure and build `unit_tests` with BUILD_TESTS=ON (Pulse GTest lives in tests/unit_tests/pulse_round.cpp).
+# Configure and build `unit_tests` with BUILD_TESTS=ON.
 # Requires CMake + a working toolchain (MSVC, Ninja+GCC, etc.) on PATH.
 param(
     [string]$BuildDir = "build-tests-pulse",
     [switch]$Run,
-    [string]$GTestFilter = "Pulse*"
+    [string]$GTestFilter = "*"
 )
 
 $ErrorActionPreference = "Stop"
@@ -14,7 +14,7 @@ $Out = Join-Path $RepoRoot $BuildDir
 Write-Host "Source: $RepoRoot"
 Write-Host "Build:  $Out"
 
-& cmake -S $RepoRoot -B $Out -D BUILD_TESTS=ON -D ARQMA_CI_PULSE_GTEST=ON
+& cmake -S $RepoRoot -B $Out -D BUILD_TESTS=ON
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 & cmake --build $Out --target unit_tests --parallel

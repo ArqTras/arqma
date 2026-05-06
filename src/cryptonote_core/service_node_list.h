@@ -308,6 +308,8 @@ namespace service_nodes
     bool get_quorum_pubkey(quorum_type type, quorum_group group, uint64_t height, size_t quorum_size, crypto::public_key &key) const;
 
     size_t get_service_node_count() const;
+    /** Active SN only (registered and `is_active()`); used for hybrid PoW difficulty scaling. */
+    size_t get_active_service_node_count() const;
     std::vector<service_node_pubkey_info> get_service_node_list_state(const std::vector<crypto::public_key> &service_node_pubkeys = {}) const;
     const std::vector<key_image_blacklist_entry> &get_blacklisted_key_images() const { return m_state.key_image_blacklist; }
 

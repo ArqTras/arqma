@@ -8194,17 +8194,17 @@ void simple_wallet::maybe_print_daemon_pos_info()
     return;
 
   if (info_res.pos_fork_active)
-    message_writer() << tr("PoS fork is active on this daemon (PoW mining disabled per consensus rules).");
+    message_writer() << tr("PoW/PoS Hybrid is active on this daemon (alternating PoW and Pulse blocks by height).");
   if (!info_res.pos_planned_hf_name.empty() && info_res.pos_planned_fork_height > 0)
   {
-    message_writer() << tr("Planned PoS hard fork: ") << info_res.pos_planned_hf_name
+    message_writer() << tr("Planned PoW/PoS Hybrid hard fork: ") << info_res.pos_planned_hf_name
         << tr(", transition height (mainnet/stagenet): ") << info_res.pos_planned_fork_height
-        << tr(", target block time (s): ") << info_res.pos_target_block_time_sec;
+        << tr(", Pulse-slot target block time (s): ") << info_res.pos_target_block_time_sec;
   }
   if (info_res.pos_expects_sn_storage_server)
-    message_writer() << tr("Planned PoS: service-node quorum design expects arqma-storage-server paired with arqmad (storage_server_ping RPC).");
+    message_writer() << tr("PoW/PoS Hybrid (Pulse slots): service-node quorum expects arqma-storage-server paired with arqmad (storage_server_ping RPC).");
   if (info_res.pos_pulse_blocks_since_fork > 0)
-    message_writer() << tr("PoS rehearsal: blocks since planned fork height: ") << info_res.pos_pulse_blocks_since_fork;
+    message_writer() << tr("Hybrid fork rehearsal: blocks since planned fork height: ") << info_res.pos_pulse_blocks_since_fork;
   if (info_res.pos_pulse_arqnet_vote_buffer_blocks > 0)
     message_writer() << tr("arqnet Pulse vote buffer (distinct proposed blocks): ") << info_res.pos_pulse_arqnet_vote_buffer_blocks;
   if (info_res.pos_fork_active || info_res.pos_pulse_cum_diff_uses_60s_lwma || info_res.pos_pulse_blocks_since_fork > 0)

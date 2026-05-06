@@ -347,12 +347,12 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 enable_testing()
 
 option(BUILD_DOCUMENTATION "Build the Doxygen documentation." ON)
-option(BUILD_TESTS "Build tests." OFF)
+option(BUILD_TESTS "Ignored: in-tree tests/ is excluded from CMake (no targets, no fuzz, no googletest fetch)." OFF)
 
-option(ARQMA_STAGENET_POS_REHEARSAL "Enable PoS/Pulse consensus + HF v20 row on STAGENET only (mainnet behaviour unchanged)" OFF)
+option(ARQMA_STAGENET_POS_REHEARSAL "Legacy marker: stagenet HF v20 + fork rules are default; enabling only defines ARQMA_STAGENET_POS_REHEARSAL=1" OFF)
 if(ARQMA_STAGENET_POS_REHEARSAL)
   add_compile_definitions(ARQMA_STAGENET_POS_REHEARSAL=1)
-  message(STATUS "ARQMA_STAGENET_POS_REHEARSAL: PoS/Pulse active on stagenet when running --stagenet (mainnet unaffected)")
+  message(STATUS "ARQMA_STAGENET_POS_REHEARSAL: legacy compile define set (stagenet PoS/Pulse does not require this option)")
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -1198,7 +1198,7 @@ add_subdirectory(contrib)
 add_subdirectory(src)
 
 if(BUILD_TESTS)
-  add_subdirectory(tests)
+  message(WARNING "BUILD_TESTS=ON has no effect: tests subtree is excluded from compilation in this repository configuration.")
 endif()
 
 if(BUILD_DEBUG_UTILITIES)

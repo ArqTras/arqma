@@ -310,6 +310,16 @@ namespace service_nodes
     return m_state.service_nodes_infos.size();
   }
   //----------------------------------------------------------------------------
+  size_t service_node_list::get_active_service_node_count() const
+  {
+    std::lock_guard lock(m_sn_mutex);
+    size_t n = 0;
+    for (auto const &e : m_state.service_nodes_infos)
+      if (e.second->is_active())
+        ++n;
+    return n;
+  }
+  //----------------------------------------------------------------------------
   std::vector<service_node_pubkey_info> service_node_list::get_service_node_list_state(const std::vector<crypto::public_key> &service_node_pubkeys) const
   {
     std::lock_guard lock(m_sn_mutex);
@@ -1024,7 +1034,7 @@ namespace service_nodes
     if (block.major_version < cryptonote::network_version_16)
       return true;
 
-    if (arqma::pulse_fork::fork_active(m_blockchain.nettype()) && block.major_version >= cryptonote::network_version_20_pos)
+    if (arqma::pulse_fork::fork_active(m_blockchain.nettype()) && block.major_version >= cryptonote::network_version_20)
     {
       cryptonote::block_verification_context bvc{};
       if (!m_blockchain.verify_pulse_fork_block_rules(block, bvc, "snlist_main"))
@@ -1486,7 +1496,7 @@ namespace service_nodes
     block_winner winner{};
 
     bool const pulse_coinbase_schedule =
-        arqma::pulse_fork::fork_active(m_blockchain.nettype()) && hard_fork_version >= cryptonote::network_version_20_pos && height >= 1;
+        arqma::pulse_fork::fork_active(m_blockchain.nettype()) && hard_fork_version >= cryptonote::network_version_20 && height >= 1;
 
     if (!pulse_coinbase_schedule)
     {
@@ -1627,7 +1637,7 @@ namespace service_nodes
       return false;
     }
 
-    if (arqma::pulse_fork::fork_active(m_blockchain.nettype()) && block.major_version >= cryptonote::network_version_20_pos)
+    if (arqma::pulse_fork::fork_active(m_blockchain.nettype()) && block.major_version >= cryptonote::network_version_20)
     {
       cryptonote::block_verification_context bvc{};
       if (!m_blockchain.verify_pulse_fork_block_rules(block, bvc, "snlist_alt"))

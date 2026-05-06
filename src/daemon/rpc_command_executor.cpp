@@ -675,9 +675,9 @@ bool t_rpc_command_executor::show_status()
   {
     str.str("");
     str.clear();
-    str << "PoS/Pulse: ";
+    str << "PoW/PoS Hybrid: ";
     if (ires.pos_fork_active)
-      str << "fork active (PoW mining disabled). ";
+      str << "consensus active (alternating PoW and Pulse slots per height). ";
     if (!ires.pos_planned_hf_name.empty() && ires.pos_planned_fork_height > 0)
       str << "planned " << ires.pos_planned_hf_name << " @ height " << ires.pos_planned_fork_height
           << ", target block time " << ires.pos_target_block_time_sec << "s. ";

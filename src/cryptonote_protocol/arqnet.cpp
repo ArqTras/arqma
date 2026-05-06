@@ -773,7 +773,7 @@ void handle_pulse_cap(SNNetwork::message &m, void *self)
       {arqma::pulse_wire::KEY_FORK_ACTIVE, arqma::pulse_fork::fork_active(snw.core.get_nettype()) ? 1ULL : 0ULL},
       {arqma::pulse_wire::KEY_CHAIN_HEIGHT, h},
       {arqma::pulse_wire::KEY_IDEAL_HF, static_cast<uint64_t>(ideal_hf)},
-      {arqma::pulse_wire::KEY_PULSE_MAJOR_READY, ideal_hf >= cryptonote::network_version_20_pos ? 1ULL : 0ULL},
+      {arqma::pulse_wire::KEY_PULSE_MAJOR_READY, ideal_hf >= cryptonote::network_version_20 ? 1ULL : 0ULL},
   };
 
   MDEBUG("pulse_cap from " << as_hex(m.pubkey) << ", height " << h << ", ideal_hf " << static_cast<unsigned>(ideal_hf));
@@ -831,8 +831,16 @@ void handle_pulse_proposal(SNNetwork::message &m, void *self)
       return;
     }
 
-    if (arqma::pulse_fork::fork_active(snw.core.get_nettype()) && b.major_version >= cryptonote::network_version_20_pos)
+    if (arqma::pulse_fork::fork_active(snw.core.get_nettype()) && b.major_version >= cryptonote::network_version_20)
     {
+      uint64_t const prop_h = cryptonote::get_block_height(b);
+      if (!arqma::pulse_fork::is_pulse_slot_at_height(snw.core.get_nettype(), prop_h, b.major_version))
+      {
+        m.reply(arqma::pulse_wire::COMMAND_PULSE_PROPOSAL,
+            bt_dict{{arqma::pulse_wire::KEY_OK, 0LL},
+                {arqma::pulse_wire::KEY_ERR, std::string{"pulse proposal height is a PoW slot"}}});
+        return;
+      }
       cryptonote::block_verification_context bvc{};
       if (!snw.core.get_blockchain_storage().verify_pulse_fork_block_rules(b, bvc, "arqnet_pulse_proposal"))
       {

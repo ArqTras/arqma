@@ -63,12 +63,18 @@ namespace cryptonote
     struct ParamsIterator
     {
       const Params *begin_, *end_;
-      constexpr Params const *begin() { return begin_; };
-      constexpr Params const *end() { return end_; };
+      constexpr Params const *begin() const { return begin_; }
+      constexpr Params const *end() const { return end_; }
     };
 
     static uint64_t get_hardcoded_hard_fork_height(network_type nettype, cryptonote::network_version version);
     static ParamsIterator get_hardcoded_hard_forks(network_type nettype);
+
+    /**
+     * True if the hard-coded HF table for \p nettype schedules PoW/Pulse hybrid (version >= \p network_version_20).
+     * Mainnet keeps the v20 row commented until go-live — then hybrid follows the table without a separate code flip.
+     */
+    static bool hard_fork_table_includes_pulse_hybrid(network_type nettype);
 
     /**
      * @brief creates a new HardFork object

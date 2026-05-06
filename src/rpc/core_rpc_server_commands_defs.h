@@ -703,14 +703,14 @@ namespace cryptonote
       std::string version;
       bool syncing;
 
-      /** Planned PoS (ARQMA-V11.0.0-PoS) — informational until fork activates. */
+      /** PoW/PoS Hybrid telemetry: true when daemon applies hybrid consensus rules for this network (e.g. stagenet). */
       bool pos_fork_active;
       std::string pos_planned_hf_name;
       uint64_t pos_planned_fork_height;
       uint64_t pos_target_block_time_sec;
       uint64_t pos_quorum_validators_min;
       uint64_t pos_signature_threshold;
-      /** Planned Pulse/PoS: service validators still need paired arqma-storage-server (RFC storage_server_ping). */
+      /** Pulse slots in hybrid: service validators still need paired arqma-storage-server (RFC storage_server_ping). */
       bool pos_expects_sn_storage_server;
       /** When FORK_ACTIVE and height beyond pos_planned_fork_height: elapsed canonical blocks past that rehearsal height (0 otherwise). */
       uint64_t pos_pulse_blocks_since_fork;
@@ -962,7 +962,7 @@ namespace cryptonote
     typedef epee::misc_utils::struct_init<response_t> response;
   };
 
-  /** PoS/Pulse block template (main chain tip). Uses `core::get_pulse_block_template` with `service_node_list::get_block_winner()`. */
+  /** Pulse-slot block template (PoW/PoS Hybrid main chain tip). Uses `core::get_pulse_block_template` with `service_node_list::get_block_winner()`. */
   struct COMMAND_RPC_GET_PULSE_BLOCK_TEMPLATE
   {
     struct request_t

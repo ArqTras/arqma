@@ -308,7 +308,7 @@ namespace cryptonote
       }
     }
 
-    // Governance / dev / net: unchanged for PoS-major (network_version_20_pos). Amounts come from
+    // Governance / dev / net: unchanged for network_version_20 (PoW/PoS Hybrid). Amounts come from
     // get_arqma_block_reward → dev_reward_formula; keys from get_config(nettype, hf)::GOV_/DEV_/NET_WALLET_ADDRESS.
     // Blockchain::validate_miner_transaction assumes the last three vouts are always [gov, dev, net] for hf >= 16.
     if(hard_fork_version >= 16)

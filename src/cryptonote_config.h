@@ -103,7 +103,7 @@ using namespace std::literals;
 #define DIFFICULTY_WINDOW_V11                           90
 
 #define DIFFICULTY_TARGET_V16                           DIFFICULTY_TARGET_V11
-/** Target block time (seconds) after PoS/Pulse fork (network_version_20_pos) when arqma::pulse_fork::FORK_ACTIVE. */
+/** Target block time (seconds) for Pulse slots in PoW/PoS Hybrid (network_version_20) when pulse difficulty branch applies. */
 #define DIFFICULTY_TARGET_V20_POS                       60
 #define DIFFICULTY_WINDOW_V16                           DIFFICULTY_WINDOW_V11
 #define BLOCKCHAIN_TIMESTAMP_CHECK_WINDOW_V16           11
@@ -188,8 +188,8 @@ constexpr auto P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT     = 5s;
 #define HF_VERSION_PER_OUTPUT_FEE                       cryptonote::network_version_19
 #define HF_VERSION_BURN                                 cryptonote::network_version_19
 #define HF_VERSION_CLSAG                                cryptonote::network_version_19
-// Planned PoS (ARQMA-V11.0.0-PoS): activate when consensus is ready — see common/arqma_pulse_fork.h
-//#define HF_VERSION_PULSE_POS                          cryptonote::network_version_20_pos
+// Planned PoW/PoS Hybrid: activate when consensus is ready — see common/arqma_pulse_fork.h
+//#define HF_VERSION_PULSE_POS                          cryptonote::network_version_20
 
 #define PER_KB_FEE_QUANTIZATION_DECIMALS                8
 
@@ -265,7 +265,7 @@ namespace config
     } }; // Bender's nightmare
   std::string const GENESIS_TX = "011201ff00011e026bc5c7db8a664f652d78adb587ac4d759c6757258b64ef9cba3c0354e64fb2e42101abca6a39c561d0897be183eb0143990eba201aa7d2c652ab0555d28bb4b70728";
   uint32_t const GENESIS_NONCE = 19993;
-  /** Coinbase governance / dev / net destinations (HF16+). Same split and vout order apply through PoS/Pulse (network_version_20_pos): `construct_miner_tx` appends these after miner + SN payouts; do not remove without updating `validate_miner_transaction` and Pulse coinbase checks. */
+  /** Coinbase governance / dev / net destinations (HF16+). Same split and vout order apply through PoW/PoS Hybrid (network_version_20): `construct_miner_tx` appends these after miner + SN payouts; do not remove without updating `validate_miner_transaction` and Pulse coinbase checks. */
   std::string const GOV_WALLET_ADDRESS = "ar2dJ21SCuNiJndoQBf5ojhbdA7K8B3sREpnWSg4pHedXcwMbvUkYREAapZJMn3cVRj6VqDqDkj9bFoXLJViCmFs2qWkdufHt";
   std::string const DEV_WALLET_ADDRESS = "ar2qmaDevL5BaCgfNFz872NZmR6bDq1fKc1Qz2AiLU633yNs3vXi1JWh5q7vXq4dmY6E6PwRohqEdWtQPFEdZXjB38DtYQCXt";
   std::string const NET_WALLET_ADDRESS = "ar3k85DeZBxBccvHouqaHnfvmZ4CVWLG5BC8JQ5F1bB1FhjGBz4qiV85jaNwgqXu7eQ9cB6dCvqVheZaFu97SNoe1FDsPih3K";
@@ -400,8 +400,8 @@ namespace cryptonote
     network_version_17,
     network_version_18,
     network_version_19,
-    /** Planned PoS HF (ARQMA-V11.0.0-PoS) — inactive until appended to hardfork tables + consensus. */
-    network_version_20_pos,
+    /** PoW/PoS Hybrid HF (pulse_header on Pulse slots) — inactive on mainnet until appended to hardfork tables. */
+    network_version_20,
 
     network_version_count,
   };

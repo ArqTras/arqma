@@ -21,7 +21,7 @@ using clock = std::chrono::system_clock;
 
 uint64_t first_ideal_pos_block_height(Blockchain const &blockchain)
 {
-  uint64_t h = blockchain.get_earliest_ideal_height_for_version(cryptonote::network_version_20_pos);
+  uint64_t h = blockchain.get_earliest_ideal_height_for_version(cryptonote::network_version_20);
   constexpr uint64_t kMax = std::numeric_limits<uint64_t>::max();
   if (h == kMax || h == 0)
     h = arqma::pulse_fork::planned_fork_height_for_net(blockchain.nettype());
@@ -56,9 +56,22 @@ std::optional<round_timings> get_round_timings(Blockchain const &blockchain, uin
   uint64_t const anchor_chain_height = cryptonote::get_block_height(anchor);
   uint64_t const delta_height = block_height > anchor_chain_height ? block_height - anchor_chain_height : 0;
 
+  uint8_t const ideal_major = blockchain.get_ideal_hard_fork_version(block_height);
+  uint64_t const plan_fh = arqma::pulse_fork::planned_fork_height_for_net(blockchain.nettype());
+  if (plan_fh != 0 && block_height >= plan_fh && ideal_major >= cryptonote::network_version_20)
+  {
+    if (!arqma::pulse_fork::is_pulse_slot_at_height(blockchain.nettype(), block_height, ideal_major))
+      return std::nullopt;
+  }
+
+  uint64_t ideal_step_count = delta_height;
+  if (arqma::pulse_fork::hybrid_pos_pow_alternating_at_height(blockchain.nettype(), block_height, ideal_major)
+      && plan_fh != 0 && ((block_height - plan_fh) % 2ULL) == 1ULL)
+    ideal_step_count = (block_height - plan_fh - 1) / 2ULL;
+
   times.genesis_timestamp = clock::from_time_t(anchor.timestamp);
   times.prev_timestamp = clock::from_time_t(prev_timestamp);
-  times.ideal_timestamp = times.genesis_timestamp + std::chrono::seconds(T) * static_cast<int64_t>(delta_height);
+  times.ideal_timestamp = times.genesis_timestamp + std::chrono::seconds(T) * static_cast<int64_t>(ideal_step_count);
 
   times.r0_timestamp = std::clamp(
       times.ideal_timestamp,

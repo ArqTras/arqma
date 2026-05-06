@@ -379,7 +379,7 @@ namespace cryptonote
         crypto::hash &seed_hash);
 
     /**
-     * PoS/Pulse (when arqma::pulse_fork::FORK_ACTIVE and block major version is PoS-era): validate pulse header,
+     * Pulse slots (PoW/PoS Hybrid): when fork_active(net) and block major_version >= network_version_20, validate pulse header,
      * non-zero random preimage binding, validator_bitset vs signatures (bit i set requires a valid vote from validator i
      * when i < 16; indices >= 16 only exist when checkpointing quorum size exceeds 16 and have no header bit), and enough
      * valid checkpointing-validator signatures over the block hash.

@@ -338,7 +338,7 @@ namespace cryptonote
         }
         res.pos_pulse_cum_diff_uses_60s_lwma =
             arqma::pulse_fork::fork_active(net_type)
-            && bs.get_ideal_hard_fork_version(next_h) >= cryptonote::network_version_20_pos;
+            && bs.get_ideal_hard_fork_version(next_h) >= cryptonote::network_version_20;
         res.pos_pulse_arqnet_vote_buffer_blocks =
             static_cast<uint64_t>(m_core.get_pulse_arqnet_vote_buffer_distinct_block_count());
       }
@@ -1508,9 +1508,20 @@ namespace cryptonote
     {
       error_resp.code = CORE_RPC_ERROR_CODE_WRONG_PARAM;
       error_resp.message =
-          "PoS/Pulse is not active for this daemon: mainnet uses default builds until governance enables the fork; "
-          "for stagenet rehearsal rebuild with -DARQMA_STAGENET_POS_REHEARSAL=ON and run --stagenet";
+          "PoW/PoS Hybrid RPC is not active for this network (use --stagenet at/after HF network_version 20, or test harness)";
       return false;
+    }
+
+    {
+      uint64_t const next_h = m_core.get_current_blockchain_height() + 1;
+      uint8_t const next_maj = m_core.get_blockchain_storage().get_ideal_hard_fork_version(next_h);
+      if (!arqma::pulse_fork::is_pulse_slot_at_height(m_core.get_nettype(), next_h, next_maj))
+      {
+        error_resp.code = CORE_RPC_ERROR_CODE_WRONG_PARAM;
+        error_resp.message =
+            "Next chain height is a PoW slot (hybrid PoW/Pulse alternation): use get_block_template or PoW mining for this height";
+        return false;
+      }
     }
 
     if (req.pulse_round > 255)
@@ -1579,7 +1590,7 @@ namespace cryptonote
     {
       error_resp.code = CORE_RPC_ERROR_CODE_INTERNAL_ERROR;
       error_resp.message =
-          "Failed to create pulse block template (is the chain at ideal HF >= network_version_20_pos and PoS fork active?)";
+          "Failed to create pulse block template (ideal HF >= network_version_20 and PoW/PoS Hybrid rules active?)";
       return false;
     }
     (void)pulse_tpl_seed_height;
@@ -1698,8 +1709,7 @@ namespace cryptonote
     {
       error_resp.code = CORE_RPC_ERROR_CODE_WRONG_PARAM;
       error_resp.message =
-          "PoS/Pulse is not active for this daemon: mainnet uses default builds until governance enables the fork; "
-          "for stagenet rehearsal rebuild with -DARQMA_STAGENET_POS_REHEARSAL=ON and run --stagenet";
+          "PoW/PoS Hybrid RPC is not active for this network (use --stagenet at/after HF network_version 20, or test harness)";
       return false;
     }
 

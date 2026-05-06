@@ -295,7 +295,7 @@ namespace cryptonote
 
     bool check_refresh();
 
-    //! If daemon `get_info` reports planned/active PoS, print the same telemetry lines as `status`.
+    //! If daemon `get_info` reports planned/active PoW/PoS Hybrid, print the same telemetry lines as `status`.
     void maybe_print_daemon_pos_info();
 
     //----------------- i_wallet2_callback ---------------------

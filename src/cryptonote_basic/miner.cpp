@@ -209,7 +209,7 @@ namespace cryptonote
 
     if(!request_block_template())
     {
-      LOG_ERROR("Mining not started: failed to obtain block template (check sync and PoS/Pulse rules)");
+      LOG_ERROR("Mining not started: failed to obtain block template (check sync and PoW/PoS Hybrid rules)");
       return false;
     }
 

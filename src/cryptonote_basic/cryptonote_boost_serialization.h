@@ -233,7 +233,7 @@ namespace boost
     a & b.timestamp;
     a & b.prev_id;
     a & b.nonce;
-    if (b.major_version >= cryptonote::network_version_20_pos)
+    if (b.major_version >= cryptonote::network_version_20)
     {
       a & b.pulse;
       a & b.reward;
@@ -242,7 +242,7 @@ namespace boost
     //------------------
     a & b.miner_tx;
     a & b.tx_hashes;
-    if (b.major_version >= cryptonote::network_version_20_pos)
+    if (b.major_version >= cryptonote::network_version_20)
       a & b.pulse_validator_signatures;
   }
 

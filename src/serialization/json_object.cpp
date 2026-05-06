@@ -349,7 +349,7 @@ void toJsonValue(rapidjson::Writer<rapidjson::StringBuffer>& dest, const crypton
   INSERT_INTO_JSON_OBJECT(dest, prev_id, b.prev_id);
   INSERT_INTO_JSON_OBJECT(dest, nonce, b.nonce);
 
-  if (b.major_version >= cryptonote::network_version_20_pos)
+  if (b.major_version >= cryptonote::network_version_20)
   {
     INSERT_INTO_JSON_OBJECT(dest, pulse, b.pulse);
     INSERT_INTO_JSON_OBJECT(dest, reward, b.reward);
@@ -382,7 +382,7 @@ void fromJsonValue(const rapidjson::Value& val, cryptonote::block& b)
   b.sn_winner_tail = crypto::null_hash4;
   b.pulse_validator_signatures.clear();
 
-  if (b.major_version >= cryptonote::network_version_20_pos)
+  if (b.major_version >= cryptonote::network_version_20)
   {
     if (val.HasMember("pulse"))
       fromJsonValue(val["pulse"], b.pulse);

@@ -722,10 +722,10 @@ namespace cryptonote
       MERROR("Failed to parse reorg notify spec");
     }
 
-    // Pin to v19 until PoS (network_version_20_pos) is fully implemented; avoids regtest tracking an inactive HF.
     const std::vector<std::pair<uint8_t, uint64_t>> regtest_hard_forks = {std::make_pair(cryptonote::network_version_19, 1)};
     const cryptonote::test_options regtest_test_options = {
-      regtest_hard_forks
+        regtest_hard_forks,
+        0,
     };
 
     // SN
@@ -1672,7 +1672,7 @@ namespace cryptonote
     if (result)
     {
       relay_service_node_votes(); // NOTE: not working while syncing.
-      if (b.major_version >= network_version_20_pos)
+      if (b.major_version >= network_version_20)
       {
         crypto::hash const block_id = get_block_hash(b);
         clear_pulse_arqnet_vote_accumulator(block_id);
@@ -1866,12 +1866,16 @@ namespace cryptonote
         if (m_service_node_keys)
           MGINFO_CYAN(arqma::pulse_fork::SN_POS_STORAGE_PAIRING_HINT << ENDL);
       }
-#if defined(ARQMA_STAGENET_POS_REHEARSAL) && ARQMA_STAGENET_POS_REHEARSAL
-      if (m_nettype == cryptonote::STAGENET)
+      else
+      {
+        const uint64_t fh = arqma::pulse_fork::planned_fork_height_for_net(m_nettype);
         MGINFO_CYAN(
-            "This binary was built with ARQMA_STAGENET_POS_REHEARSAL: PoS/Pulse consensus is active on STAGENET only. "
-            "Do not ship this build to mainnet operators." << ENDL);
-#endif
+            "PoW/PoS Hybrid consensus is active (HF network_version="
+            << static_cast<unsigned>(cryptonote::network_version_20) << " from height " << fh << ")."
+            << ENDL);
+        if (m_service_node_keys)
+          MGINFO_CYAN(arqma::pulse_fork::SN_POS_STORAGE_PAIRING_HINT << ENDL);
+      }
 #endif
 
       m_starter_message_showed = true;
