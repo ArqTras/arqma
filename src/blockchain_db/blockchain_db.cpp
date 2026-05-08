@@ -1,0 +1,421 @@
+// Copyright (c) 2018 - 2026, The Arqma Network
+// Copyright (c) 2014-2018, The Monero Project
+//
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are
+// permitted provided that the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of
+//    conditions and the following disclaimer.
+//
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list
+//    of conditions and the following disclaimer in the documentation and/or other
+//    materials provided with the distribution.
+//
+// 3. Neither the name of the copyright holder nor the names of its contributors may be
+//    used to endorse or promote products derived from this software without specific
+//    prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
+// EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+// MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
+// THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+// INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
+// STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+// THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#include "common/string_util.h"
+#include "cryptonote_core/service_node_rules.h"
+#include "checkpoints/checkpoints.h"
+#include "string_tools.h"
+#include "blockchain_db.h"
+#include "cryptonote_basic/cryptonote_format_utils.h"
+#include "ringct/rctOps.h"
+
+#include "lmdb/db_lmdb.h"
+#include <chrono>
+
+#undef ARQMA_DEFAULT_LOG_CATEGORY
+#define ARQMA_DEFAULT_LOG_CATEGORY "blockchain.db"
+
+using epee::string_tools::pod_to_hex;
+
+namespace cryptonote
+{
+const command_line::arg_descriptor<std::string> arg_db_sync_mode = {
+  "db-sync-mode"
+, "Specify sync option, using format [safe|fast|fastest]:[sync|async]:[<nblocks_per_sync>[blocks]|<nbytes_per_sync>[bytes]]."
+, "fast:async:262144000bytes"
+};
+const command_line::arg_descriptor<bool> arg_db_salvage  = {
+  "db-salvage"
+, "Try to salvage a blockchain database if it seems corrupted"
+, false
+};
+
+BlockchainDB *new_db()
+{
+  return new BlockchainLMDB();
+}
+
+void BlockchainDB::init_options(boost::program_options::options_description& desc)
+{
+  command_line::add_arg(desc, arg_db_sync_mode);
+  command_line::add_arg(desc, arg_db_salvage);
+}
+
+void BlockchainDB::pop_block()
+{
+  block blk;
+  std::vector<transaction> txs;
+  pop_block(blk, txs);
+}
+
+void BlockchainDB::add_transaction(const crypto::hash& blk_hash, const std::pair<transaction, std::string>& txp, const crypto::hash* tx_hash_ptr, const crypto::hash* tx_prunable_hash_ptr)
+{
+  const transaction &tx = txp.first;
+
+  bool miner_tx = false;
+  crypto::hash tx_hash, tx_prunable_hash;
+  if (!tx_hash_ptr)
+  {
+    // should only need to compute hash for miner transactions
+    tx_hash = get_transaction_hash(tx);
+    LOG_PRINT_L3("null tx_hash_ptr - needed to compute: " << tx_hash);
+  }
+  else
+  {
+    tx_hash = *tx_hash_ptr;
+  }
+
+  bool has_blacklisted_outputs = false;
+  if(tx.version >= cryptonote::txversion::v2)
+  {
+    if (!tx_prunable_hash_ptr)
+      tx_prunable_hash = get_transaction_prunable_hash(tx, &txp.second);
+    else
+      tx_prunable_hash = *tx_prunable_hash_ptr;
+
+    crypto::secret_key secret_tx_key;
+    cryptonote::account_public_address address;
+    if(get_tx_secret_key_from_tx_extra(tx.extra, secret_tx_key) && get_service_node_contributor_from_tx_extra(tx.extra, address))
+      has_blacklisted_outputs = true;
+  }
+
+  for (const txin_v& tx_input : tx.vin)
+  {
+    if(tx_input.type() == typeid(txin_to_key))
+    {
+      add_spent_key(boost::get<txin_to_key>(tx_input).k_image);
+    }
+    else if (tx_input.type() == typeid(txin_gen))
+    {
+      /* nothing to do here */
+      miner_tx = true;
+    }
+    else
+    {
+      LOG_PRINT_L1("Unsupported input type, aborting transaction addition");
+      throw std::runtime_error("Unexpected input type, aborting");
+    }
+  }
+
+  uint64_t tx_id = add_transaction_data(blk_hash, txp, tx_hash, tx_prunable_hash);
+
+  std::vector<uint64_t> amount_output_indices(tx.vout.size());
+
+  // iterate tx.vout using indices instead of C++11 foreach syntax because
+  // we need the index
+  for (uint64_t i = 0; i < tx.vout.size(); ++i)
+  {
+    uint64_t unlock_time = 0;
+    if(tx.version >= cryptonote::txversion::v3)
+    {
+      unlock_time = tx.output_unlock_times[i];
+    }
+    else
+    {
+      unlock_time = tx.unlock_time;
+    }
+
+    // miner v2 txes have their coinbase output in one single out to save space,
+    // and we store them as rct outputs with an identity mask
+    if (miner_tx && tx.version >= cryptonote::txversion::v2)
+    {
+      cryptonote::tx_out vout = tx.vout[i];
+      rct::key commitment = rct::zeroCommit(vout.amount);
+      vout.amount = 0;
+      amount_output_indices[i] = add_output(tx_hash, vout, i, unlock_time, &commitment);
+    }
+    else
+    {
+      amount_output_indices[i] = add_output(tx_hash, tx.vout[i], i, unlock_time, tx.version >= cryptonote::txversion::v2 ? &tx.rct_signatures.outPk[i].mask : NULL);
+    }
+  }
+
+  if(has_blacklisted_outputs)
+    add_output_blacklist(amount_output_indices);
+
+  add_tx_amount_output_indices(tx_id, amount_output_indices);
+}
+
+uint64_t BlockchainDB::add_block( const std::pair<block, std::string>& blck
+                                , size_t block_weight
+                                , uint64_t long_term_block_weight
+                                , const difficulty_type& cumulative_difficulty
+                                , const uint64_t& coins_generated
+                                , const std::vector<std::pair<transaction, std::string>>& txs
+                                )
+{
+  const block &blk = blck.first;
+
+  // sanity
+  if (blk.tx_hashes.size() != txs.size())
+    throw std::runtime_error("Inconsistent tx/hashes sizes");
+
+
+  auto started = std::chrono::steady_clock::now();
+  crypto::hash blk_hash = get_block_hash(blk);
+  time_blk_hash += std::chrono::steady_clock::now() - started;
+
+  uint64_t prev_height = height();
+
+  // call out to add the transactions
+
+  started = std::chrono::steady_clock::now();
+
+  uint64_t num_rct_outs = 0;
+  add_transaction(blk_hash, std::make_pair(blk.miner_tx, tx_to_blob(blk.miner_tx)));
+  if (blk.miner_tx.version >= cryptonote::txversion::v2)
+    num_rct_outs += blk.miner_tx.vout.size();
+  int tx_i = 0;
+  crypto::hash tx_hash = crypto::null_hash;
+  for (const std::pair<transaction, std::string>& tx : txs)
+  {
+    tx_hash = blk.tx_hashes[tx_i];
+    add_transaction(blk_hash, tx, &tx_hash);
+    for (const auto &vout: tx.first.vout)
+    {
+      if (vout.amount == 0)
+        ++num_rct_outs;
+    }
+    ++tx_i;
+  }
+  time_add_transaction += std::chrono::steady_clock::now() - started;
+
+  // call out to subclass implementation to add the block & metadata
+  started = std::chrono::steady_clock::now();
+  add_block(blk, block_weight, long_term_block_weight, cumulative_difficulty, coins_generated, num_rct_outs, blk_hash);
+  time_add_block1 += std::chrono::steady_clock::now() - started;
+
+  m_hardfork->add(blk, prev_height);
+
+  ++num_calls;
+
+  return prev_height;
+}
+
+void BlockchainDB::set_hard_fork(HardFork* hf)
+{
+  m_hardfork = hf;
+}
+
+void BlockchainDB::pop_block(block& blk, std::vector<transaction>& txs)
+{
+  blk = get_top_block();
+
+  remove_block();
+
+  for (auto it = blk.tx_hashes.rbegin(); it != blk.tx_hashes.rend(); ++it)
+  {
+    auto& h = *it;
+    cryptonote::transaction tx;
+    if (!get_tx(h, tx) && !get_pruned_tx(h, tx))
+      throw DB_ERROR("Failed to get pruned or unpruned transaction from the db");
+    txs.push_back(std::move(tx));
+    remove_transaction(h);
+  }
+  remove_transaction(get_transaction_hash(blk.miner_tx));
+}
+
+void BlockchainDB::remove_transaction(const crypto::hash& tx_hash)
+{
+  transaction tx = get_pruned_tx(tx_hash);
+
+  for (const txin_v& tx_input : tx.vin)
+  {
+    if (tx_input.type() == typeid(txin_to_key))
+    {
+      remove_spent_key(boost::get<txin_to_key>(tx_input).k_image);
+    }
+  }
+
+  // need tx as tx.vout has the tx outputs, and the output amounts are needed
+  remove_transaction_data(tx_hash, tx);
+}
+
+block BlockchainDB::get_block_from_height(const uint64_t& height) const
+{
+  std::string bd = get_block_blob_from_height(height);
+  block b;
+  if (!parse_and_validate_block_from_blob(bd, b))
+    throw DB_ERROR("Failed to parse block from blob retrieved from the db");
+
+  return b;
+}
+
+block BlockchainDB::get_block(const crypto::hash& h) const
+{
+  std::string bd = get_block_blob(h);
+  block b;
+  if (!parse_and_validate_block_from_blob(bd, b))
+    throw DB_ERROR("Failed to parse block from blob retrieved from the db");
+
+  return b;
+}
+
+bool BlockchainDB::get_tx(const crypto::hash& h, cryptonote::transaction &tx) const
+{
+  std::string bd;
+  if (!get_tx_blob(h, bd))
+    return false;
+  if (!parse_and_validate_tx_from_blob(bd, tx))
+    throw DB_ERROR("Failed to parse transaction from blob retrieved from the db");
+
+  return true;
+}
+
+bool BlockchainDB::get_pruned_tx(const crypto::hash& h, cryptonote::transaction &tx) const
+{
+  std::string bd;
+  if (!get_pruned_tx_blob(h, bd))
+    return false;
+  if (!parse_and_validate_tx_base_from_blob(bd, tx))
+    throw DB_ERROR("Failed to parse transaction base from blob retrieved from the db");
+
+  return true;
+}
+
+transaction BlockchainDB::get_tx(const crypto::hash& h) const
+{
+  transaction tx;
+  if (!get_tx(h, tx))
+    throw TX_DNE(std::string("tx with hash ").append(epee::string_tools::pod_to_hex(h)).append(" not found in db").c_str());
+  return tx;
+}
+
+transaction BlockchainDB::get_pruned_tx(const crypto::hash& h) const
+{
+  transaction tx;
+  if (!get_pruned_tx(h, tx))
+    throw TX_DNE(std::string("pruned tx with hash ").append(epee::string_tools::pod_to_hex(h)).append(" not found in db").c_str());
+  return tx;
+}
+
+uint64_t BlockchainDB::get_output_unlock_time(const uint64_t amount, const uint64_t amount_index) const
+{
+  output_data_t odata = get_output_key(amount, amount_index);
+
+  return odata.unlock_time;
+}
+
+void BlockchainDB::reset_stats()
+{
+  num_calls = 0;
+  time_blk_hash = 0ns;
+  time_tx_exists = 0ns;
+  time_add_block1 = 0ns;
+  time_add_transaction = 0ns;
+  time_commit1 = 0ns;
+}
+
+void BlockchainDB::show_stats()
+{
+  LOG_PRINT_L1("\n"
+    << "*********************************\n"
+    << "num_calls: " << num_calls << "\n"
+    << "time_blk_hash: " << tools::friendly_duration(time_blk_hash) << "\n"
+    << "time_tx_exists: " << tools::friendly_duration(time_tx_exists) << "\n"
+    << "time_add_block1: " << tools::friendly_duration(time_add_block1) << "\n"
+    << "time_add_transaction: " << tools::friendly_duration(time_add_transaction) << "\n"
+    << "time_commit1: " << tools::friendly_duration(time_commit1) << "\n"
+    << "*********************************\n"
+  );
+}
+
+void BlockchainDB::fixup()
+{
+  if (is_read_only()) {
+    LOG_PRINT_L1("Database is opened read only - skipping fixup check");
+    return;
+  }
+
+  set_batch_transactions(true);
+  batch_start();
+
+  // Premine Burn Transaction key_images
+  static const char* const burn_vout_images[] =
+  {
+    "55fbaf353dc0750a522a3d5b9dc5500659681b8b8d5e7126e529a34f6887d8c6", // tx_hash: e8642cc515dc92e7fe31a5c5dc0558ed336e7ce5139a173e2f1680d2f46453fc
+    "c37f0d76d9143384ee1f2cf9d6f05f131ec0f11c8b20b4c69179a5a563cd2792", // tx_hash: e8642cc515dc92e7fe31a5c5dc0558ed336e7ce5139a173e2f1680d2f46453fc
+  };
+
+  for(const auto &kis : burn_vout_images)
+  {
+    crypto::key_image ki;
+    epee::string_tools::hex_to_pod(kis, ki);
+    if(!has_key_image(ki))
+    {
+      LOG_PRINT_L1("Adding Premine Burn Transaction key_images to spent" << ki);
+      add_spent_key(ki);
+    }
+  }
+  batch_stop();
+}
+
+bool BlockchainDB::get_immutable_checkpoint(checkpoint_t *immutable_checkpoint, uint64_t block_height) const
+{
+  size_t constexpr NUM_CHECKPOINTS = service_nodes::CHECKPOINT_NUM_CHECKPOINTS_FOR_CHAIN_FINALITY;
+  static_assert(NUM_CHECKPOINTS == 2, "Expect checkpoint finality to be 2, otherwise the immutable logic needs to check for any hardcoded checkpoints inbetween");
+
+  std::vector<checkpoint_t> checkpoints = get_checkpoints_range(block_height, 0, NUM_CHECKPOINTS);
+
+  if (checkpoints.empty())
+    return false;
+
+  checkpoint_t *checkpoint_ptr = nullptr;
+  if (checkpoints[0].type != checkpoint_type::service_node)
+  {
+    checkpoint_ptr = &checkpoints[0];
+  }
+  else if (checkpoints.size() == NUM_CHECKPOINTS)
+  {
+    checkpoint_ptr = &checkpoints[1];
+  }
+  else
+  {
+    return false;
+  }
+
+  if (immutable_checkpoint)
+    *immutable_checkpoint = std::move(*checkpoint_ptr);
+
+  return true;
+}
+
+uint64_t BlockchainDB::get_tx_block_height(const crypto::hash &h) const
+{
+  auto result = get_tx_block_heights({{h}}).front();
+  if (result == std::numeric_limits<uint64_t>::max())
+  {
+    std::string err = "tx_data_t with hash " + epee::string_tools::pod_to_hex(h) + " not found in db";
+    LOG_PRINT_L1(err);
+    throw TX_DNE(std::move(err));
+  }
+  return result;
+}
+
+}  // namespace cryptonote

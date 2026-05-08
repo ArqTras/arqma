@@ -1,0 +1,19 @@
+[Unit]
+Description=Arqma Full Node
+Wants=network.target
+After=syslog.target network-online.target
+
+[Service]
+Environment="ARQMA_RANDOMARQ_FULL_MEM=1"
+User=arqma
+Group=arqma
+WorkingDirectory=/home/arqma/arqma/build/release/bin
+Type=simple
+ExecStart=/home/arqma/arqma/build/release/bin/arqmad --non-interactive --service-node --ss-port 19999 --sn-ip Your_Public_IP
+Restart=on-failure
+RestartSec=10
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
+Alias=arqmad.service
