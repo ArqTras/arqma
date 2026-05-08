@@ -239,7 +239,7 @@ uint64_t Wallet::amountFromString(const string &amount)
 uint64_t Wallet::amountFromDouble(double amount)
 {
     std::stringstream ss;
-    ss << std::fixed << std::setprecision(CRYPTONOTE_DISPLAY_DECIMAL_POINT) << amount;
+    ss << std::fixed << std::setprecision(config::blockchain_settings::ARQMA_DECIMALS) << amount;
     return amountFromString(ss.str());
 }
 
@@ -593,7 +593,7 @@ bool WalletImpl::recoverFromKeysWithPassword(const std::string &path,
         m_wallet->generate(path, password, info.address, spendkey, viewkey);
         LOG_PRINT_L1("Generated new wallet from keys with seed language: ");
       }
-      if(!has_spendkey && has_viewkey
+      if(!has_spendkey && has_viewkey)
       {
         m_wallet->generate(path, password, info.address, viewkey);
         LOG_PRINT_L1("Generated new view only wallet from keys");
@@ -937,6 +937,16 @@ uint64_t WalletImpl::daemonBlockChainTargetHeight() const
     if(result == 0)
         result = daemonBlockChainHeight();
     return result;
+}
+
+uint32_t WalletImpl::defaultMixin() const
+{
+    return static_cast<uint32_t>(config::tx_settings::tx_mixin);
+}
+
+void WalletImpl::setDefaultMixin(uint32_t)
+{
+    // Mixin is fixed by network rules in current core.
 }
 
 bool WalletImpl::daemonSynced() const
@@ -1350,12 +1360,11 @@ PendingTransaction *WalletImpl::createTransaction(const string &dst_addr, const 
         boost::optional<uint8_t> hard_fork_version = m_wallet->get_hard_fork_version();
         if(!hard_fork_version)
         {
-          er.code = WALLET_RPC_ERROR_CODE_HF_QUERY_FAILED;
-          er.message = tools::ERR_MSG_NETWORK_VERSION_QUERY_FAILED;
-          return false;
+          setStatusError(tools::ERR_MSG_NETWORK_VERSION_QUERY_FAILED);
+          return nullptr;
         }
 
-        auto tx_params = tools::wallet2::construct_params(*hard_fork_version, cryptonote::txtype tx_type);
+        auto tx_params = tools::wallet2::construct_params(*hard_fork_version, cryptonote::txtype::standard);
 
         try {
             if (amount) {
@@ -1379,7 +1388,7 @@ PendingTransaction *WalletImpl::createTransaction(const string &dst_addr, const 
                 }
                 transaction->m_pending_tx = m_wallet->create_transactions_all(0, info.address, info.is_subaddress, 1, config::tx_settings::tx_mixin, 0 /* unlock_time */,
                                                                           adjusted_priority,
-                                                                          extra, subaddr_account, subaddr_indices, tx_params);
+                                                                          extra, subaddr_account, subaddr_indices, cryptonote::txtype::standard);
             }
 
             if (multisig().isMultisig) {
@@ -1943,7 +1952,7 @@ void WalletImpl::refreshThreadFunc()
         // if not - we wait forever
         if (m_refreshIntervalMillis > 0) {
             std::chrono::milliseconds wait_for_ms{m_refreshIntervalMillis.load()};
-            m_refreshCV.wait_for:(lock, wait_for_ms);
+            m_refreshCV.wait_for(lock, wait_for_ms);
         } else {
             m_refreshCV.wait(lock);
         }
@@ -2289,12 +2298,14 @@ PendingTransaction* WalletImpl::stakePending(const std::string& sn_key_str, cons
 
   PendingTransactionImpl * transaction = new PendingTransactionImpl(*this);
 
-  wallet2::stake_result stake_result = m_wallet->create_stake_tx(transaction->m_pending_tx, sn_key, amount);
-  if(stake_result != wallet2::stake_result::success))
+  auto stake_result = m_wallet->create_stake_tx(sn_key, amount);
+  if(stake_result.status != tools::wallet2::stake_result_status::success)
   {
     error_msg = "Failed to create a stake transaction: " + stake_result.msg;
+    delete transaction;
     return nullptr;
   }
+  transaction->m_pending_tx.push_back(std::move(stake_result.ptx));
 
   return transaction;
 }

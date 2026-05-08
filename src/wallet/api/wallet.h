@@ -112,6 +112,8 @@ public:
     uint64_t estimateBlockChainHeight() const override;
     uint64_t daemonBlockChainHeight() const override;
     uint64_t daemonBlockChainTargetHeight() const override;
+    uint32_t defaultMixin() const override;
+    void setDefaultMixin(uint32_t arg) override;
     bool synchronized() const override;
     bool refresh() override;
     void refreshAsync() override;
