@@ -605,8 +605,12 @@ find_package(PkgConfig REQUIRED)
 add_library(libunbound INTERFACE)
 add_library(systemd INTERFACE)
 
-pkg_check_modules(UNBOUND libunbound REQUIRED IMPORTED_TARGET)
-target_link_libraries(libunbound INTERFACE PkgConfig::UNBOUND)
+pkg_check_modules(UNBOUND libunbound IMPORTED_TARGET)
+if (UNBOUND_FOUND)
+  target_link_libraries(libunbound INTERFACE PkgConfig::UNBOUND)
+else()
+  warn("libunbound not found. building without unbound support")
+endif()
 
 option(WITH_SYSTEMD "Attempts to link against and enable systemd daemon notification support" OFF)
 if (WITH_SYSTEMD)
@@ -622,7 +626,9 @@ endif()
 
 add_subdirectory(external)
 
-include_directories(${UNBOUND_INCLUDE_DIR})
+if (UNBOUND_FOUND)
+  include_directories(${UNBOUND_INCLUDE_DIR})
+endif()
 
 include_directories(${EASYLOGGING_INCLUDE})
 link_directories(${EASYLOGGING_LIBRARY_DIRS})

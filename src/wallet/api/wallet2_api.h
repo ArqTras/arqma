@@ -36,6 +36,7 @@
 #include <vector>
 #include <list>
 #include <set>
+#include <cstdint>
 #include <ctime>
 #include <iostream>
 #include <stdexcept>
