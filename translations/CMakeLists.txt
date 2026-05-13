@@ -62,7 +62,7 @@ else()
     file(GLOB ts_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" *.ts)
     foreach(ts_file ${ts_files})
       string(REPLACE ".ts" ".qm" qm_file "${ts_file}")
-      add_custom_command(TARGET generate_translations_heade
+      add_custom_command(TARGET generate_translations_header
         PRE_BUILD
         COMMAND ${LRELEASE} "${CMAKE_CURRENT_SOURCE_DIR}/${ts_file}" -qm "${qm_file}"
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
@@ -72,7 +72,7 @@ endif()
 
 string(REPLACE ".ts" ".qm" qm_files "${ts_files}")
 
-add_custom_command(TARGET generate_translations_heade
+add_custom_command(TARGET generate_translations_header
   POST_BUILD
   COMMAND generate_translations_header ${qm_files}
   WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
