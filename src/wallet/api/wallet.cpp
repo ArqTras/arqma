@@ -46,8 +46,13 @@
 #include "mnemonics/electrum-words.h"
 #include "mnemonics/english.h"
 #include <boost/format.hpp>
+#include <boost/archive/portable_binary_iarchive.hpp>
+#include <boost/archive/portable_binary_oarchive.hpp>
 #include <sstream>
 #include <unordered_map>
+
+#include "string_tools.h"
+#include "cryptonote_basic/cryptonote_format_utils.h"
 
 #ifdef WIN32
 #include <boost/locale.hpp>
@@ -1549,6 +1554,65 @@ PendingTransaction *WalletImpl::createSweepUnmixableTransaction()
 void WalletImpl::disposeTransaction(PendingTransaction *t)
 {
     delete t;
+}
+
+bool WalletImpl::exportPendingRelaySlices(
+    PendingTransaction *t,
+    std::vector<std::string> &hexes_out,
+    std::vector<uint64_t> &fees_out)
+{
+    hexes_out.clear();
+    fees_out.clear();
+    auto *impl = dynamic_cast<PendingTransactionImpl *>(t);
+    if (!impl || impl->m_pending_tx.empty())
+        return false;
+    for (const auto &pt : impl->m_pending_tx)
+    {
+        std::ostringstream oss;
+        boost::archive::portable_binary_oarchive ar(oss);
+        try
+        {
+            ar << pt;
+        }
+        catch (...)
+        {
+            hexes_out.clear();
+            fees_out.clear();
+            return false;
+        }
+        hexes_out.push_back(epee::string_tools::buff_to_hex_nodelimer(oss.str()));
+        fees_out.push_back(pt.fee);
+    }
+    return true;
+}
+
+bool WalletImpl::relayTxFromMetadataHex(const std::string &metadata_hex, std::string &tx_hash_out)
+{
+  tx_hash_out.clear();
+  std::string blob;
+  if (!epee::string_tools::parse_hexstr_to_binbuff(metadata_hex, blob))
+    return false;
+  tools::wallet2::pending_tx ptx;
+  try
+  {
+    std::istringstream iss(blob);
+    boost::archive::portable_binary_iarchive ar(iss);
+    ar >> ptx;
+  }
+  catch (...)
+  {
+    return false;
+  }
+  try
+  {
+    m_wallet->commit_tx(ptx);
+  }
+  catch (...)
+  {
+    return false;
+  }
+  tx_hash_out = epee::string_tools::pod_to_hex(cryptonote::get_transaction_hash(ptx.tx));
+  return true;
 }
 
 TransactionHistory *WalletImpl::history()

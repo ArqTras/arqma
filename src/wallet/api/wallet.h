@@ -162,6 +162,12 @@ public:
     bool importKeyImages(const std::string &filename) override;
 
     virtual void disposeTransaction(PendingTransaction * t) override;
+    virtual bool exportPendingRelaySlices(
+        PendingTransaction * t,
+        std::vector<std::string> &hexes_out,
+        std::vector<uint64_t> &fees_out
+    ) override;
+    virtual bool relayTxFromMetadataHex(const std::string &metadata_hex, std::string &tx_hash_out) override;
     virtual TransactionHistory * history() override;
     virtual AddressBook * addressBook() override;
     virtual Subaddress * subaddress() override;

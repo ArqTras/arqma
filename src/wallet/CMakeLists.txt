@@ -106,6 +106,8 @@ if(BUILD_GUI_DEPS)
             blockchain_db
             cryptonote_core
             cryptonote_basic
+            cryptonote_format_utils_basic
+            cryptonote_protocol
             mnemonics
             common
             cncrypto
@@ -114,7 +116,13 @@ if(BUILD_GUI_DEPS)
             ringct_basic
             checkpoints
             version
-            net)
+            net
+            rpc
+            rpc_base
+            arqnet
+            serialization
+            p2p
+            lmdb_lib)
   else()
     set(libs_to_merge
             wallet_api
@@ -123,6 +131,7 @@ if(BUILD_GUI_DEPS)
             blockchain_db
             cryptonote_core
             cryptonote_basic
+            cryptonote_format_utils_basic
             mnemonics
             common
             cncrypto
@@ -131,13 +140,53 @@ if(BUILD_GUI_DEPS)
             ringct_basic
             checkpoints
             version
-            net)
+            net
+            lmdb_lib)
   endif()
 
     foreach(lib ${libs_to_merge})
         list(APPEND objlibs $<TARGET_OBJECTS:obj_${lib}>) # matches naming convention in src/CMakeLists.txt
     endforeach()
     add_library(wallet_merged STATIC ${objlibs})
+    # GUI Rust/Tauri link **only** `wallet_merged`; fold epee + easylogging + randomx into this archive
+    # on every desktop OS (macOS libtool, Windows MSVC `Lib`/llvm-lib, Windows MinGW + Linux GNU `ar`).
+    if(NOT IOS AND TARGET epee AND TARGET easylogging AND TARGET randomx)
+      add_dependencies(wallet_merged epee easylogging randomx)
+      if(APPLE)
+        add_custom_command(TARGET wallet_merged POST_BUILD
+          COMMAND libtool -static -o $<TARGET_FILE:wallet_merged>.fat
+                  $<TARGET_FILE:wallet_merged>
+                  $<TARGET_FILE:epee>
+                  $<TARGET_FILE:easylogging>
+                  $<TARGET_FILE:randomx>
+          COMMAND ${CMAKE_COMMAND} -E rename $<TARGET_FILE:wallet_merged>.fat $<TARGET_FILE:wallet_merged>
+          COMMENT "Fold epee/easylogging/randomx into libwallet_merged (fat static archive)"
+          VERBATIM)
+      elseif(WIN32 AND NOT MINGW)
+        # MSVC / Clang-cl / Ninja: use toolchain archiver (Lib.exe or llvm-lib), not bare `lib` on PATH.
+        add_custom_command(TARGET wallet_merged POST_BUILD
+          COMMAND "${CMAKE_AR}" /OUT:$<TARGET_FILE:wallet_merged>.fat
+                  $<TARGET_FILE:wallet_merged>
+                  $<TARGET_FILE:epee>
+                  $<TARGET_FILE:easylogging>
+                  $<TARGET_FILE:randomx>
+          COMMAND ${CMAKE_COMMAND} -E rename $<TARGET_FILE:wallet_merged>.fat $<TARGET_FILE:wallet_merged>
+          COMMENT "Fold epee/easylogging/randomx into wallet_merged.lib (Windows COFF)"
+          VERBATIM)
+      else()
+        # MinGW (Windows), Linux, BSD GNU binutils `ar -M` MRI
+        add_custom_command(TARGET wallet_merged POST_BUILD
+          COMMAND ${CMAKE_COMMAND}
+            -DCMAKE_AR=${CMAKE_AR}
+            -DWALLET_MERGED=$<TARGET_FILE:wallet_merged>
+            -DLIBEPEE=$<TARGET_FILE:epee>
+            -DLIBEASYLOGGING=$<TARGET_FILE:easylogging>
+            -DLIBRANDOMX=$<TARGET_FILE:randomx>
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/wallet_merge_gnu_ar.cmake"
+          COMMENT "Fold epee/easylogging/randomx into libwallet_merged.a (GNU ar MRI)"
+          VERBATIM)
+      endif()
+    endif()
     if(IOS)
         set(lib_folder lib-${ARCH})
     else()

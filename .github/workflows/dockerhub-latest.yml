@@ -8,7 +8,7 @@ on:
       - 'LICENSE'
   workflow_dispatch: {}
   # schedule:
-  #   - cron: '0 3 * * 1'  # co poniedziałek 03:00 UTC
+  #   - cron: '0 3 * * 1'  # e.g. every Monday 03:00 UTC
 
 jobs:
   build-and-push:
@@ -59,7 +59,7 @@ jobs:
         with:
           context: .
           push: true
-          pull: true                      # <-- ważne: zawsze pobierz świery base image
+          pull: true                      # Always pull a fresh base image
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

@@ -816,6 +816,25 @@ struct Wallet
      */
     virtual void disposeTransaction(PendingTransaction * t) = 0;
 
+    /*!
+     * \brief exportPendingRelaySlices - serialize each pending sub-tx for relay_tx (do_not_relay path).
+     * \return false if \a t is not a PendingTransactionImpl or serialization fails.
+     */
+    virtual bool exportPendingRelaySlices(
+        PendingTransaction * t,
+        std::vector<std::string> &hexes_out,
+        std::vector<uint64_t> &fees_out
+    ) = 0;
+
+    /*!
+     * \brief relayTxFromMetadataHex - submit a transaction from hex metadata (portable_binary
+     *        serialized tools::wallet2::pending_tx), same semantics as wallet RPC relay_tx.
+     * \param metadata_hex hex from transfer / transfer_split with do_not_relay
+     * \param tx_hash_out transaction id on success
+     * \return true on success
+     */
+    virtual bool relayTxFromMetadataHex(const std::string &metadata_hex, std::string &tx_hash_out) = 0;
+
    /*!
     * \brief exportKeyImages - exports key images to file
     * \param filename
