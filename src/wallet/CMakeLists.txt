@@ -67,14 +67,14 @@ if(NOT IOS)
   set(wallet_rpc_private_headers
     wallet_rpc_server.h)
 
-  arqma_private_headers(wallet_rpc_serve
+  arqma_private_headers(wallet_rpc_server
     ${wallet_rpc_private_headers})
-  arqma_add_executable(wallet_rpc_serve
+  arqma_add_executable(wallet_rpc_server
     ${wallet_rpc_sources}
     ${wallet_rpc_headers}
     ${wallet_rpc_private_headers})
 
-  target_link_libraries(wallet_rpc_serve
+  target_link_libraries(wallet_rpc_server
     PRIVATE
       wallet
       rpc_base
@@ -91,7 +91,7 @@ if(NOT IOS)
       ${Boost_THREAD_LIBRARY}
       ${CMAKE_THREAD_LIBS_INIT}
       ${EXTRA_LIBRARIES})
-  set_property(TARGET wallet_rpc_serve
+  set_property(TARGET wallet_rpc_server
     PROPERTY
       OUTPUT_NAME "arqma-wallet-rpc")
   install(TARGETS wallet_rpc_server DESTINATION bin)
