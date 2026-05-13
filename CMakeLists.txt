@@ -328,6 +328,12 @@ if(NOT MANUAL_SUBMODULES)
     statusinfo("Checking submodules")
     check_submodule(external/rapidjson)
     check_submodule(external/randomarq)
+    execute_process(COMMAND git rev-parse "HEAD:external/randomarq"
+      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+      OUTPUT_VARIABLE _arq_randomarq_gitlink
+      OUTPUT_STRIP_TRAILING_WHITESPACE)
+    string(STRIP "${_arq_randomarq_gitlink}" _arq_randomarq_gitlink)
+    statusinfo("external/randomarq pinned to gitlink ${_arq_randomarq_gitlink}")
   endif()
 endif()
 
