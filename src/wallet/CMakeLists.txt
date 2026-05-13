@@ -84,7 +84,7 @@ if(NOT IOS)
       cncrypto
       common
       version
-      daemonize
+      daemonizer
       epee
       ${Boost_PROGRAM_OPTIONS_LIBRARY}
       ${Boost_FILESYSTEM_LIBRARY}

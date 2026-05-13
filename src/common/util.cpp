@@ -193,7 +193,7 @@ namespace tools
         GENERIC_WRITE, FILE_SHARE_READ,
         std::addressof(attributes),
         CREATE_NEW, (FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE),
-        nullpt
+        nullptr
       )
     };
     if (file)
