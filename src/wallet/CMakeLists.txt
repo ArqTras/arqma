@@ -10,7 +10,7 @@
 #    conditions and the following disclaimer.
 #
 # 2. Redistributions in binary form must reproduce the above copyright notice, this list
-#    of conditions and the following disclaimer in the documentation and/or other
+#    of conditions and the following disclaimer in the documentation and/or othe
 #    materials provided with the distribution.
 #
 # 3. Neither the name of the copyright holder nor the names of its contributors may be
@@ -67,29 +67,31 @@ if(NOT IOS)
   set(wallet_rpc_private_headers
     wallet_rpc_server.h)
 
-  arqma_private_headers(wallet_rpc_server
+  arqma_private_headers(wallet_rpc_serve
     ${wallet_rpc_private_headers})
-  arqma_add_executable(wallet_rpc_server
+  arqma_add_executable(wallet_rpc_serve
     ${wallet_rpc_sources}
     ${wallet_rpc_headers}
     ${wallet_rpc_private_headers})
 
-  target_link_libraries(wallet_rpc_server
+  target_link_libraries(wallet_rpc_serve
     PRIVATE
       wallet
       rpc_base
+      # core_rpc_server.cpp lives in `rpc`; wallet_rpc_server links its handlers.
+      rpc
       cryptonote_core
       cncrypto
       common
       version
-      daemonizer
+      daemonize
       epee
       ${Boost_PROGRAM_OPTIONS_LIBRARY}
       ${Boost_FILESYSTEM_LIBRARY}
       ${Boost_THREAD_LIBRARY}
       ${CMAKE_THREAD_LIBS_INIT}
       ${EXTRA_LIBRARIES})
-  set_property(TARGET wallet_rpc_server
+  set_property(TARGET wallet_rpc_serve
     PROPERTY
       OUTPUT_NAME "arqma-wallet-rpc")
   install(TARGETS wallet_rpc_server DESTINATION bin)

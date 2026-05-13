@@ -52,11 +52,17 @@ public:
     }
 };
 
-template <int N> constexpr void requested_quorum_size_is_not_defined() { static_assert(N != N, "Requested quorum size is not implemented"); }
+/// Base template: only explicit specializations below are valid (dependent static_assert avoids
+/// tautological `N != N` and gives a clear error if an unsupported size is used).
+template <int N>
+constexpr bool quorum_conn_matrix_size_is_not_implemented_v = false;
 
 /// Base implementation for quorum matrices; instantiating this is an error; all supported sizes are
 /// defined below.
-template <int N> constexpr static std::array<bool, N*N> quorum_conn_matrix = requested_quorum_size_is_not_defined<N>();
+template <int N> constexpr static std::array<bool, N*N> quorum_conn_matrix = [] {
+  static_assert(quorum_conn_matrix_size_is_not_implemented_v<N>, "Requested quorum size is not implemented");
+  return std::array<bool, N*N>{};
+}();
 
 template<> constexpr std::array<bool, 7*7> quorum_conn_matrix<7>{{
     0,1,0,1,0,1,0,

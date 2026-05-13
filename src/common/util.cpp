@@ -10,7 +10,7 @@
 //    conditions and the following disclaimer.
 //
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
-//    of conditions and the following disclaimer in the documentation and/or other
+//    of conditions and the following disclaimer in the documentation and/or othe
 //    materials provided with the distribution.
 //
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
@@ -167,7 +167,8 @@ namespace tools
     if (!GetTokenInformation(process.get(), TokenOwner, sid.get(), sid_size, std::addressof(sid_size)))
       return {};
 
-    const PSID psid = reinterpret_cast<const PTOKEN_OWNER>(sid.get())->Owner;
+    PTOKEN_OWNER const token_owner = reinterpret_cast<PTOKEN_OWNER>(sid.get());
+    const PSID psid = token_owner->Owner;
     const DWORD daclSize =
       sizeof(ACL) + sizeof(ACCESS_ALLOWED_ACE) + GetLengthSid(psid) - sizeof(DWORD);
 
@@ -192,7 +193,7 @@ namespace tools
         GENERIC_WRITE, FILE_SHARE_READ,
         std::addressof(attributes),
         CREATE_NEW, (FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE),
-        nullptr
+        nullpt
       )
     };
     if (file)
@@ -425,7 +426,7 @@ namespace tools
     free(unbound);
     free(arqma);
     // if no threads, bails out early with UB_NOERROR, otherwise fails with UB_AFTERFINAL id already finalized
-    bool with_threads = ub_ctx_async(ctx, 1) != 0; // UB_AFTERFINAL is not defined in public headers, check any error
+    bool with_threads = ub_ctx_async(ctx, 1) != 0; // UB_AFTERFINAL is not defined in public headers, check any erro
     ub_ctx_delete(ctx);
     MINFO("libunbound was built " << (with_threads ? "with" : "without") << " threads");
     return with_threads;
@@ -735,7 +736,7 @@ namespace tools
     int size_needed = WideCharToMultiByte(CP_UTF8, 0, buffer, -1, NULL, 0, NULL, NULL);
     std::string buf(size_needed, '\0');
     WideCharToMultiByte(CP_UTF8, 0, buffer, -1, &buf[0], size_needed, NULL, NULL);
-    buf.pop_back(); //size_needed includes null that we needed to have space for
+    buf.pop_back(); //size_needed includes null that we needed to have space fo
     return buf;
   }
 #endif

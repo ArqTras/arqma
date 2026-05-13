@@ -10,7 +10,7 @@
 #    conditions and the following disclaimer.
 #
 # 2. Redistributions in binary form must reproduce the above copyright notice, this list
-#    of conditions and the following disclaimer in the documentation and/or other
+#    of conditions and the following disclaimer in the documentation and/or othe
 #    materials provided with the distribution.
 #
 # 3. Neither the name of the copyright holder nor the names of its contributors may be
@@ -54,6 +54,9 @@ target_link_libraries(simplewallet
     ${Boost_PROGRAM_OPTIONS_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_LOCALE_LIBRARY}
+    # ICU import libs must follow Boost.Locale immediately: later deps may pull
+    # static libicu*.a (Boost charconv/locale graph); early -l:libicu*.dll.a avoids
+    # duplicate-symbol link failures on MSYS2 (see CMakeLists ICU_LIBRARIES).
     ${ICU_LIBRARIES}
     ${Boost_THREAD_LIBRARY}
     ${CMAKE_THREAD_LIBS_INIT}

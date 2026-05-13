@@ -10,7 +10,7 @@
 #    conditions and the following disclaimer.
 #
 # 2. Redistributions in binary form must reproduce the above copyright notice, this list
-#    of conditions and the following disclaimer in the documentation and/or other
+#    of conditions and the following disclaimer in the documentation and/or othe
 #    materials provided with the distribution.
 #
 # 3. Neither the name of the copyright holder nor the names of its contributors may be
@@ -33,7 +33,7 @@ project(translations)
 
 # when crosscompiling import the executable targets from a file
 IF(CMAKE_CROSSCOMPILING)
-  message(WARNING "CrossCompiling")
+  message(STATUS "Cross-compiling: translation generator may be imported (see IMPORT_EXECUTABLES)")
   SET(IMPORT_EXECUTABLES "${CMAKE_CURRENT_BINARY_DIR}/ImportExecutables.cmake" CACHE FILEPATH "Point it to the export file from a native build")
   INCLUDE(${IMPORT_EXECUTABLES})
 ENDIF(CMAKE_CROSSCOMPILING)
@@ -43,34 +43,39 @@ IF(NOT CMAKE_CROSSCOMPILING)
   add_executable(generate_translations_header generate_translations_header.c)
 ENDIF(NOT CMAKE_CROSSCOMPILING)
 
-find_program(LRELEASE lrelease)
+# MSYS2 / Qt often install the tool as lrelease-qt5 / lrelease-qt6; honor MINGW_PREFIX.
+if(DEFINED ENV{MINGW_PREFIX})
+  find_program(LRELEASE NAMES lrelease lrelease-qt5 lrelease-qt6 HINTS "$ENV{MINGW_PREFIX}/bin")
+else()
+  find_program(LRELEASE NAMES lrelease lrelease-qt5 lrelease-qt6)
+endif()
 if(LRELEASE STREQUAL "LRELEASE-NOTFOUND")
   set(ts_files "")
-  message(WARNING "lrelease program not found, translation files not built")
+  message(STATUS "lrelease not found (optional): .qm files not regenerated; install mingw-w64-x86_64-qt5-tools or qt6-tools if needed")
 else()
   execute_process(COMMAND ${LRELEASE} -version
     RESULT_VARIABLE lrelease_ret)
   if(NOT lrelease_ret EQUAL "0")
     set(ts_files "")
-    message(WARNING "lrelease program not working, translation files not built")
+    message(STATUS "lrelease not usable (optional): translation .qm build skipped")
   else()
     file(GLOB ts_files RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}" *.ts)
     foreach(ts_file ${ts_files})
       string(REPLACE ".ts" ".qm" qm_file "${ts_file}")
-      add_custom_command(TARGET generate_translations_header
+      add_custom_command(TARGET generate_translations_heade
         PRE_BUILD
         COMMAND ${LRELEASE} "${CMAKE_CURRENT_SOURCE_DIR}/${ts_file}" -qm "${qm_file}"
-        WORKING_DIRECTORY "${CMAKE_CURRENT_BIN_DIR}")
+        WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
     endforeach()
   endif()
 endif()
 
 string(REPLACE ".ts" ".qm" qm_files "${ts_files}")
 
-add_custom_command(TARGET generate_translations_header
+add_custom_command(TARGET generate_translations_heade
   POST_BUILD
   COMMAND generate_translations_header ${qm_files}
-  WORKING_DIRECTORY "${CMAKE_CURRENT_BIN_DIR}"
+  WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
   COMMENT "Generating embedded translations header")
 
 # export the generator target to a file, so it can be imported (see above) by another build

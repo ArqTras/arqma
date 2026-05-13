@@ -9,7 +9,7 @@
 //    conditions and the following disclaimer.
 //
 // 2. Redistributions in binary form must reproduce the above copyright notice, this list
-//    of conditions and the following disclaimer in the documentation and/or other
+//    of conditions and the following disclaimer in the documentation and/or othe
 //    materials provided with the distribution.
 //
 // 3. Neither the name of the copyright holder nor the names of its contributors may be
@@ -26,13 +26,22 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#if defined __GNUC__ && !defined _WIN32
+#if defined(__GNUC__) && !defined(_WIN32)
 #define HAVE_MLOCK 1
 #endif
+#if defined(_WIN32)
+#define HAVE_WIN_VIRTUALLOCK 1
+#endif
 
-#include <unistd.h>
 #if defined HAVE_MLOCK
+#include <unistd.h>
 #include <sys/mman.h>
+#endif
+#if defined HAVE_WIN_VIRTUALLOCK
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#include <windows.h>
 #endif
 #include "misc_log_ex.h"
 #include "mlocker.h"
@@ -55,11 +64,19 @@ static size_t query_page_size()
     MERROR("Failed to determine page size");
     return 0;
   }
-  return ret;
+  return static_cast<size_t>(ret);
+#elif defined HAVE_WIN_VIRTUALLOCK
+  SYSTEM_INFO si{};
+  GetSystemInfo(&si);
+  if (si.dwPageSize == 0)
+  {
+    MERROR("GetSystemInfo returned zero page size");
+    return 0;
+  }
+  return static_cast<size_t>(si.dwPageSize);
 #else
-#warning Missing query_page_size implementation
-#endif
   return 0;
+#endif
 }
 
 static void do_lock(void *ptr, size_t len)
@@ -68,8 +85,9 @@ static void do_lock(void *ptr, size_t len)
   int ret = mlock(ptr, len);
   if (ret < 0 && !previously_failed.exchange(true))
     MERROR("Error locking page at " << ptr << ": " << strerror(errno) << ", subsequent mlock errors will be silenced");
-#else
-#warning Missing do_lock implementation
+#elif defined HAVE_WIN_VIRTUALLOCK
+  if (!VirtualLock(ptr, len) && !previously_failed.exchange(true))
+    MERROR("VirtualLock failed at " << ptr << " len " << len << " err " << GetLastError() << ", subsequent lock errors will be silenced");
 #endif
 }
 
@@ -82,8 +100,9 @@ static void do_unlock(void *ptr, size_t len)
   // is also not going to work of course
   if (ret < 0 && !previously_failed.load())
     MERROR("Error unlocking page at " << ptr << ": " << strerror(errno));
-#else
-#warning Missing implementation of page size detection
+#elif defined HAVE_WIN_VIRTUALLOCK
+  if (!VirtualUnlock(ptr, len) && !previously_failed.load())
+    MERROR("VirtualUnlock failed at " << ptr << " len " << len << " err " << GetLastError());
 #endif
 }
 
