@@ -1,0 +1,50 @@
+# Migration Notes — Upgrade Branch
+
+## For developers
+
+1. Checkout `upgrade` and update submodules:
+   ```bash
+   git fetch origin
+   git checkout upgrade
+   git submodule update --init --recursive
+   ```
+2. Requires **CMake ≥ 3.16** and a **C++20** compiler.
+3. Recommended local verification:
+   ```bash
+   make release-test
+   # or
+   make debug-test
+   ```
+4. Formatting baseline: `.clang-format` (C++20). Do not mass-reformat unrelated
+   files in feature PRs.
+
+## For service node operators
+
+- Continue running Storage Server; uptime proofs still require SS pings.
+- `arqnet_ping` may appear in daemon info / RPC. Missing Arq-Net pings do **not**
+  currently block uptime proofs.
+- Expect stronger Arq-Net peer authentication: only registered SN keys are
+  accepted on the mesh port.
+
+## For wallet developers
+
+- HF19 enables CLSAG, burns and per-output fees.
+- Burn construction is allowed at HF ≥ 19 in both wallet and core
+  (`construct_tx` gate corrected on this branch).
+- Testnet now includes `network_version_19` at height **1200** for testing.
+
+## Compatibility
+
+| Area | Impact |
+|------|--------|
+| Mainnet consensus rules | Unchanged schedule; burn gate bugfix aligns core with intended HF19 behaviour |
+| P2P wire | No intentional breaking change in this milestone |
+| RPC | Additive: `arqnet_ping`, `last_arqnet_ping` |
+| Wallet cache | No format bump in this milestone |
+| Build | C++20 may require newer toolchains than older Arqma docs listed |
+
+## Rollback
+
+Reverting the `upgrade` branch commits restores previous burn rejection at
+HF19 and previous Arq-Net accept-all client behaviour. Prefer forward fixes
+over silent rollback once HF19 burn usage exists on network.
