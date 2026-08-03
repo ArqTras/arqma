@@ -28,28 +28,71 @@
 
 #include "router_service.h"
 
+#include <cctype>
 #include <system_error>
 #include <utility>
 
 namespace arq_router
 {
+  namespace
+  {
+    bool listen_looks_sane(const std::string &listen) noexcept
+    {
+      if (listen.empty())
+        return true; // optional until sockets land
+      // Accept host:port with a numeric port; reject spaces / empty host.
+      const auto colon = listen.rfind(':');
+      if (colon == std::string::npos || colon == 0 || colon + 1 >= listen.size())
+        return false;
+      for (std::size_t i = colon + 1; i < listen.size(); ++i)
+      {
+        if (!std::isdigit(static_cast<unsigned char>(listen[i])))
+          return false;
+      }
+      return true;
+    }
+  }
+
+  std::error_code validate_config(const RouterConfig &config) noexcept
+  {
+    if (!config.enabled)
+      return std::make_error_code(std::errc::operation_not_permitted);
+    if (config.data_dir.empty())
+      return std::make_error_code(std::errc::invalid_argument);
+    if (!listen_looks_sane(config.listen))
+      return std::make_error_code(std::errc::invalid_argument);
+    return {};
+  }
+
   RouterService::RouterService(RouterConfig config)
     : config_{std::move(config)}
   {}
 
+  const char *RouterService::state_name() const noexcept
+  {
+    if (running_)
+      return "running";
+    if (initialized_)
+      return "initialized";
+    return "idle";
+  }
+
   std::error_code RouterService::init() noexcept
   {
-    if (!config_.enabled)
-      return std::make_error_code(std::errc::operation_not_permitted);
+    if (auto ec = validate_config(config_))
+      return ec;
     // Experimental lifecycle only — no onion routing sockets yet.
+    initialized_ = true;
     running_ = false;
     return {};
   }
 
   std::error_code RouterService::start() noexcept
   {
-    if (!config_.enabled)
-      return std::make_error_code(std::errc::operation_not_permitted);
+    if (!initialized_)
+      return std::make_error_code(std::errc::not_connected);
+    if (auto ec = validate_config(config_))
+      return ec;
     running_ = true;
     return {};
   }

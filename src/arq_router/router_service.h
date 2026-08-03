@@ -41,6 +41,10 @@ namespace arq_router
     std::string public_address;
   };
 
+  /// Structural validation for the experimental in-process scaffold.
+  /// Production Lokinet-class routing remains a separate binary.
+  std::error_code validate_config(const RouterConfig &config) noexcept;
+
   class RouterService
   {
    public:
@@ -51,10 +55,13 @@ namespace arq_router
     std::error_code stop() noexcept;
 
     const RouterConfig &config() const noexcept { return config_; }
+    bool initialized() const noexcept { return initialized_; }
     bool running() const noexcept { return running_; }
+    const char *state_name() const noexcept;
 
    private:
     RouterConfig config_;
+    bool initialized_ = false;
     bool running_ = false;
   };
 }

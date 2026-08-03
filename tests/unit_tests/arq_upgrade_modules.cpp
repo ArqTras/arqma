@@ -98,10 +98,16 @@ TEST(arq_router, experimental_lifecycle_when_enabled)
 {
   arq_router::RouterConfig cfg;
   cfg.enabled = true;
+  cfg.data_dir = "/tmp/arq-router-test";
+  cfg.listen = "127.0.0.1:1090";
   arq_router::RouterService router{cfg};
+  EXPECT_STREQ("idle", router.state_name());
   EXPECT_FALSE(router.init());
+  EXPECT_TRUE(router.initialized());
+  EXPECT_STREQ("initialized", router.state_name());
   EXPECT_FALSE(router.start());
   EXPECT_TRUE(router.running());
+  EXPECT_STREQ("running", router.state_name());
   EXPECT_FALSE(router.stop());
   EXPECT_FALSE(router.running());
 }
@@ -110,6 +116,21 @@ TEST(arq_router, disabled_rejects_init)
 {
   arq_router::RouterService router{};
   EXPECT_EQ(std::make_error_code(std::errc::operation_not_permitted), router.init());
+}
+
+TEST(arq_router, enabled_requires_data_dir_and_sane_listen)
+{
+  arq_router::RouterConfig cfg;
+  cfg.enabled = true;
+  EXPECT_EQ(std::make_error_code(std::errc::invalid_argument), arq_router::validate_config(cfg));
+  cfg.data_dir = "/tmp/arq-router";
+  cfg.listen = "bad";
+  EXPECT_EQ(std::make_error_code(std::errc::invalid_argument), arq_router::validate_config(cfg));
+  cfg.listen = "127.0.0.1:1090";
+  EXPECT_FALSE(arq_router::validate_config(cfg));
+
+  arq_router::RouterService router{cfg};
+  EXPECT_EQ(std::make_error_code(std::errc::not_connected), router.start());
 }
 
 TEST(rpc_auth, access_levels_and_operator_methods)

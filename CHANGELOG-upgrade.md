@@ -23,6 +23,8 @@
   via `authorize_request` on vote_ob/ping/pong.
 - Cleartext storage reachability uses HTTP GET after TCP connect; TLS stays
   TCP-only until a TLS client is wired.
+- Harden experimental `arq_router` lifecycle: require data_dir, validate
+  listen `host:port`, require init before start.
 - Add ArqMQ builtin command ACL registry (`authorize` denies unknown commands).
 - Both `--arqnet-backend` values initialize; RPC exposes `transport=snnetwork`.
 - In-memory StorageClient / SwarmMap / onion validation / router lifecycle tests.

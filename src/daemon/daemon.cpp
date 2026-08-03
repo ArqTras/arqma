@@ -125,6 +125,8 @@ public:
     {
       arq_router::RouterConfig router_cfg;
       router_cfg.enabled = true;
+      router_cfg.data_dir = (boost::filesystem::path(command_line::get_arg(vm, cryptonote::arg_data_dir)) / "arq-router").string();
+      router_cfg.listen = "127.0.0.1:1090";
       arq_router::RouterService router{router_cfg};
       const auto router_ec = router.init();
       if (router_ec)
@@ -132,7 +134,8 @@ public:
       else
       {
         (void)router.start();
-        MINFO("Arq privacy router experimental lifecycle started (no production onion routing yet)");
+        MINFO("Arq privacy router experimental lifecycle started (state=" << router.state_name()
+              << ", data_dir=" << router_cfg.data_dir << "; no production onion routing yet)");
         (void)router.stop();
       }
     }
