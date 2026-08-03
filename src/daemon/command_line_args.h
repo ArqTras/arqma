@@ -124,6 +124,12 @@ namespace daemon_args
     }
   };
 
+  const command_line::arg_descriptor<std::string> arg_arqnet_backend = {
+    "arqnet-backend"
+  , "Arq-Net messaging backend: legacy-arqnet (default) or arqmq (experimental)"
+  , "legacy-arqnet"
+  };
+
 }  // namespace daemon_args
 
 #endif // DAEMON_COMMAND_LINE_ARGS_H

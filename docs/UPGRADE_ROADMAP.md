@@ -10,12 +10,12 @@ patterns while preserving Arqma identity.
 |-------|--------|-------|
 | 1 Analysis | **Done** | Architecture, deps, risks, Oxen gap analysis |
 | 2 Core modernization | **In progress** | C++20, CI, CLSAG tests, HF/Arq-Net fixes |
-| 3 Oxen feature parity (selective) | Planned | MQ migration, SN hygiene — no blind copy |
-| 4 Arq-Net evolution | Planned | Harden mesh; Lokinet-inspired routing later |
-| 5 Storage Server | Planned | Separate repo / integration; swarm sync |
-| 6 Session-like modules | Planned | Protocol patterns only, Arqma branding |
-| 7 RPC modernization | Planned | Auth, validation, docs/OpenAPI |
-| 8 P2P improvements | Planned | DoS, sync, bandwidth |
+| 3 Oxen feature parity (selective) | **Started** | ArqMQ scaffold added; no blind copy |
+| 4 Arq-Net evolution | **Started** | Legacy backend facade documented; routing scaffold added |
+| 5 Storage Server | **Started** | Daemon-side client scaffold; separate binary still required |
+| 6 Session-like modules | **Started** | Header-first protocol scaffolding with Arqma naming |
+| 7 RPC modernization | **Started** | Auth/validation/pagination plan + OpenAPI stub |
+| 8 P2P improvements | **Started** | Hardening recommendations tied to current limits |
 | 9 Performance | Planned | Measure first |
 | 10 Testing | **Started** | CLSAG + native CI unit tests |
 | 11 CI | **Started** | `ci.yml` + existing depends/docker |
@@ -69,14 +69,15 @@ milestone.
 - [ ] Restore legacy unit fixtures (base58/uri/parse_amount/multisig)
 - [ ] Fix checkpoints unit crash
 - [ ] Expand HF19 burn/per-output-fee core tests
-- [ ] ArqMQ dual-backend prototype
+- [x] ArqMQ dual-backend scaffold
 
 ## Milestone B — MQ / SN hygiene
 
-- Vendor or adapt OxenMQ under Arqma naming (`arqmq` / keep `arqnet` facade)
-- Feature-flag dual-stack during migration
-- Audit service node proofs/ports vs current Oxen-core
-- Document operator upgrade path
+- [x] Add `arqmq` facade scaffold under Arqma naming
+- [ ] Vendor or adapt transport internals under Arqma naming
+- [ ] Feature-flag dual-stack during migration
+- [ ] Audit service node proofs/ports vs current Oxen-core
+- [ ] Document operator upgrade path
 
 ## Milestone C — product fork-in-the-road
 
@@ -86,6 +87,15 @@ Choose **one** primary value-add:
 2. Blink-like fast confirmation
 3. Pulse-like consensus change
 4. Privacy routing daemon (Lokinet-inspired)
+
+### Current scaffolding status
+
+- [x] `src/arq_storage` daemon-side client API scaffold
+- [x] `src/arq_messaging` identity/onion/swarm-map scaffolds
+- [x] `src/arq_router` naming/config/service scaffold
+- [x] `docs/RPC_MODERNIZATION.md` and OpenAPI stub
+- [x] `docs/P2P_HARDENING.md`
+- [x] `docs/PHASES_3_TO_12_STATUS.md`
 
 ## Explicit non-goals (near term)
 

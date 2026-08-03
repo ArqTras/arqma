@@ -30,10 +30,13 @@
 # Green CI suite for the upgrade branch. Legacy fixtures (Monero-era addresses,
 # decimals, DNS) and Boost.Asio API-drift tests are restored incrementally.
 set(unit_tests_sources
+  arq_storage_client.cpp
+  arqmq_facade.cpp
   apply_permutation.cpp
   bulletproofs.cpp
   canonical_amounts.cpp
   chacha.cpp
+  # checkpoints.cpp  # TODO(upgrade): crashes under current SN-aware checkpoint API on macOS CI
   clsag.cpp
   command_line.cpp
   decompose_amount_into_digits.cpp
@@ -41,6 +44,7 @@ set(unit_tests_sources
   hf19.cpp
   main.cpp
   memwipe.cpp
+  parse_amount.cpp
   slow_memmem.cpp
   subaddress.cpp
   varint.cpp
@@ -62,6 +66,8 @@ target_link_libraries(unit_tests
     rpc
     wallet
     p2p
+    arqmq
+    arq_storage
     version
     epee
     ${Boost_CHRONO_LIBRARY}

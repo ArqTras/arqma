@@ -37,6 +37,7 @@
 #include "rpc/daemon_handler.h"
 #include "rpc/zmq_server.h"
 #include "cryptonote_protocol/arqnet.h"
+#include "arqmq/arqmq.h"
 
 #include "common/password.h"
 #include "common/util.h"
@@ -78,6 +79,29 @@ public:
     protocol.set_p2p_endpoint(p2p.get());
     core.set_protocol(protocol.get());
     arqnet::init_core_callbacks();
+
+    {
+      arqmq::Config mq_cfg{};
+      const auto backend = command_line::get_arg(vm, daemon_args::arg_arqnet_backend);
+      if (backend == "arqmq")
+        mq_cfg.backend = arqmq::Backend::ArqMq;
+      else
+        mq_cfg.backend = arqmq::Backend::LegacyArqNet;
+
+      const auto mq_ec = arqmq::init(mq_cfg);
+      if (mq_ec)
+      {
+        MWARNING("ArqMQ backend '" << backend << "' unavailable (" << mq_ec.message()
+                                   << "); continuing with legacy Arq-Net path");
+        arqmq::Config fallback{};
+        fallback.backend = arqmq::Backend::LegacyArqNet;
+        (void)arqmq::init(fallback);
+      }
+      else
+      {
+        MINFO("Arq-Net messaging facade backend: " << arqmq::to_string(mq_cfg.backend));
+      }
+    }
 
     const auto restricted = command_line::get_arg(vm, cryptonote::core_rpc_server::arg_restricted_rpc);
     const auto main_rpc_port = command_line::get_arg(vm, cryptonote::core_rpc_server::arg_rpc_bind_port);

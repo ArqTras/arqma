@@ -1,0 +1,101 @@
+openapi: 3.0.3
+info:
+  title: Arqmad RPC
+  version: 0.1.0
+  description: >
+    Minimal OpenAPI scaffold for selected Arqma daemon endpoints during the
+    upgrade branch modernization work.
+servers:
+  - url: http://127.0.0.1:19994
+paths:
+  /json_rpc:
+    post:
+      summary: Call JSON-RPC methods such as get_info
+      operationId: jsonRpc
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JsonRpcRequest'
+            example:
+              jsonrpc: "2.0"
+              id: "0"
+              method: get_info
+      responses:
+        '200':
+          description: JSON-RPC response envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JsonRpcResponse'
+  /storage_server/ping:
+    get:
+      summary: Check storage integration reachability
+      operationId: storageServerPing
+      responses:
+        '200':
+          description: Ping status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PingResponse'
+  /arqnet/ping:
+    get:
+      summary: Check Arq-Net reachability
+      operationId: arqnetPing
+      responses:
+        '200':
+          description: Ping status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PingResponse'
+components:
+  schemas:
+    JsonRpcRequest:
+      type: object
+      required:
+        - jsonrpc
+        - id
+        - method
+      properties:
+        jsonrpc:
+          type: string
+          enum: ["2.0"]
+        id:
+          oneOf:
+            - type: string
+            - type: integer
+        method:
+          type: string
+          enum: [get_info]
+        params:
+          type: object
+          additionalProperties: true
+    JsonRpcResponse:
+      type: object
+      required:
+        - jsonrpc
+        - id
+      properties:
+        jsonrpc:
+          type: string
+          enum: ["2.0"]
+        id:
+          oneOf:
+            - type: string
+            - type: integer
+        result:
+          type: object
+          additionalProperties: true
+        error:
+          type: object
+          additionalProperties: true
+    PingResponse:
+      type: object
+      properties:
+        status:
+          type: string
+        success:
+          type: boolean

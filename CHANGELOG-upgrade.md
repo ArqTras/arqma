@@ -30,3 +30,7 @@
 
 - Add architecture, security, Arq-Net, migration and upgrade roadmap docs under
   `docs/`.
+- Add phase 3–12 status matrix, RPC/P2P plans, OpenAPI stub and PR completeness gate.
+- Scaffold `arqmq`, `arq_storage`, `arq_messaging`, `arq_router` modules with unit tests.
+- Add daemon `--arqnet-backend` flag for messaging facade selection.
+- Restore `parse_amount` unit coverage for Arqma 9-decimal amounts.

@@ -1,0 +1,70 @@
+# RPC Modernization Plan
+
+## Goals
+
+- tighten authentication for privileged daemon operations
+- normalize request validation and error reporting
+- add predictable pagination to large list endpoints
+- publish a stable operator-facing OpenAPI description
+
+## Authentication Plan
+
+1. Keep read-only informational RPCs available without elevated access where
+   safe.
+2. Require authenticated access for administrative, service-node and future
+   storage-routing operations.
+3. Support a layered model:
+   - loopback/local operator access
+   - credential or token-based remote admin access
+   - explicit role mapping for future module APIs such as storage and messaging
+4. Log denied requests with enough metadata for operators without leaking
+   sensitive material.
+
+## Validation Plan
+
+- reject unknown required-field omissions with structured errors
+- validate numeric ranges before handler execution
+- validate hashes, pubkeys and namespace identifiers with reusable helpers
+- centralize pagination validation so limits/cursors are enforced consistently
+- keep transport-level parse failures distinct from business-logic failures
+
+## Pagination Plan
+
+Prefer cursor-based pagination for dynamic collections and bounded page sizes for
+legacy list endpoints.
+
+Recommended common fields:
+
+- `limit`
+- `cursor`
+- `next_cursor`
+- `has_more`
+
+Recommended default rules:
+
+- default `limit` per endpoint with explicit maximum
+- deterministic sort order
+- cursor encoding opaque to clients
+- stable partial responses when a page boundary is reached
+
+## OpenAPI Stub Outline
+
+The initial stub should remain deliberately small and hand-maintained:
+
+- `/json_rpc` with `get_info`
+- `/storage_server/ping`
+- `/arqnet/ping`
+
+Future generated or expanded descriptions should add:
+
+- reusable schemas for status/error envelopes
+- auth scheme definitions
+- tagged separation for daemon, service-node, storage and messaging endpoints
+- examples for common operator flows
+
+## Suggested implementation sequence
+
+1. Introduce shared request/response validation helpers.
+2. Add auth checks to the privileged RPC surface.
+3. Add paginated wrappers for high-cardinality list endpoints.
+4. Expand OpenAPI coverage and keep it reviewed with code changes.
