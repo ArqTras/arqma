@@ -492,7 +492,7 @@ namespace cryptonote
       return false;
     }
 
-    if (tx_params.burn_fixed && tx_params.hard_fork_version <= cryptonote::network_version_19)
+    if (tx_params.burn_fixed && tx_params.hard_fork_version < cryptonote::network_version_19)
     {
       LOG_ERROR("Cannot construct tx. burn can not be specified before HardFork 19");
       return false;

@@ -123,7 +123,10 @@ void *new_snnwrapper(cryptonote::core &core, const std::string &bind)
       return SNNetwork::allow::service_node;
     }
 
-    return SNNetwork::allow::client;
+    // Quorum traffic is service-node only. Unknown Curve25519 identities must be
+    // rejected to avoid an open ZMQ listener surface for DoS / command spam.
+    MWARNING("Rejecting incoming Arq-Net connection from non-SN x25519 " << x25519_pubkey << " @ " << ip);
+    return SNNetwork::allow::denied;
   };
   SNNWrapper *obj;
   if (!keys)
