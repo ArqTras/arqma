@@ -1,0 +1,91 @@
+name: ci
+
+on:
+  push:
+    branches: [master, upgrade, develop]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: linux-unit-${{ matrix.build_type }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake pkg-config ccache ninja-build \
+            libboost-all-dev libssl-dev libzmq3-dev libunbound-dev \
+            libsodium-dev libreadline-dev libhidapi-dev libusb-1.0-0-dev \
+            libprotobuf-dev protobuf-compiler libgtest-dev
+
+      - name: ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-unit-${{ matrix.build_type }}-${{ github.sha }}
+          restore-keys: ccache-unit-${{ matrix.build_type }}-
+
+      - name: Configure
+        run: |
+          ccache --max-size=2G
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} \
+            -DBUILD_TESTS=ON \
+            -DUSE_CCACHE=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Unit tests
+        run: |
+          cd build
+          ctest --output-on-failure -R unit_tests --timeout 1200
+
+  sanitize:
+    name: linux-asan-ubsan
+    runs-on: ubuntu-24.04
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake pkg-config ccache ninja-build \
+            libboost-all-dev libssl-dev libzmq3-dev libunbound-dev \
+            libsodium-dev libreadline-dev libhidapi-dev libusb-1.0-0-dev \
+            libprotobuf-dev protobuf-compiler libgtest-dev
+
+      - name: Configure (sanitizers)
+        run: |
+          cmake -S . -B build-san -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DBUILD_TESTS=ON \
+            -DSANITIZE=ON \
+            -DUSE_CCACHE=ON
+
+      - name: Build
+        run: cmake --build build-san --parallel
+
+      - name: Unit tests under sanitizers
+        run: |
+          cd build-san
+          ctest --output-on-failure -R unit_tests --timeout 1800
