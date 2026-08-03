@@ -40,6 +40,7 @@ using namespace epee;
 
 #include "version.h"
 #include "wallet_rpc_server.h"
+#include "wallet_rpc_validation.h"
 #include "wallet/wallet_args.h"
 #include "common/command_line.h"
 #include "common/i18n.h"
@@ -570,6 +571,14 @@ namespace tools
   //------------------------------------------------------------------------------------------------------------------------------
   bool wallet_rpc_server::validate_transfer(const std::list<transfer_destination>& destinations, const std::string& payment_id, std::vector<cryptonote::tx_destination_entry>& dsts, std::vector<uint8_t>& extra, bool at_least_one_destination, epee::json_rpc::error& er)
   {
+    if (!tools::wallet_rpc::allow_destination_count(destinations.size()))
+    {
+      er.code = WALLET_RPC_ERROR_CODE_TOO_MANY_ENTRIES;
+      er.message = "Too many transfer destinations (max "
+        + std::to_string(tools::wallet_rpc::max_transfer_destinations) + ")";
+      return false;
+    }
+
     crypto::hash8 integrated_payment_id = crypto::null_hash8;
     std::string extra_nonce;
     for (auto it = destinations.begin(); it != destinations.end(); it++)
@@ -768,6 +777,14 @@ namespace tools
       return false;
     }
 
+    if (!tools::wallet_rpc::allow_subaddr_index_count(req.subaddr_indices.size()))
+    {
+      er.code = WALLET_RPC_ERROR_CODE_TOO_MANY_ENTRIES;
+      er.message = "Too many subaddress indices (max "
+        + std::to_string(tools::wallet_rpc::max_subaddr_indices_per_request) + ")";
+      return false;
+    }
+
     if(m_wallet->use_fork_rules(HF_FORBID_BORROMEAN) && dsts.size() >= BULLETPROOF_MAX_OUTPUTS)
     {
       er.code = WALLET_RPC_ERROR_CODE_TX_TOO_LARGE;
@@ -832,6 +849,14 @@ namespace tools
     // validate the transfer requested and populate dsts & extra; RPC_TRANSFER::request and RPC_TRANSFER_SPLIT::request are identical types.
     if (!validate_transfer(req.destinations, req.payment_id, dsts, extra, true, er))
     {
+      return false;
+    }
+
+    if (!tools::wallet_rpc::allow_subaddr_index_count(req.subaddr_indices.size()))
+    {
+      er.code = WALLET_RPC_ERROR_CODE_TOO_MANY_ENTRIES;
+      er.message = "Too many subaddress indices (max "
+        + std::to_string(tools::wallet_rpc::max_subaddr_indices_per_request) + ")";
       return false;
     }
 
@@ -1575,6 +1600,14 @@ namespace tools
     res.payments.clear();
     if (!m_wallet) return not_open(er);
 
+    if (!tools::wallet_rpc::allow_payment_id_count(req.payment_ids.size()))
+    {
+      er.code = WALLET_RPC_ERROR_CODE_TOO_MANY_ENTRIES;
+      er.message = "Too many payment IDs (max "
+        + std::to_string(tools::wallet_rpc::max_payment_ids_per_request) + ")";
+      return false;
+    }
+
     /* If the payment ID list is empty, we get payments to any payment ID (or lack thereof) */
     if (req.payment_ids.empty())
     {
@@ -1603,9 +1636,8 @@ namespace tools
       crypto::hash8 payment_id8;
       std::string payment_id_blob;
 
-      // TODO - should the whole thing fail because of one bad id?
-
-      if(!epee::string_tools::parse_hexstr_to_binbuff(payment_id_str, payment_id_blob))
+      if (!tools::wallet_rpc::is_valid_payment_id_hex(payment_id_str)
+          || !epee::string_tools::parse_hexstr_to_binbuff(payment_id_str, payment_id_blob))
       {
         er.code = WALLET_RPC_ERROR_CODE_WRONG_PAYMENT_ID;
         er.message = "Payment ID has invalid format: " + payment_id_str;
@@ -2581,6 +2613,13 @@ namespace tools
   bool wallet_rpc_server::on_get_address_book(const wallet_rpc::COMMAND_RPC_GET_ADDRESS_BOOK_ENTRY::request& req, wallet_rpc::COMMAND_RPC_GET_ADDRESS_BOOK_ENTRY::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
+    if (!tools::wallet_rpc::allow_address_book_index_count(req.entries.size()))
+    {
+      er.code = WALLET_RPC_ERROR_CODE_TOO_MANY_ENTRIES;
+      er.message = "Too many address book indices (max "
+        + std::to_string(tools::wallet_rpc::max_address_book_indices_per_request) + ")";
+      return false;
+    }
     const auto ab = m_wallet->get_address_book();
     if (req.entries.empty())
     {

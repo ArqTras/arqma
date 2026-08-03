@@ -61,6 +61,7 @@ set(unit_tests_sources
   varint.cpp
   vercmp.cpp
   uri.cpp
+  wallet_rpc_validation.cpp
 )
 
 set(unit_tests_headers

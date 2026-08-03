@@ -14,6 +14,9 @@
   `get_block_header_by_hash`, and `get_block_headers_range`; fix missing early
   return on key-image size mismatch.
 - Cap `get_service_nodes` pubkey filter lists (`max_service_node_pubkeys_per_request`).
+- Soft-cap wallet RPC transfer destinations, bulk payment IDs, address-book
+  index lists and subaddress index filters (`wallet_rpc_validation.h`); add
+  `WALLET_RPC_ERROR_CODE_TOO_MANY_ENTRIES`.
 - Add ArqMQ builtin command ACL registry (`authorize` denies unknown commands).
 - Both `--arqnet-backend` values initialize; RPC exposes `transport=snnetwork`.
 - In-memory StorageClient / SwarmMap / onion validation / router lifecycle tests.

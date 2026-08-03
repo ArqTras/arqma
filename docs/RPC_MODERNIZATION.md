@@ -41,6 +41,19 @@
 Oversized requests return a status / JSON-RPC error without executing the heavy
 handler path. See `docs/ERROR_SEMANTICS.md`.
 
+### Wallet RPC soft caps (`wallet_rpc_validation.h`)
+
+| Surface | Cap | Limit |
+|---------|-----|-------|
+| transfer destinations | `max_transfer_destinations` | 100 |
+| `get_bulk_payments` payment IDs | `max_payment_ids_per_request` | 100 |
+| address-book index lists | `max_address_book_indices_per_request` | 1000 |
+| subaddress index filters | `max_subaddr_indices_per_request` | 1000 |
+
+Payment ID hex is validated with the shared daemon `validate_nonempty_hex`
+helper (8 or 32 bytes). Oversized requests return
+`WALLET_RPC_ERROR_CODE_TOO_MANY_ENTRIES` (-45).
+
 ## Pagination Plan
 
 Prefer cursor-based pagination for dynamic collections and bounded page sizes for
