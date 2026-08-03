@@ -53,6 +53,19 @@ Public names remain **Arq-Net** / **arqnet**. Internal library may be called
 
 Unknown remote Curve keys stay denied (already enforced).
 
+### Framing limits (`message_limits.hpp`)
+
+Aligned with `SN_ZMQ_MAX_MSG_SIZE` (1 MiB):
+
+| Limit | Value |
+|-------|-------|
+| `max_message_bytes` | 1048576 |
+| `max_command_name_bytes` | 64 |
+| `max_payload_frames` | 16 |
+
+`authorize_request` combines framing checks with ACL authorize; Arq-Net
+`vote_ob` / `ping` / `pong` handlers use it.
+
 ## Migration steps
 
 1. Extract stable facade headers from `SNNetwork` usage sites.

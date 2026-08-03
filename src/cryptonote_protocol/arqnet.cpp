@@ -18,6 +18,19 @@ using namespace service_nodes;
 using namespace std::string_literals;
 using namespace std::chrono_literals;
 
+size_t approx_payload_bytes(const std::vector<bt_value> &data)
+{
+  size_t bytes = 0;
+  for (const auto &part : data)
+  {
+    if (const auto *s = boost::get<std::string>(&part))
+      bytes += s->size();
+    else
+      bytes += 256; // bound non-string bt parts
+  }
+  return bytes;
+}
+
 struct SNNWrapper {
   SNNetwork snn;
   cryptonote::core &core;
@@ -441,7 +454,7 @@ void relay_obligation_votes(void *obj, const std::vector<service_nodes::quorum_v
 void handle_obligation_vote(SNNetwork::message &m, void *self)
 {
   const auto peer_acl = m.sn ? arqmq::CategoryAcl::ServiceNode : arqmq::CategoryAcl::Denied;
-  if (!arqmq::authorize("vote_ob", peer_acl))
+  if (!arqmq::authorize_request("vote_ob", peer_acl, approx_payload_bytes(m.data), m.data.size()))
   {
     MWARNING("Dropping vote_ob from unauthorized peer " << as_hex(m.pubkey));
     return;
@@ -507,7 +520,7 @@ std::enable_if_t<std::is_integral<I>::value, I> get_or(bt_dict &d, const std::st
 void handle_ping(SNNetwork::message &m, void *)
 {
   const auto peer_acl = m.sn ? arqmq::CategoryAcl::ServiceNode : arqmq::CategoryAcl::Basic;
-  if (!arqmq::authorize("ping", peer_acl))
+  if (!arqmq::authorize_request("ping", peer_acl, approx_payload_bytes(m.data), m.data.size()))
   {
     MWARNING("Dropping ping from unauthorized peer " << as_hex(m.pubkey));
     return;
@@ -527,7 +540,7 @@ void handle_ping(SNNetwork::message &m, void *)
 void handle_pong(SNNetwork::message &m, void *)
 {
   const auto peer_acl = m.sn ? arqmq::CategoryAcl::ServiceNode : arqmq::CategoryAcl::Basic;
-  if (!arqmq::authorize("pong", peer_acl))
+  if (!arqmq::authorize_request("pong", peer_acl, approx_payload_bytes(m.data), m.data.size()))
   {
     MWARNING("Dropping pong from unauthorized peer " << as_hex(m.pubkey));
     return;

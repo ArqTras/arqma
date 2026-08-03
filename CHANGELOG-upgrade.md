@@ -19,6 +19,8 @@
   `WALLET_RPC_ERROR_CODE_TOO_MANY_ENTRIES`.
 - Centralize wallet-rpc `--restricted-rpc` denials (`wallet_rpc_auth.h`) and
   close gaps on `relay_tx`, `get_tx_key`, `export_key_images`, mining controls.
+- Cap ArqMQ/Arq-Net request framing (1 MiB / 16 frames / 64-byte command names)
+  via `authorize_request` on vote_ob/ping/pong.
 - Add ArqMQ builtin command ACL registry (`authorize` denies unknown commands).
 - Both `--arqnet-backend` values initialize; RPC exposes `transport=snnetwork`.
 - In-memory StorageClient / SwarmMap / onion validation / router lifecycle tests.
@@ -70,6 +72,7 @@
 - Scaffold `arqmq`, `arq_storage`, `arq_messaging`, `arq_router` modules with unit tests.
 - Add daemon `--arqnet-backend` flag for messaging facade selection.
 - Restore `parse_amount` unit coverage for Arqma 9-decimal amounts.
+- Restore dynamic base-fee unit coverage for pre-per-byte and HF19 output fees.
 - Add RPC pagination helpers, `get_arqnet_status`, `get_storage_status`, HF19 burn helper,
   messaging envelope codec, P2P limit aliases, operator/performance docs, and
   `--arq-router` experimental scaffold flag.

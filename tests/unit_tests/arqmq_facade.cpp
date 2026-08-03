@@ -100,3 +100,16 @@ TEST(arqmq_facade, command_registry_maps_builtin_acls)
   EXPECT_FALSE(arqmq::authorize("admin_shutdown", arqmq::CategoryAcl::ServiceNode));
   EXPECT_FALSE(arqmq::authorize("unknown.command", arqmq::CategoryAcl::Admin));
 }
+
+TEST(arqmq_facade, message_limits_reject_oversized_requests)
+{
+  EXPECT_TRUE(arqmq::accept_request("ping", 32));
+  EXPECT_FALSE(arqmq::accept_request("", 32));
+  EXPECT_FALSE(arqmq::accept_request("ping", arqmq::max_message_bytes + 1));
+  EXPECT_FALSE(arqmq::accept_request("ping", 32, arqmq::max_payload_frames + 1));
+  EXPECT_FALSE(arqmq::accept_request(std::string(arqmq::max_command_name_bytes + 1, 'x'), 1));
+
+  EXPECT_TRUE(arqmq::authorize_request("ping", arqmq::CategoryAcl::Basic, 16));
+  EXPECT_FALSE(arqmq::authorize_request("ping", arqmq::CategoryAcl::Basic, arqmq::max_message_bytes + 1));
+  EXPECT_FALSE(arqmq::authorize_request("admin_shutdown", arqmq::CategoryAcl::ServiceNode, 16));
+}

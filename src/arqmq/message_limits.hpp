@@ -28,54 +28,38 @@
 
 #pragma once
 
-#include "arqmq.h"
-#include "message_limits.hpp"
-
+#include <cstddef>
+#include <cstdint>
 #include <string_view>
 
 namespace arqmq
 {
-  /// Static command → ACL map for the future native backend. LegacyArqNet still
-  /// dispatches through SNNetwork; this registry documents intended categories.
-  struct CommandAcl
-  {
-    std::string_view name;
-    CategoryAcl required;
-  };
+  /// Align with `SN_ZMQ_MAX_MSG_SIZE` in sn_network.cpp so the facade and
+  /// live SNNetwork transport reject oversized payloads consistently.
+  constexpr size_t max_message_bytes = 1024 * 1024;
+  constexpr size_t max_command_name_bytes = 64;
+  constexpr size_t max_payload_frames = 16;
 
-  inline constexpr CommandAcl k_builtin_commands[] = {
-      {"ping", CategoryAcl::Basic},
-      {"pong", CategoryAcl::Basic},
-      {"vote_ob", CategoryAcl::ServiceNode},
-      {"arqnet_status", CategoryAcl::Basic},
-      {"admin_shutdown", CategoryAcl::Admin},
-  };
-
-  inline CategoryAcl required_acl_for(std::string_view command) noexcept
+  inline bool allow_message_size(size_t bytes) noexcept
   {
-    for (const auto &entry : k_builtin_commands)
-    {
-      if (entry.name == command)
-        return entry.required;
-    }
-    return CategoryAcl::Denied;
+    return bytes <= max_message_bytes;
   }
 
-  inline bool authorize(std::string_view command, CategoryAcl granted) noexcept
+  inline bool allow_command_name(std::string_view name) noexcept
   {
-    const CategoryAcl required = required_acl_for(command);
-    // Unknown / explicitly denied commands never authorize, even for Admin.
-    if (required == CategoryAcl::Denied)
-      return false;
-    return allows(required, granted);
+    return !name.empty() && name.size() <= max_command_name_bytes;
   }
 
-  /// Framing + ACL gate for inbound ArqMQ/Arq-Net commands.
-  inline bool authorize_request(std::string_view command, CategoryAcl granted,
-                                size_t payload_bytes, size_t payload_frames = 1) noexcept
+  inline bool allow_payload_frame_count(size_t frames) noexcept
   {
-    if (!accept_request(command, payload_bytes, payload_frames))
-      return false;
-    return authorize(command, granted);
+    return frames <= max_payload_frames;
+  }
+
+  /// Combined framing gate used before ACL authorize / dispatch.
+  inline bool accept_request(std::string_view command, size_t payload_bytes, size_t payload_frames = 1) noexcept
+  {
+    return allow_command_name(command)
+        && allow_message_size(payload_bytes)
+        && allow_payload_frame_count(payload_frames);
   }
 }
