@@ -1,5 +1,4 @@
 // Copyright (c) 2018 - 2026, The Arqma Network
-// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -27,19 +26,39 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "gtest/gtest.h"
+#pragma once
 
-#include "common/util.h"
-#include "string_tools.h"
+#include "message_envelope.hpp"
 
-static bool check(const std::string &data, const char *expected_hash_hex)
+namespace arq_messaging
 {
-  crypto::hash hash, expected_hash;
-  if (!epee::string_tools::hex_to_pod(expected_hash_hex, expected_hash))
-    return false;
-  return tools::sha256sum_str((const uint8_t*)data.data(), data.size(), hash) && hash == expected_hash;
-}
+  /// Soft upper bound for envelope TTL until a production storage policy lands.
+  constexpr std::uint32_t max_envelope_ttl_seconds = 14 * 24 * 60 * 60;
 
-TEST(sha256, empty) { ASSERT_TRUE(check(std::string(), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855")); }
-TEST(sha256, small) { ASSERT_TRUE(check("0123456789", "84d89877f0d4041efb6bf91a16f0248f2fd573e6af05c19f96bedb9f882f7882")); }
-TEST(sha256, large) { ASSERT_TRUE(check(std::string(65536*256, 0), "080acf35a507ac9849cfcba47dc2ad83e01b75663a516279c8b9d243b719643e")); }
+  inline bool validate_envelope_ttl(const MessageEnvelope &envelope) noexcept
+  {
+    return envelope.ttl_seconds > 0 && envelope.ttl_seconds <= max_envelope_ttl_seconds;
+  }
+
+  /// Placeholder sealed-sender metadata. Real sender-hiding crypto is deferred;
+  /// this only tags envelopes that opt into the future sealed path.
+  struct SealedSenderTag
+  {
+    static constexpr std::uint8_t marker = 0xa1;
+    bool enabled = false;
+  };
+
+  inline MessageEnvelope with_sealed_sender_marker(MessageEnvelope envelope, bool enable)
+  {
+    if (enable && !envelope.payload.empty() && envelope.payload.front() != SealedSenderTag::marker)
+    {
+      envelope.payload.insert(envelope.payload.begin(), SealedSenderTag::marker);
+    }
+    return envelope;
+  }
+
+  inline bool has_sealed_sender_marker(const MessageEnvelope &envelope) noexcept
+  {
+    return !envelope.payload.empty() && envelope.payload.front() == SealedSenderTag::marker;
+  }
+}

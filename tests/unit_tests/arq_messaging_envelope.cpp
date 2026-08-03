@@ -29,6 +29,7 @@
 #include "gtest/gtest.h"
 
 #include "arq_messaging/message_envelope.hpp"
+#include "arq_messaging/sealed_sender.hpp"
 
 TEST(arq_messaging_envelope, roundtrip_binary_encoding)
 {
@@ -63,4 +64,20 @@ TEST(arq_messaging_envelope, rejects_truncated_payload)
   arq_messaging::MessageEnvelope decoded{};
   EXPECT_FALSE(arq_messaging::decode_message_envelope(
       std::string_view{reinterpret_cast<const char *>(encoded.data()), encoded.size()}, decoded));
+}
+
+TEST(arq_messaging_envelope, sealed_sender_marker_and_ttl_bounds)
+{
+  arq_messaging::MessageEnvelope envelope{};
+  envelope.ttl_seconds = 60;
+  envelope.payload = {0x11, 0x22};
+  EXPECT_TRUE(arq_messaging::validate_envelope_ttl(envelope));
+
+  envelope.ttl_seconds = arq_messaging::max_envelope_ttl_seconds + 1;
+  EXPECT_FALSE(arq_messaging::validate_envelope_ttl(envelope));
+
+  envelope.ttl_seconds = 60;
+  envelope = arq_messaging::with_sealed_sender_marker(std::move(envelope), true);
+  EXPECT_TRUE(arq_messaging::has_sealed_sender_marker(envelope));
+  EXPECT_EQ(arq_messaging::SealedSenderTag::marker, envelope.payload.front());
 }

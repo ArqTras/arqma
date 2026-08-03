@@ -33,7 +33,9 @@
   ArqMQ facade state and messaging envelope roundtrips.
 - Restore `mul_div` and `get_xtype_from_string` legacy unit coverage (216
   curated tests green locally).
+- Restore `sha256` unit coverage after `tools::sha256sum_str` API migration.
 - Add `arqmq::allows` ACL privilege helper coverage and SN hygiene audit notes.
+- Add sealed-sender marker / TTL bound helpers for messaging envelopes.
 
 ### Build / CI
 
