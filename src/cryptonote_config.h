@@ -151,6 +151,8 @@ using namespace std::literals;
 #define P2P_DEFAULT_PACKET_MAX_SIZE                     50000000   // 50MB maximum packet size
 #define P2P_DEFAULT_PEERS_IN_HANDSHAKE                  250
 #define P2P_MAX_PEERS_IN_HANDSHAKE                      250
+/// Pre-handshake Levin budget (matches epee LEVIN_INITIAL_MAX_PACKET_SIZE).
+#define P2P_PREAUTH_PACKET_MAX_SIZE                     (256 * 1024)
 #define P2P_DEFAULT_CONNECTION_TIMEOUT                  5000       // 5 seconds
 #define P2P_DEFAULT_SOCKS_CONNECT_TIMEOUT               20         // seconds
 #define P2P_DEFAULT_PING_CONNECTION_TIMEOUT             2000       // 2 seconds
@@ -174,6 +176,7 @@ static constexpr uint64_t P2P_DEFAULT_PACKET_MAX_SIZE_BYTES = P2P_DEFAULT_PACKET
 static constexpr uint64_t P2P_DEFAULT_PACKET_MAX_SIZE_MB = P2P_DEFAULT_PACKET_MAX_SIZE_BYTES / 1000 / 1000;
 static constexpr uint64_t P2P_DEFAULT_PACKET_MAX_SIZE_HEADROOM_BYTES =
     P2P_DEFAULT_PACKET_MAX_SIZE_BYTES - CRYPTONOTE_MAX_TX_SIZE;
+static constexpr uint64_t P2P_PREAUTH_PACKET_MAX_SIZE_BYTES = P2P_PREAUTH_PACKET_MAX_SIZE;
 
 #define P2P_FAILED_ADDR_FORGET_SECONDS                  (60*60)    // 1 day
 #define P2P_IP_BLOCKTIME                                (60*60*24) // 2 days
@@ -234,6 +237,10 @@ static_assert(P2P_DEFAULT_PACKET_MAX_SIZE_BYTES == 50 * 1000 * 1000,
     "P2P packet ceiling is documented as a 50 MB budget.");
 static_assert(P2P_DEFAULT_PACKET_MAX_SIZE_BYTES > CRYPTONOTE_MAX_TX_SIZE,
     "P2P packet budget must remain larger than one max-sized transaction.");
+static_assert(P2P_PREAUTH_PACKET_MAX_SIZE_BYTES < P2P_DEFAULT_PACKET_MAX_SIZE_BYTES,
+    "pre-auth packet budget must stay below the full packet ceiling.");
+static_assert(P2P_PREAUTH_PACKET_MAX_SIZE_BYTES == 256 * 1024,
+    "pre-auth packet budget must stay aligned with Levin initial max.");
 
 #ifndef UPTIME_PROOF_BASE_MINUTE
 #define UPTIME_PROOF_BASE_MINUTE                        60

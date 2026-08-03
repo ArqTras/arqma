@@ -50,6 +50,7 @@ set(unit_tests_sources
   main.cpp
   memwipe.cpp
   mul_div.cpp
+  output_selection.cpp
   parse_amount.cpp
   p2p_limits.cpp
   rpc_validation.cpp

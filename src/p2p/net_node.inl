@@ -1881,6 +1881,13 @@ namespace nodetool
   template<class t_payload_net_handler>
   bool node_server<t_payload_net_handler>::sanitize_peerlist(std::vector<peerlist_entry>& local_peerlist)
   {
+    if (local_peerlist.size() > P2P_MAX_PEERS_IN_HANDSHAKE)
+    {
+      MWARNING("Peerlist oversized (" << local_peerlist.size() << " > " << P2P_MAX_PEERS_IN_HANDSHAKE
+                                      << "); truncating");
+      local_peerlist.resize(P2P_MAX_PEERS_IN_HANDSHAKE);
+    }
+
     for(size_t i = 0; i < local_peerlist.size(); ++i)
     {
       bool ignore = false;
