@@ -1,7 +1,8 @@
 # CONTINUATION_STATE
 
 Branch: `upgrade` · Remote: `origin/upgrade` · Authorship: ArqTras only  
-Hooks: `git -c core.hooksPath=/tmp/empty-git-hooks`
+Hooks: `git -c core.hooksPath=/tmp/empty-git-hooks`  
+Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
 ## Local quality gate (latest)
 
@@ -10,12 +11,15 @@ Hooks: `git -c core.hooksPath=/tmp/empty-git-hooks`
 
 ## Next exact implementation
 
-1. Refactor `on_start_mining` / `on_stop_mining` / `on_stop_daemon` to shared `deny_restricted_rpc`  
-2. Or expand `docs/ERROR_SEMANTICS.md` for `CORE_RPC_ERROR_CODE_RESTRICTED`  
-3. Or attempt focused subset of serialization tests  
-4. Keep local-first green before push
+1. **File:** `tests/unit_tests/hardfork.cpp` — add to CMakeLists if missing and green  
+2. **Or:** extract focused binary archive tests from serialization.cpp into `serialization_basic.cpp`  
+3. **Or:** wire `get_service_node_key` restricted denial if sensitive  
+4. Prefer local green before every push; strip Co-authored-by
 
-## Last completed (pending push)
+## Architecture (locked decisions)
 
-- Operator RPC gates for set_bans/flush_txpool/save_bc/relay_tx/log/pop/prune
-- `CORE_RPC_ERROR_CODE_RESTRICTED` (-14)
+See CHANGELOG-upgrade.md and prior commits on `upgrade`. Do not re-run phase-1 analysis.
+
+## Session note
+
+Context window near limit — resume from item 1 above without re-auditing completed wallet/ArqMQ/storage/router work.

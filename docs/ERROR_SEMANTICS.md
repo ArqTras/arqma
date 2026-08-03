@@ -19,6 +19,11 @@ Cross-module upgrade components (`arqmq`, `arq_storage`, `arq_messaging`,
 - RPC string `status` / JSON-RPC `error` remain the public transport.
 - Batch DoS caps return additive status strings such as
   `Too many transaction hashes requested` (`invalid_argument`).
+- Restricted daemon operator methods return JSON-RPC
+  `CORE_RPC_ERROR_CODE_RESTRICTED` (-14) or a `Failed, restricted RPC…`
+  status string (`denied`).
+- Wallet-rpc restricted mode returns `WALLET_RPC_ERROR_CODE_DENIED` (-7);
+  oversized batches return `WALLET_RPC_ERROR_CODE_TOO_MANY_ENTRIES` (-45).
 - `arqmq::Backend::ArqMq` init failure maps to `not_supported`.
 - Legacy Arq-Net peer rejection maps to `denied`.
 
