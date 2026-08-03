@@ -30,6 +30,7 @@
 
 #include "arq_messaging/identity.hpp"
 #include "arq_messaging/onion_request.hpp"
+#include "arq_messaging/sealed_sender.hpp"
 #include "arq_messaging/swarm_map.hpp"
 #include "arq_router/router_service.h"
 #include "rpc/rpc_auth.h"
@@ -72,6 +73,25 @@ TEST(arq_messaging_identity, generate_curve25519_keypair)
   EXPECT_FALSE(arq_messaging::generate_identity(b));
   EXPECT_FALSE(a.public_key.is_null());
   EXPECT_NE(a.public_key.data, b.public_key.data);
+}
+
+TEST(arq_messaging_sealed_box, seal_open_roundtrip)
+{
+  arq_messaging::Identity recipient{};
+  ASSERT_FALSE(arq_messaging::generate_identity(recipient));
+
+  const std::vector<std::uint8_t> plain{1, 2, 3, 4, 5, 9};
+  std::vector<std::uint8_t> cipher;
+  ASSERT_FALSE(arq_messaging::seal_payload(recipient.public_key, plain, cipher));
+  EXPECT_GT(cipher.size(), plain.size());
+
+  std::vector<std::uint8_t> opened;
+  ASSERT_FALSE(arq_messaging::open_payload(recipient, cipher, opened));
+  EXPECT_EQ(plain, opened);
+
+  arq_messaging::Identity other{};
+  ASSERT_FALSE(arq_messaging::generate_identity(other));
+  EXPECT_TRUE(arq_messaging::open_payload(other, cipher, opened));
 }
 
 TEST(arq_router, experimental_lifecycle_when_enabled)

@@ -1,5 +1,6 @@
 set(arq_messaging_sources
-  identity.cpp)
+  identity.cpp
+  sealed_box.cpp)
 
 set(arq_messaging_headers
   identity.hpp

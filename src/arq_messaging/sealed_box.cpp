@@ -26,49 +26,39 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#include "sealed_sender.hpp"
 
-#include "identity.hpp"
-#include "message_envelope.hpp"
-
-#include <cstdint>
-#include <system_error>
-#include <vector>
+#include <sodium/crypto_box.h>
 
 namespace arq_messaging
 {
-  /// Soft upper bound for envelope TTL until a production storage policy lands.
-  constexpr std::uint32_t max_envelope_ttl_seconds = 14 * 24 * 60 * 60;
-
-  inline bool validate_envelope_ttl(const MessageEnvelope &envelope) noexcept
-  {
-    return envelope.ttl_seconds > 0 && envelope.ttl_seconds <= max_envelope_ttl_seconds;
-  }
-
-  /// Sealed-box helpers (libsodium crypto_box_seal) for recipient-anonymous
-  /// payloads. Marker tagging remains available for envelope-level hints.
-  struct SealedSenderTag
-  {
-    static constexpr std::uint8_t marker = 0xa1;
-  };
-
-  inline MessageEnvelope with_sealed_sender_marker(MessageEnvelope envelope, bool enable)
-  {
-    if (enable && !envelope.payload.empty() && envelope.payload.front() != SealedSenderTag::marker)
-      envelope.payload.insert(envelope.payload.begin(), SealedSenderTag::marker);
-    return envelope;
-  }
-
-  inline bool has_sealed_sender_marker(const MessageEnvelope &envelope) noexcept
-  {
-    return !envelope.payload.empty() && envelope.payload.front() == SealedSenderTag::marker;
-  }
-
   std::error_code seal_payload(const X25519PublicKey &recipient,
                                const std::vector<std::uint8_t> &plaintext,
-                               std::vector<std::uint8_t> &ciphertext) noexcept;
+                               std::vector<std::uint8_t> &ciphertext) noexcept
+  {
+    ciphertext.assign(plaintext.size() + crypto_box_SEALBYTES, 0);
+    if (crypto_box_seal(ciphertext.data(), plaintext.data(), plaintext.size(), recipient.data.data()) != 0)
+    {
+      ciphertext.clear();
+      return std::make_error_code(std::errc::io_error);
+    }
+    return {};
+  }
 
   std::error_code open_payload(const Identity &recipient,
                                const std::vector<std::uint8_t> &ciphertext,
-                               std::vector<std::uint8_t> &plaintext) noexcept;
+                               std::vector<std::uint8_t> &plaintext) noexcept
+  {
+    if (ciphertext.size() < crypto_box_SEALBYTES)
+      return std::make_error_code(std::errc::invalid_argument);
+
+    plaintext.assign(ciphertext.size() - crypto_box_SEALBYTES, 0);
+    if (crypto_box_seal_open(plaintext.data(), ciphertext.data(), ciphertext.size(),
+                             recipient.public_key.data.data(), recipient.private_key.data.data()) != 0)
+    {
+      plaintext.clear();
+      return std::make_error_code(std::errc::permission_denied);
+    }
+    return {};
+  }
 }
