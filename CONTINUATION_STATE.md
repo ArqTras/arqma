@@ -4,16 +4,20 @@ Branch: `upgrade` · Remote: `origin/upgrade` · Authorship: ArqTras only
 
 ## Local quality gate (latest)
 
-- `ninja unit_tests` → **522** passed (~2.0s)
+- `ninja unit_tests` → **522+** passed (p2p Levin sync assert added)
 
 ## Next exact implementation
 
-1. **File:** `docs/PROCESS_BOUNDARIES.md` — document storage HTTP probe + onion peel + wallet auth
-2. **File:** `src/p2p/net_node.inl` — assert/enforce `P2P_PREAUTH_PACKET_MAX_SIZE` on handshake path if not already
-3. **Commit:** docs then `feat: enforce P2P preauth packet size on handshake`
-4. Then restore additional legacy fixtures where API permits
+1. **File:** `src/arq_router/` — harden experimental lifecycle when `--arq-router` enabled
+2. **Or:** expand OpenAPI stub with wallet-rpc restricted notes
+3. **Or:** restore `serialization.cpp` / other legacy fixtures incrementally
+4. Prefer local green suite before every push
 
-## Architecture snapshot
+## Recent HEAD (pushed unless noted)
 
-See prior sections; HEAD includes onion_layer, storage HTTP GET probe, rpc_auth tests,
-wallet_rpc_auth/validation, ArqMQ framing, fee/tx_utils restores.
+- rpc_auth tests, storage HTTP GET, onion_layer, fee, ArqMQ framing, wallet auth/validation, tx_utils
+- Pending this turn: PROCESS_BOUNDARIES update + p2p Levin/preauth equality assert
+
+## Authorship
+
+`git -c core.hooksPath=/tmp/empty-git-hooks` · ArqTras

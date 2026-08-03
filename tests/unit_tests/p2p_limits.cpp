@@ -29,6 +29,7 @@
 #include "gtest/gtest.h"
 
 #include "cryptonote_config.h"
+#include "net/levin_base.h"
 
 TEST(p2p_limits, documented_connection_totals_match_defaults)
 {
@@ -62,4 +63,5 @@ TEST(p2p_limits, preauth_budget_is_below_full_packet_max)
   EXPECT_EQ(256u * 1024u, P2P_PREAUTH_PACKET_MAX_SIZE_BYTES);
   EXPECT_LT(P2P_PREAUTH_PACKET_MAX_SIZE_BYTES, P2P_DEFAULT_PACKET_MAX_SIZE_BYTES);
   EXPECT_EQ(250u, P2P_MAX_PEERS_IN_HANDSHAKE);
+  EXPECT_EQ(static_cast<uint64_t>(LEVIN_INITIAL_MAX_PACKET_SIZE), P2P_PREAUTH_PACKET_MAX_SIZE_BYTES);
 }
