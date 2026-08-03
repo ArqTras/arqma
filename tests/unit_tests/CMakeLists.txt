@@ -55,6 +55,7 @@ set(unit_tests_sources
   parse_amount.cpp
   p2p_limits.cpp
   rpc_validation.cpp
+  rpc_auth.cpp
   sha256.cpp
   slow_memmem.cpp
   subaddress.cpp

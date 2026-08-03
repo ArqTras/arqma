@@ -49,6 +49,7 @@
   while legacy Monero-era fixtures are restored incrementally.
 - Add unit coverage for RPC validation helpers, P2P hardening constants,
   ArqMQ facade state and messaging envelope roundtrips.
+- Add unit coverage for daemon `rpc_auth` access-level helpers.
 - Restore `mul_div` and `get_xtype_from_string` legacy unit coverage (216
   curated tests green locally).
 - Restore `sha256` unit coverage after `tools::sha256sum_str` API migration.
