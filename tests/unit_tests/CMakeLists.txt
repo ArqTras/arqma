@@ -34,6 +34,7 @@ set(unit_tests_sources
   arq_storage_client.cpp
   arqmq_facade.cpp
   apply_permutation.cpp
+  base58.cpp
   burn_hf19.cpp
   bulletproofs.cpp
   canonical_amounts.cpp
