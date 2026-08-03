@@ -29,6 +29,7 @@
 #include "gtest/gtest.h"
 
 #include "arq_messaging/message_envelope.hpp"
+#include "arq_messaging/onion_layer.hpp"
 #include "arq_messaging/sealed_sender.hpp"
 
 TEST(arq_messaging_envelope, roundtrip_binary_encoding)
@@ -80,4 +81,34 @@ TEST(arq_messaging_envelope, sealed_sender_marker_and_ttl_bounds)
   envelope = arq_messaging::with_sealed_sender_marker(std::move(envelope), true);
   EXPECT_TRUE(arq_messaging::has_sealed_sender_marker(envelope));
   EXPECT_EQ(arq_messaging::SealedSenderTag::marker, envelope.payload.front());
+}
+
+TEST(arq_messaging_envelope, onion_multi_hop_peel_roundtrip)
+{
+  constexpr int hops = 3;
+  std::vector<arq_messaging::Identity> ids(hops);
+  std::vector<arq_messaging::X25519PublicKey> pubs;
+  for (auto &id : ids)
+  {
+    ASSERT_FALSE(arq_messaging::generate_identity(id));
+    pubs.push_back(id.public_key);
+  }
+
+  const std::vector<std::uint8_t> payload = {0x01, 0x02, 0x03, 0xca, 0xfe};
+  std::vector<std::uint8_t> onion;
+  ASSERT_FALSE(arq_messaging::build_onion(pubs, payload, onion));
+  EXPECT_GT(onion.size(), payload.size());
+
+  std::vector<std::uint8_t> recovered;
+  ASSERT_FALSE(arq_messaging::peel_onion(ids, onion, recovered));
+  EXPECT_EQ(payload, recovered);
+}
+
+TEST(arq_messaging_envelope, onion_rejects_oversized_payload)
+{
+  arq_messaging::Identity id{};
+  ASSERT_FALSE(arq_messaging::generate_identity(id));
+  std::vector<std::uint8_t> huge(arq_messaging::max_onion_payload_bytes + 1, 0xab);
+  std::vector<std::uint8_t> onion;
+  EXPECT_TRUE(arq_messaging::build_onion({id.public_key}, huge, onion));
 }

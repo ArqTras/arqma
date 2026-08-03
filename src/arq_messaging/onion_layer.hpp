@@ -28,46 +28,39 @@
 
 #pragma once
 
-#include <array>
+#include "identity.hpp"
+#include "onion_request.hpp"
+#include "sealed_sender.hpp"
+
+#include <cstddef>
 #include <cstdint>
-#include <string>
-#include <string_view>
+#include <system_error>
+#include <vector>
 
 namespace arq_messaging
 {
-  struct OnionHop
-  {
-    std::string service_node_pubkey;
-    std::string address;
-    std::uint16_t port = 0;
-  };
+  /// Soft caps for onion ciphertext growth (3 hops × seal overhead + payload).
+  constexpr std::size_t max_onion_payload_bytes = 64 * 1024;
+  constexpr std::size_t max_onion_ciphertext_bytes = 96 * 1024;
 
-  struct OnionRequest
-  {
-    static constexpr std::size_t hop_count = 3;
+  /// Wrap plaintext for a single hop (libsodium sealed-box to hop pubkey).
+  std::error_code wrap_onion_layer(const X25519PublicKey &hop_pubkey,
+                                   const std::vector<std::uint8_t> &inner,
+                                   std::vector<std::uint8_t> &outer) noexcept;
 
-    std::array<OnionHop, hop_count> hops{};
-    std::string endpoint;
-    std::string payload;
-  };
+  /// Peel one hop with the local identity.
+  std::error_code peel_onion_layer(const Identity &hop,
+                                   const std::vector<std::uint8_t> &outer,
+                                   std::vector<std::uint8_t> &inner) noexcept;
 
-  inline bool hop_is_complete(const OnionHop &hop) noexcept
-  {
-    return !hop.service_node_pubkey.empty() && !hop.address.empty() && hop.port != 0;
-  }
+  /// Build a multi-hop onion sealed successively to hops[0]..hops[n-1]
+  /// (outermost sealed to hops[0]). `hop_pubkeys` must be non-empty and ≤ hop_count.
+  std::error_code build_onion(const std::vector<X25519PublicKey> &hop_pubkeys,
+                              const std::vector<std::uint8_t> &payload,
+                              std::vector<std::uint8_t> &onion) noexcept;
 
-  /// Structural validation only — no cryptography or network I/O.
-  inline bool validate_onion_request(const OnionRequest &request) noexcept
-  {
-    if (request.endpoint.empty())
-      return false;
-    if (request.payload.size() > 64 * 1024)
-      return false;
-    for (const auto &hop : request.hops)
-    {
-      if (!hop_is_complete(hop))
-        return false;
-    }
-    return true;
-  }
+  /// Peel successive layers with matching hop identities (outermost first).
+  std::error_code peel_onion(const std::vector<Identity> &hop_identities,
+                             const std::vector<std::uint8_t> &onion,
+                             std::vector<std::uint8_t> &payload) noexcept;
 }

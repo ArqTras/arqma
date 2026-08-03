@@ -1,10 +1,12 @@
 set(arq_messaging_sources
   identity.cpp
-  sealed_box.cpp)
+  sealed_box.cpp
+  onion_layer.cpp)
 
 set(arq_messaging_headers
   identity.hpp
   message_envelope.hpp
+  onion_layer.hpp
   onion_request.hpp
   sealed_sender.hpp
   swarm_map.hpp)

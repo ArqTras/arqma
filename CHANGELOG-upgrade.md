@@ -38,6 +38,8 @@
   latest Arq-Net ping visibility.
 - Add `src/arq_messaging/message_envelope.hpp` with minimal binary
   encode/decode roundtrip helpers.
+- Add multi-hop onion wrap/peel helpers (`onion_layer.*`) using sealed-box
+  with payload/ciphertext size caps.
 
 ### Tests
 
