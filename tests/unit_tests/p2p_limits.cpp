@@ -26,47 +26,33 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#include "gtest/gtest.h"
 
-#include <system_error>
+#include "cryptonote_config.h"
 
-namespace arqmq
+TEST(p2p_limits, documented_connection_totals_match_defaults)
 {
-  /// The active production path today is the legacy `arqnet::SNNetwork` transport.
-  enum class Backend
-  {
-    LegacyArqNet,
-    ArqMq
-  };
+  EXPECT_EQ(P2P_DEFAULT_CONNECTIONS_COUNT_OUT + P2P_DEFAULT_CONNECTIONS_COUNT_IN,
+            P2P_DEFAULT_TOTAL_CONNECTIONS);
+  EXPECT_EQ(P2P_DEFAULT_CONNECTIONS_COUNT_TEST_OUT + P2P_DEFAULT_CONNECTIONS_COUNT_TEST_IN,
+            P2P_DEFAULT_TOTAL_CONNECTIONS_TEST);
+  EXPECT_GE(P2P_DEFAULT_TOTAL_CONNECTIONS, 16u);
+  EXPECT_LE(P2P_DEFAULT_TOTAL_CONNECTIONS, 128u);
+}
 
-  enum class CategoryAcl
-  {
-    Denied,
-    Basic,
-    ServiceNode,
-    Admin
-  };
+TEST(p2p_limits, packet_budget_stays_above_max_transaction)
+{
+  EXPECT_EQ(P2P_DEFAULT_PACKET_MAX_SIZE, P2P_DEFAULT_PACKET_MAX_SIZE_BYTES);
+  EXPECT_EQ(50u, P2P_DEFAULT_PACKET_MAX_SIZE_MB);
+  EXPECT_GT(P2P_DEFAULT_PACKET_MAX_SIZE_BYTES, static_cast<uint64_t>(CRYPTONOTE_MAX_TX_SIZE));
+  EXPECT_EQ(P2P_DEFAULT_PACKET_MAX_SIZE_BYTES - CRYPTONOTE_MAX_TX_SIZE,
+            P2P_DEFAULT_PACKET_MAX_SIZE_HEADROOM_BYTES);
+}
 
-  struct Config
-  {
-    Backend backend = Backend::LegacyArqNet;
-    CategoryAcl default_acl = CategoryAcl::Denied;
-  };
-
-  const char *to_string(Backend backend) noexcept;
-  const char *to_string(CategoryAcl acl) noexcept;
-
-  /// Initializes the messaging facade. `LegacyArqNet` maps to the current
-  /// service-node networking path while the native ArqMQ backend remains a
-  /// future porting target.
-  std::error_code init(const Config &config = {}) noexcept;
-
-  /// Shuts down the messaging facade.
-  std::error_code shutdown() noexcept;
-
-  /// Returns the currently selected backend, even if initialization failed.
-  Backend current_backend() noexcept;
-
-  /// Returns true when the facade is initialized and ready for use.
-  bool is_initialized() noexcept;
+TEST(p2p_limits, documented_rate_limits_stay_positive)
+{
+  EXPECT_EQ(P2P_DEFAULT_LIMIT_RATE_UP, P2P_DEFAULT_LIMIT_RATE_UP_KBPS);
+  EXPECT_EQ(P2P_DEFAULT_LIMIT_RATE_DOWN, P2P_DEFAULT_LIMIT_RATE_DOWN_KBPS);
+  EXPECT_GT(P2P_DEFAULT_LIMIT_RATE_UP_KBPS, 0u);
+  EXPECT_GT(P2P_DEFAULT_LIMIT_RATE_DOWN_KBPS, P2P_DEFAULT_LIMIT_RATE_UP_KBPS);
 }

@@ -28,45 +28,28 @@
 
 #pragma once
 
-#include <system_error>
+#include <cstddef>
+#include <cstdint>
+#include <string_view>
 
-namespace arqmq
+namespace cryptonote
 {
-  /// The active production path today is the legacy `arqnet::SNNetwork` transport.
-  enum class Backend
+namespace rpc
+{
+  uint64_t clamp_limit(uint64_t requested, uint64_t default_limit, uint64_t max_limit) noexcept;
+
+  bool validate_nonempty_hex(std::string_view value, size_t expected_bytes) noexcept;
+
+  struct pagination
   {
-    LegacyArqNet,
-    ArqMq
+    static constexpr uint64_t default_limit = 100;
+    static constexpr uint64_t max_limit = 1000;
+
+    uint64_t offset = 0;
+    uint64_t limit = default_limit;
+
+    static pagination make(uint64_t requested_offset = 0, uint64_t requested_limit = 0,
+                           uint64_t fallback_limit = default_limit, uint64_t hard_max_limit = max_limit) noexcept;
   };
-
-  enum class CategoryAcl
-  {
-    Denied,
-    Basic,
-    ServiceNode,
-    Admin
-  };
-
-  struct Config
-  {
-    Backend backend = Backend::LegacyArqNet;
-    CategoryAcl default_acl = CategoryAcl::Denied;
-  };
-
-  const char *to_string(Backend backend) noexcept;
-  const char *to_string(CategoryAcl acl) noexcept;
-
-  /// Initializes the messaging facade. `LegacyArqNet` maps to the current
-  /// service-node networking path while the native ArqMQ backend remains a
-  /// future porting target.
-  std::error_code init(const Config &config = {}) noexcept;
-
-  /// Shuts down the messaging facade.
-  std::error_code shutdown() noexcept;
-
-  /// Returns the currently selected backend, even if initialization failed.
-  Backend current_backend() noexcept;
-
-  /// Returns true when the facade is initialized and ready for use.
-  bool is_initialized() noexcept;
+}
 }

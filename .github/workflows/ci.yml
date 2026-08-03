@@ -55,6 +55,41 @@ jobs:
           cd build
           ctest --output-on-failure -R unit_tests --timeout 1200
 
+  format-check:
+    name: linux-format-check
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+
+      - name: clang-format dry run
+        shell: bash
+        run: |
+          shopt -s nullglob globstar
+          files=(
+            src/arqmq/**/*.{h,hpp,cpp}
+            src/arq_storage/**/*.{h,hpp,cpp}
+            src/arq_messaging/**/*.{h,hpp,cpp}
+            src/arq_router/**/*.{h,hpp,cpp}
+            src/rpc/rpc_validation.h
+            src/rpc/rpc_validation.cpp
+          )
+
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No matching source files for format check"
+            exit 0
+          fi
+
+          clang-format --dry-run --Werror "${files[@]}"
+
   sanitize:
     name: linux-asan-ubsan
     runs-on: ubuntu-24.04

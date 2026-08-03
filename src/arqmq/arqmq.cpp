@@ -28,11 +28,21 @@
 
 #include "arqmq.h"
 
+#include <mutex>
 #include <system_error>
 
 namespace
 {
   constexpr auto not_supported = std::errc::function_not_supported;
+
+  struct facade_state
+  {
+    std::mutex mutex;
+    arqmq::Backend backend = arqmq::Backend::LegacyArqNet;
+    bool initialized = false;
+  };
+
+  facade_state state;
 }
 
 namespace arqmq
@@ -69,21 +79,42 @@ namespace arqmq
 
   std::error_code init(const Config &config) noexcept
   {
+    std::lock_guard<std::mutex> lock{state.mutex};
+    state.backend = config.backend;
+
     switch (config.backend)
     {
       case Backend::LegacyArqNet:
+        state.initialized = true;
         return {};
       case Backend::ArqMq:
         // TODO(arqma): implement the native ArqMQ backend under Arqma naming.
+        state.initialized = false;
         return std::make_error_code(not_supported);
     }
 
+    state.initialized = false;
     return std::make_error_code(std::errc::invalid_argument);
   }
 
   std::error_code shutdown() noexcept
   {
+    std::lock_guard<std::mutex> lock{state.mutex};
+    state.initialized = false;
+
     // TODO(arqma): coordinate shutdown across the future dual-backend facade.
     return {};
+  }
+
+  Backend current_backend() noexcept
+  {
+    std::lock_guard<std::mutex> lock{state.mutex};
+    return state.backend;
+  }
+
+  bool is_initialized() noexcept
+  {
+    std::lock_guard<std::mutex> lock{state.mutex};
+    return state.initialized;
   }
 }

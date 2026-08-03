@@ -26,47 +26,14 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#include "gtest/gtest.h"
 
-#include <system_error>
+#include "cryptonote_basic/hardfork.h"
+#include "cryptonote_core/cryptonote_tx_utils.h"
 
-namespace arqmq
+TEST(burn_hf19, burn_gate_opens_at_hard_fork_19)
 {
-  /// The active production path today is the legacy `arqnet::SNNetwork` transport.
-  enum class Backend
-  {
-    LegacyArqNet,
-    ArqMq
-  };
-
-  enum class CategoryAcl
-  {
-    Denied,
-    Basic,
-    ServiceNode,
-    Admin
-  };
-
-  struct Config
-  {
-    Backend backend = Backend::LegacyArqNet;
-    CategoryAcl default_acl = CategoryAcl::Denied;
-  };
-
-  const char *to_string(Backend backend) noexcept;
-  const char *to_string(CategoryAcl acl) noexcept;
-
-  /// Initializes the messaging facade. `LegacyArqNet` maps to the current
-  /// service-node networking path while the native ArqMQ backend remains a
-  /// future porting target.
-  std::error_code init(const Config &config = {}) noexcept;
-
-  /// Shuts down the messaging facade.
-  std::error_code shutdown() noexcept;
-
-  /// Returns the currently selected backend, even if initialization failed.
-  Backend current_backend() noexcept;
-
-  /// Returns true when the facade is initialized and ready for use.
-  bool is_initialized() noexcept;
+  EXPECT_FALSE(cryptonote::burn_allowed_at_hf(cryptonote::network_version_18));
+  EXPECT_TRUE(cryptonote::burn_allowed_at_hf(cryptonote::network_version_19));
+  EXPECT_TRUE(cryptonote::burn_allowed_at_hf(cryptonote::network_version_count - 1));
 }

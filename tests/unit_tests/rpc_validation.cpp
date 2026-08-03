@@ -26,47 +26,32 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#include "gtest/gtest.h"
 
-#include <system_error>
+#include "rpc/rpc_validation.h"
 
-namespace arqmq
+TEST(rpc_validation, clamp_limit_uses_default_and_maximum)
 {
-  /// The active production path today is the legacy `arqnet::SNNetwork` transport.
-  enum class Backend
-  {
-    LegacyArqNet,
-    ArqMq
-  };
+  EXPECT_EQ(25u, cryptonote::rpc::clamp_limit(0, 25, 100));
+  EXPECT_EQ(100u, cryptonote::rpc::clamp_limit(250, 25, 100));
+  EXPECT_EQ(17u, cryptonote::rpc::clamp_limit(17, 25, 100));
+}
 
-  enum class CategoryAcl
-  {
-    Denied,
-    Basic,
-    ServiceNode,
-    Admin
-  };
+TEST(rpc_validation, validate_nonempty_hex_checks_length)
+{
+  EXPECT_TRUE(cryptonote::rpc::validate_nonempty_hex("aabbccdd", 4));
+  EXPECT_FALSE(cryptonote::rpc::validate_nonempty_hex("", 4));
+  EXPECT_FALSE(cryptonote::rpc::validate_nonempty_hex("aabbcc", 4));
+  EXPECT_FALSE(cryptonote::rpc::validate_nonempty_hex("zzbbccdd", 4));
+}
 
-  struct Config
-  {
-    Backend backend = Backend::LegacyArqNet;
-    CategoryAcl default_acl = CategoryAcl::Denied;
-  };
+TEST(rpc_validation, pagination_builder_clamps_requested_limit)
+{
+  const auto pagination = cryptonote::rpc::pagination::make(7, 400, 25, 100);
+  EXPECT_EQ(7u, pagination.offset);
+  EXPECT_EQ(100u, pagination.limit);
 
-  const char *to_string(Backend backend) noexcept;
-  const char *to_string(CategoryAcl acl) noexcept;
-
-  /// Initializes the messaging facade. `LegacyArqNet` maps to the current
-  /// service-node networking path while the native ArqMQ backend remains a
-  /// future porting target.
-  std::error_code init(const Config &config = {}) noexcept;
-
-  /// Shuts down the messaging facade.
-  std::error_code shutdown() noexcept;
-
-  /// Returns the currently selected backend, even if initialization failed.
-  Backend current_backend() noexcept;
-
-  /// Returns true when the facade is initialized and ready for use.
-  bool is_initialized() noexcept;
+  const auto defaults = cryptonote::rpc::pagination::make(3, 0, 25, 100);
+  EXPECT_EQ(3u, defaults.offset);
+  EXPECT_EQ(25u, defaults.limit);
 }

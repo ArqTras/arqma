@@ -10,15 +10,15 @@ work before it can be shipped as a complete feature.
 
 | Phase | Status | Implemented now | Still required |
 |-------|--------|-----------------|----------------|
-| 3 MQ feature parity | Scaffolded | `src/arqmq` facade, backend enum, ACL enum, legacy path documentation | Native backend port, daemon flagging, integration with live command routing |
-| 4 Arq-Net evolution | In progress | `arqmq::Backend::LegacyArqNet` documents current `SNNetwork` path | Transport hardening, migration planning, dual-stack rollout |
+| 3 MQ feature parity | In progress | `src/arqmq` facade, backend enum, ACL enum, legacy path documentation, backend status introspection | Native backend port, live command routing, richer health/error reporting |
+| 4 Arq-Net evolution | In progress | `arqmq::Backend::LegacyArqNet` documents current `SNNetwork` path; `get_arqnet_status` exposes backend/init status and latest ping | Transport hardening, migration planning, dual-stack rollout |
 | 5 Storage Server | Scaffolded | `src/arq_storage` daemon-side client API with explicit not-implemented stubs | Separate production storage binary, replication, swarm sync, SN incentive decisions |
-| 6 Messaging modules | Scaffolded | `src/arq_messaging` identity, onion request and swarm map placeholders | Wire format, encryption, request lifecycle, interoperability tests |
-| 7 RPC modernization | Planned with docs | modernization plan and OpenAPI stub under `docs/openapi` | auth middleware, request validation, pagination semantics, generated API docs |
-| 8 P2P improvements | Planned with docs | hardening recommendations tied to current constants | implementation, measurement, rollout tuning, compatibility testing |
+| 6 Messaging modules | In progress | `src/arq_messaging` identity, onion request, swarm map and message-envelope roundtrip helpers | Encryption, request lifecycle, interoperability tests |
+| 7 RPC modernization | In progress | validation helpers, service-node request hex checks, paginated service-node listing docs, OpenAPI stub | auth middleware, broader request validation, generated API docs |
+| 8 P2P improvements | In progress | documented limit aliases, packet-budget compile-time checks, unit coverage for current limits | implementation, measurement, rollout tuning, compatibility testing |
 | 9 Performance | Planned | no runtime changes in this scaffold | profiling, benchmarks, targeted optimizations |
-| 10 Testing | In progress | lightweight unit coverage for `arqmq` and `arq_storage` scaffolds | integration tests, daemon tests, network-path regression coverage |
-| 11 CI | In progress | current unit target remains buildable with new scaffold targets | dedicated matrix coverage for feature flags and future separate binaries |
+| 10 Testing | In progress | unit coverage for `arqmq`, RPC validation, P2P limit docs, HF19 burn gate and messaging envelope roundtrips | integration tests, daemon tests, network-path regression coverage |
+| 11 CI | In progress | current unit target remains buildable with new scaffold targets; non-blocking format-check job added for upgrade modules | dedicated matrix coverage for feature flags and future separate binaries |
 | 12 Final review | Ongoing | documentation and compile-time scaffolding reduce later integration risk | security review, soak testing, operator validation, release gating |
 
 ## Notes by Area
@@ -29,6 +29,8 @@ work before it can be shipped as a complete feature.
 - `LegacyArqNet` is the only backend that initializes successfully today.
 - The native `ArqMq` backend intentionally reports not-supported until a real
   port exists.
+- The daemon now exposes a lightweight `get_arqnet_status` JSON-RPC method for
+  backend selection, initialization state and the last Arq-Net ping timestamp.
 
 ### Storage integration
 
@@ -41,8 +43,15 @@ work before it can be shipped as a complete feature.
 - `src/arq_router` is naming and lifecycle scaffolding only.
 - No claim is made that production routing exists yet.
 
+### RPC and validation
+
+- `src/rpc/rpc_validation.*` centralizes small helper logic for limit clamping,
+  pagination defaults and fixed-size hex validation.
+- `get_service_nodes` now accepts optional `offset` and `limit` parameters
+  without breaking existing full-list callers.
+
 ## Recommended next milestone outputs
 
-1. Add daemon config and RPC exposure for backend selection and health reporting.
-2. Define shared error semantics for cross-module upgrade components.
-3. Decide which features remain in-process versus separate-binary integrations.
+1. Define shared error semantics for cross-module upgrade components.
+2. Decide which features remain in-process versus separate-binary integrations.
+3. Extend RPC modernization beyond service-node list endpoints.

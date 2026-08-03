@@ -26,47 +26,41 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#include "gtest/gtest.h"
 
-#include <system_error>
+#include "arq_messaging/message_envelope.hpp"
 
-namespace arqmq
+TEST(arq_messaging_envelope, roundtrip_binary_encoding)
 {
-  /// The active production path today is the legacy `arqnet::SNNetwork` transport.
-  enum class Backend
-  {
-    LegacyArqNet,
-    ArqMq
-  };
+  arq_messaging::MessageEnvelope envelope{};
+  envelope.version = arq_messaging::MessageEnvelope::current_version;
+  envelope.ttl_seconds = 180;
+  envelope.payload = {0xde, 0xad, 0xbe, 0xef};
 
-  enum class CategoryAcl
-  {
-    Denied,
-    Basic,
-    ServiceNode,
-    Admin
-  };
+  for (std::size_t i = 0; i < envelope.recipient_x25519.data.size(); ++i)
+    envelope.recipient_x25519.data[i] = static_cast<std::uint8_t>(i);
 
-  struct Config
-  {
-    Backend backend = Backend::LegacyArqNet;
-    CategoryAcl default_acl = CategoryAcl::Denied;
-  };
+  const auto encoded = arq_messaging::encode_message_envelope(envelope);
 
-  const char *to_string(Backend backend) noexcept;
-  const char *to_string(CategoryAcl acl) noexcept;
+  arq_messaging::MessageEnvelope decoded{};
+  ASSERT_TRUE(arq_messaging::decode_message_envelope(
+      std::string_view{reinterpret_cast<const char *>(encoded.data()), encoded.size()}, decoded));
 
-  /// Initializes the messaging facade. `LegacyArqNet` maps to the current
-  /// service-node networking path while the native ArqMQ backend remains a
-  /// future porting target.
-  std::error_code init(const Config &config = {}) noexcept;
+  EXPECT_EQ(envelope.version, decoded.version);
+  EXPECT_EQ(envelope.recipient_x25519.data, decoded.recipient_x25519.data);
+  EXPECT_EQ(envelope.ttl_seconds, decoded.ttl_seconds);
+  EXPECT_EQ(envelope.payload, decoded.payload);
+}
 
-  /// Shuts down the messaging facade.
-  std::error_code shutdown() noexcept;
+TEST(arq_messaging_envelope, rejects_truncated_payload)
+{
+  arq_messaging::MessageEnvelope envelope{};
+  envelope.payload = {1, 2, 3};
 
-  /// Returns the currently selected backend, even if initialization failed.
-  Backend current_backend() noexcept;
+  auto encoded = arq_messaging::encode_message_envelope(envelope);
+  encoded.pop_back();
 
-  /// Returns true when the facade is initialized and ready for use.
-  bool is_initialized() noexcept;
+  arq_messaging::MessageEnvelope decoded{};
+  EXPECT_FALSE(arq_messaging::decode_message_envelope(
+      std::string_view{reinterpret_cast<const char *>(encoded.data()), encoded.size()}, decoded));
 }

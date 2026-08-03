@@ -193,6 +193,9 @@ namespace cryptonote
     uint64_t burn_percent = 0;
   };
   //---------------------------------------------------------------
+  bool burn_allowed_at_hf(uint8_t hard_fork_version) noexcept;
+
+  //---------------------------------------------------------------
   crypto::public_key get_destination_view_key_pub(const std::vector<tx_destination_entry> &destinations, const boost::optional<cryptonote::tx_destination_entry>& change_addr);
   bool construct_tx(const account_keys& sender_account_keys, std::vector<tx_source_entry> &sources, const std::vector<tx_destination_entry>& destinations,
                     const boost::optional<cryptonote::tx_destination_entry>& change_addr, std::vector<uint8_t> &extra, transaction& tx, uint64_t unlock_time,

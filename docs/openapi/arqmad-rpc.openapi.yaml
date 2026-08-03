@@ -10,7 +10,7 @@ servers:
 paths:
   /json_rpc:
     post:
-      summary: Call JSON-RPC methods such as get_info
+      summary: Call JSON-RPC methods such as get_info or get_service_nodes
       operationId: jsonRpc
       requestBody:
         required: true
@@ -18,10 +18,21 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/JsonRpcRequest'
-            example:
-              jsonrpc: "2.0"
-              id: "0"
-              method: get_info
+            examples:
+              getInfo:
+                value:
+                  jsonrpc: "2.0"
+                  id: "0"
+                  method: get_info
+              getServiceNodes:
+                value:
+                  jsonrpc: "2.0"
+                  id: "1"
+                  method: get_service_nodes
+                  params:
+                    include_json: false
+                    offset: 0
+                    limit: 100
       responses:
         '200':
           description: JSON-RPC response envelope
@@ -69,10 +80,12 @@ components:
             - type: integer
         method:
           type: string
-          enum: [get_info]
+          enum: [get_info, get_service_nodes]
         params:
-          type: object
-          additionalProperties: true
+          oneOf:
+            - type: object
+              additionalProperties: true
+            - $ref: '#/components/schemas/GetServiceNodesParams'
     JsonRpcResponse:
       type: object
       required:
@@ -99,3 +112,49 @@ components:
           type: string
         success:
           type: boolean
+    GetServiceNodesParams:
+      type: object
+      properties:
+        service_node_pubkeys:
+          type: array
+          description: >
+            Optional list of service node public keys to filter against. Each key
+            must be a non-empty 32-byte hex string.
+          items:
+            type: string
+        include_json:
+          type: boolean
+          description: Include the legacy raw JSON blob in `as_json`.
+          default: false
+        offset:
+          type: integer
+          format: uint64
+          description: >
+            Zero-based pagination offset applied after service node filtering.
+          minimum: 0
+          default: 0
+        limit:
+          type: integer
+          format: uint64
+          description: >
+            Optional pagination limit. When omitted or zero, the daemon returns
+            the full filtered result set.
+          minimum: 0
+          default: 0
+    GetServiceNodesResult:
+      type: object
+      properties:
+        service_node_states:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        height:
+          type: integer
+          format: uint64
+        block_hash:
+          type: string
+        as_json:
+          type: string
+        status:
+          type: string

@@ -32,6 +32,7 @@ set(rpc_base_sources
 
 set(rpc_sources
   core_rpc_server.cpp
+  rpc_validation.cpp
   rpc_handler.cpp)
 
 set(daemon_messages_sources
@@ -46,7 +47,8 @@ set(rpc_base_headers
   rpc_args.h)
 
 set(rpc_headers
-  rpc_handler.h)
+  rpc_handler.h
+  rpc_validation.h)
 
 set(daemon_rpc_server_headers)
 

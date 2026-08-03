@@ -2597,10 +2597,14 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
     struct request_t
     {
       std::vector<std::string> service_node_pubkeys;
-      bool include_json;
+      bool include_json = false;
+      uint64_t offset = 0;
+      uint64_t limit = 0;
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(service_node_pubkeys)
         KV_SERIALIZE(include_json);
+        KV_SERIALIZE_OPT(offset, (uint64_t)0)
+        KV_SERIALIZE_OPT(limit, (uint64_t)0)
       END_KV_SERIALIZE_MAP()
     };
     typedef epee::misc_utils::struct_init<request_t> request;
@@ -2927,6 +2931,31 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
         KV_SERIALIZE(status)
       END_KV_SERIALIZE_MAP()
     };
+  };
+
+  struct COMMAND_RPC_GET_ARQNET_STATUS
+  {
+    struct request_t
+    {
+      BEGIN_KV_SERIALIZE_MAP()
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+
+    struct response_t
+    {
+      std::string backend;
+      bool initialized = false;
+      uint64_t last_arqnet_ping = 0;
+      std::string status;
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(backend)
+        KV_SERIALIZE(initialized)
+        KV_SERIALIZE(last_arqnet_ping)
+        KV_SERIALIZE(status)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<response_t> response;
   };
 
   struct COMMAND_RPC_GET_STAKING_REQUIREMENT

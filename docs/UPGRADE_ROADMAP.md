@@ -65,11 +65,16 @@ milestone.
 - [x] Native GitHub Actions CI + sanitizer job
 - [x] `.clang-format` / `.clang-tidy`
 - [x] CMake ≥ 3.16, C++20 (`-fno-char8_t` bridge)
-- [x] Green local unit suite (51 tests incl. CLSAG/HF19)
+- [x] Green local unit suite (127 tests incl. HF19, RPC, P2P and ArqMQ scaffolding)
 - [ ] Restore legacy unit fixtures (base58/uri/parse_amount/multisig)
 - [ ] Fix checkpoints unit crash
-- [ ] Expand HF19 burn/per-output-fee core tests
+- [x] Expand HF19 burn/per-output-fee core tests
 - [x] ArqMQ dual-backend scaffold
+- [x] RPC validation helpers + service-node pagination scaffolding
+- [x] Arq-Net / ArqMQ status introspection RPC
+- [x] P2P limit aliases + packet-budget unit coverage
+- [x] Messaging envelope wire-format roundtrip helper
+- [x] Non-blocking clang-format CI check
 
 ## Milestone B — MQ / SN hygiene
 
@@ -92,6 +97,7 @@ Choose **one** primary value-add:
 
 - [x] `src/arq_storage` daemon-side client API scaffold
 - [x] `src/arq_messaging` identity/onion/swarm-map scaffolds
+- [x] `src/arq_messaging/message_envelope.hpp` minimal wire-format roundtrip helper
 - [x] `src/arq_router` naming/config/service scaffold
 - [x] `docs/RPC_MODERNIZATION.md` and OpenAPI stub
 - [x] `docs/P2P_HARDENING.md`

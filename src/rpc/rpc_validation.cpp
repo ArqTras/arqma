@@ -26,47 +26,31 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#include "rpc_validation.h"
 
-#include <system_error>
+#include "common/hex.h"
 
-namespace arqmq
+#include <algorithm>
+
+namespace cryptonote
 {
-  /// The active production path today is the legacy `arqnet::SNNetwork` transport.
-  enum class Backend
+namespace rpc
+{
+  uint64_t clamp_limit(uint64_t requested, uint64_t default_limit, uint64_t max_limit) noexcept
   {
-    LegacyArqNet,
-    ArqMq
-  };
+    const uint64_t value = requested == 0 ? default_limit : requested;
+    return max_limit == 0 ? value : std::min(value, max_limit);
+  }
 
-  enum class CategoryAcl
+  bool validate_nonempty_hex(std::string_view value, size_t expected_bytes) noexcept
   {
-    Denied,
-    Basic,
-    ServiceNode,
-    Admin
-  };
+    return !value.empty() && value.size() == expected_bytes * 2 && tools::is_hex(value);
+  }
 
-  struct Config
+  pagination pagination::make(uint64_t requested_offset, uint64_t requested_limit,
+                              uint64_t fallback_limit, uint64_t hard_max_limit) noexcept
   {
-    Backend backend = Backend::LegacyArqNet;
-    CategoryAcl default_acl = CategoryAcl::Denied;
-  };
-
-  const char *to_string(Backend backend) noexcept;
-  const char *to_string(CategoryAcl acl) noexcept;
-
-  /// Initializes the messaging facade. `LegacyArqNet` maps to the current
-  /// service-node networking path while the native ArqMQ backend remains a
-  /// future porting target.
-  std::error_code init(const Config &config = {}) noexcept;
-
-  /// Shuts down the messaging facade.
-  std::error_code shutdown() noexcept;
-
-  /// Returns the currently selected backend, even if initialization failed.
-  Backend current_backend() noexcept;
-
-  /// Returns true when the facade is initialized and ready for use.
-  bool is_initialized() noexcept;
+    return {requested_offset, clamp_limit(requested_limit, fallback_limit, hard_max_limit)};
+  }
+}
 }

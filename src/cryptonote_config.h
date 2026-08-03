@@ -164,6 +164,17 @@ constexpr auto P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT     = 5s;
 #define P2P_DEFAULT_LIMIT_RATE_UP                       8192       // kbps
 #define P2P_DEFAULT_LIMIT_RATE_DOWN                     32768      // kbps
 
+static constexpr uint32_t P2P_DEFAULT_TOTAL_CONNECTIONS =
+    P2P_DEFAULT_CONNECTIONS_COUNT_OUT + P2P_DEFAULT_CONNECTIONS_COUNT_IN;
+static constexpr uint32_t P2P_DEFAULT_TOTAL_CONNECTIONS_TEST =
+    P2P_DEFAULT_CONNECTIONS_COUNT_TEST_OUT + P2P_DEFAULT_CONNECTIONS_COUNT_TEST_IN;
+static constexpr uint64_t P2P_DEFAULT_LIMIT_RATE_UP_KBPS = P2P_DEFAULT_LIMIT_RATE_UP;
+static constexpr uint64_t P2P_DEFAULT_LIMIT_RATE_DOWN_KBPS = P2P_DEFAULT_LIMIT_RATE_DOWN;
+static constexpr uint64_t P2P_DEFAULT_PACKET_MAX_SIZE_BYTES = P2P_DEFAULT_PACKET_MAX_SIZE;
+static constexpr uint64_t P2P_DEFAULT_PACKET_MAX_SIZE_MB = P2P_DEFAULT_PACKET_MAX_SIZE_BYTES / 1000 / 1000;
+static constexpr uint64_t P2P_DEFAULT_PACKET_MAX_SIZE_HEADROOM_BYTES =
+    P2P_DEFAULT_PACKET_MAX_SIZE_BYTES - CRYPTONOTE_MAX_TX_SIZE;
+
 #define P2P_FAILED_ADDR_FORGET_SECONDS                  (60*60)    // 1 day
 #define P2P_IP_BLOCKTIME                                (60*60*24) // 2 days
 #define P2P_IP_FAILS_BEFORE_BLOCK                       10
@@ -219,6 +230,10 @@ static constexpr double POISSON_LOG_P_REJECT = -75.0; // Reject reorg if the pro
 static_assert(STAKING_SHARE_PARTS % MAX_NUMBER_OF_CONTRIBUTORS == 0, "Use a multiple of four, so that it divides easily by max number of contributors.");
 static_assert(STAKING_SHARE_PARTS % 2 == 0, "Use a multiple of two, so that it divides easily by two contributors.");
 static_assert(STAKING_SHARE_PARTS % 3 == 0, "Use a multiple of three, so that it divides easily by three contributors.");
+static_assert(P2P_DEFAULT_PACKET_MAX_SIZE_BYTES == 50 * 1000 * 1000,
+    "P2P packet ceiling is documented as a 50 MB budget.");
+static_assert(P2P_DEFAULT_PACKET_MAX_SIZE_BYTES > CRYPTONOTE_MAX_TX_SIZE,
+    "P2P packet budget must remain larger than one max-sized transaction.");
 
 #ifndef UPTIME_PROOF_BASE_MINUTE
 #define UPTIME_PROOF_BASE_MINUTE                        60

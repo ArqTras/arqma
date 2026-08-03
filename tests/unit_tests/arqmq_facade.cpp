@@ -46,13 +46,22 @@ TEST(arqmq_facade, acl_names_match_scaffold)
 
 TEST(arqmq_facade, legacy_backend_initializes)
 {
+  EXPECT_FALSE(arqmq::shutdown());
+
   const arqmq::Config config{arqmq::Backend::LegacyArqNet, arqmq::CategoryAcl::ServiceNode};
   EXPECT_FALSE(arqmq::init(config));
+  EXPECT_EQ(arqmq::Backend::LegacyArqNet, arqmq::current_backend());
+  EXPECT_TRUE(arqmq::is_initialized());
   EXPECT_FALSE(arqmq::shutdown());
+  EXPECT_FALSE(arqmq::is_initialized());
 }
 
 TEST(arqmq_facade, native_backend_reports_not_supported)
 {
+  EXPECT_FALSE(arqmq::shutdown());
+
   const arqmq::Config config{arqmq::Backend::ArqMq, arqmq::CategoryAcl::Admin};
   EXPECT_EQ(std::make_error_code(std::errc::function_not_supported), arqmq::init(config));
+  EXPECT_EQ(arqmq::Backend::ArqMq, arqmq::current_backend());
+  EXPECT_FALSE(arqmq::is_initialized());
 }

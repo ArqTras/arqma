@@ -45,6 +45,7 @@ using namespace epee;
 #include "common/util.h"
 #include "common/perf_timer.h"
 #include "common/random.h"
+#include "arqmq/arqmq.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "cryptonote_basic/account.h"
 #include "cryptonote_basic/cryptonote_basic_impl.h"
@@ -55,6 +56,7 @@ using namespace epee;
 #include "crypto/hash.h"
 #include "rpc/rpc_args.h"
 #include "rpc/rpc_handler.h"
+#include "rpc/rpc_validation.h"
 #include "core_rpc_server_error_codes.h"
 #include "p2p/net_node.h"
 #include "version.h"
@@ -2919,7 +2921,8 @@ namespace cryptonote
     std::vector<crypto::public_key> pubkeys(req.service_node_pubkeys.size());
     for(size_t i = 0; i < req.service_node_pubkeys.size(); i++)
     {
-      if(!string_tools::hex_to_pod(req.service_node_pubkeys[i], pubkeys[i]))
+      if(!rpc::validate_nonempty_hex(req.service_node_pubkeys[i], sizeof(pubkeys[i]))
+          || !string_tools::hex_to_pod(req.service_node_pubkeys[i], pubkeys[i]))
       {
         error_resp.code = CORE_RPC_ERROR_CODE_WRONG_PARAM;
         error_resp.message = "Could not convert to a public key, arg: ";
@@ -2931,6 +2934,16 @@ namespace cryptonote
     }
 
     auto pubkey_info_list = m_core.get_service_node_list_state(pubkeys);
+    const auto page = rpc::pagination::make(req.offset, req.limit, pubkey_info_list.size(), pubkey_info_list.size());
+    const auto start = std::min<size_t>(pubkey_info_list.size(), static_cast<size_t>(page.offset));
+    const auto count = std::min<size_t>(pubkey_info_list.size() - start, static_cast<size_t>(page.limit));
+    if (start != 0 || count != pubkey_info_list.size())
+    {
+      std::vector<service_nodes::service_node_pubkey_info> paged;
+      paged.reserve(count);
+      paged.insert(paged.end(), pubkey_info_list.begin() + start, pubkey_info_list.begin() + start + count);
+      pubkey_info_list = std::move(paged);
+    }
 
     res.status = CORE_RPC_STATUS_OK;
     res.service_node_states.reserve(pubkey_info_list.size());
@@ -2991,12 +3004,10 @@ namespace cryptonote
       sn_infos.erase(end, sn_infos.end());
     }
 
-    if (req.limit != 0)
+    const auto limit = static_cast<size_t>(rpc::clamp_limit(req.limit, 0, sn_infos.size()));
+    if (limit != 0)
     {
-      const auto limit = std::min(sn_infos.size(), static_cast<size_t>(req.limit));
-
       std::shuffle(sn_infos.begin(), sn_infos.end(), tools::rng);
-
       sn_infos.resize(limit);
     }
 
@@ -3062,6 +3073,15 @@ namespace cryptonote
   {
     if (handle_ping(req.version, service_nodes::MIN_ARQNET_VERSION, "Arq-Net", m_core.m_last_arqnet_ping, ARQNET_PING_LIFETIME, res))
       m_core.reset_proof_interval();
+    return true;
+  }
+  //------------------------------------------------------------------------------------------------------------------------------
+  bool core_rpc_server::on_get_arqnet_status(const COMMAND_RPC_GET_ARQNET_STATUS::request& req, COMMAND_RPC_GET_ARQNET_STATUS::response& res, epee::json_rpc::error&, const connection_context*)
+  {
+    res.backend = arqmq::to_string(arqmq::current_backend());
+    res.initialized = arqmq::is_initialized();
+    res.last_arqnet_ping = static_cast<uint64_t>(m_core.m_last_arqnet_ping);
+    res.status = CORE_RPC_STATUS_OK;
     return true;
   }
   //------------------------------------------------------------------------------------------------------------------------------

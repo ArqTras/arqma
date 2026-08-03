@@ -4,6 +4,24 @@ This document ties near-term hardening work to current constants in
 `src/cryptonote_config.h` so upgrades stay grounded in the existing daemon
 behavior.
 
+## Implemented in upgrade branch
+
+- Added named aliases for the documented default connection totals and uplink /
+  downlink rate ceilings:
+  `P2P_DEFAULT_TOTAL_CONNECTIONS`, `P2P_DEFAULT_TOTAL_CONNECTIONS_TEST`,
+  `P2P_DEFAULT_LIMIT_RATE_UP_KBPS`, `P2P_DEFAULT_LIMIT_RATE_DOWN_KBPS`.
+- Added packet-budget helper constants documenting the current 50 MB packet
+  ceiling and its headroom above `CRYPTONOTE_MAX_TX_SIZE`:
+  `P2P_DEFAULT_PACKET_MAX_SIZE_BYTES`, `P2P_DEFAULT_PACKET_MAX_SIZE_MB`,
+  `P2P_DEFAULT_PACKET_MAX_SIZE_HEADROOM_BYTES`.
+- Added compile-time assertions that keep the documented packet budget aligned
+  with the current wire ceiling.
+- Added `tests/unit_tests/p2p_limits.cpp` to pin these limits and keep future
+  changes explicit.
+
+These changes are documentation and test scaffolding only. They do not change
+current wire behavior.
+
 ## Current limits worth revisiting
 
 - `P2P_DEFAULT_PACKET_MAX_SIZE` is `50000000` bytes: large packets increase
