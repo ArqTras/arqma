@@ -46,6 +46,7 @@ using namespace epee;
 #include "common/perf_timer.h"
 #include "common/random.h"
 #include "arqmq/arqmq.h"
+#include "arq_storage/storage_client.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "cryptonote_basic/account.h"
 #include "cryptonote_basic/cryptonote_basic_impl.h"
@@ -3081,6 +3082,17 @@ namespace cryptonote
     res.backend = arqmq::to_string(arqmq::current_backend());
     res.initialized = arqmq::is_initialized();
     res.last_arqnet_ping = static_cast<uint64_t>(m_core.m_last_arqnet_ping);
+    res.status = CORE_RPC_STATUS_OK;
+    return true;
+  }
+  //------------------------------------------------------------------------------------------------------------------------------
+  bool core_rpc_server::on_get_storage_status(const COMMAND_RPC_GET_STORAGE_STATUS::request&, COMMAND_RPC_GET_STORAGE_STATUS::response& res, epee::json_rpc::error&, const connection_context*)
+  {
+    arq_storage::StorageClient client;
+    const auto ping_ec = client.ping();
+    res.client_reachable = !ping_ec;
+    res.client_error = ping_ec ? ping_ec.message() : std::string{};
+    res.last_storage_server_ping = static_cast<uint64_t>(m_core.m_last_storage_server_ping);
     res.status = CORE_RPC_STATUS_OK;
     return true;
   }

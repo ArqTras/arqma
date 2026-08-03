@@ -129,6 +129,11 @@ namespace daemon_args
   , "Arq-Net messaging backend: legacy-arqnet (default) or arqmq (experimental)"
   , "legacy-arqnet"
   };
+  const command_line::arg_descriptor<bool> arg_arq_router = {
+    "arq-router"
+  , "Enable experimental Arq privacy router scaffold (disabled by default)"
+  , false
+  };
 
 }  // namespace daemon_args
 

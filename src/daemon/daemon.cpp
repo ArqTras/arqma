@@ -38,6 +38,7 @@
 #include "rpc/zmq_server.h"
 #include "cryptonote_protocol/arqnet.h"
 #include "arqmq/arqmq.h"
+#include "arq_router/router_service.h"
 
 #include "common/password.h"
 #include "common/util.h"
@@ -101,6 +102,18 @@ public:
       {
         MINFO("Arq-Net messaging facade backend: " << arqmq::to_string(mq_cfg.backend));
       }
+    }
+
+    if (command_line::get_arg(vm, daemon_args::arg_arq_router))
+    {
+      arq_router::RouterConfig router_cfg;
+      router_cfg.enabled = true;
+      arq_router::RouterService router{router_cfg};
+      const auto router_ec = router.init();
+      if (router_ec)
+        MWARNING("Arq router scaffold init failed: " << router_ec.message());
+      else
+        MINFO("Arq privacy router scaffold initialized (experimental; not a production onion router)");
     }
 
     const auto restricted = command_line::get_arg(vm, cryptonote::core_rpc_server::arg_restricted_rpc);

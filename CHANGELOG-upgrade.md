@@ -45,5 +45,8 @@
 - Scaffold `arqmq`, `arq_storage`, `arq_messaging`, `arq_router` modules with unit tests.
 - Add daemon `--arqnet-backend` flag for messaging facade selection.
 - Restore `parse_amount` unit coverage for Arqma 9-decimal amounts.
+- Add RPC pagination helpers, `get_arqnet_status`, `get_storage_status`, HF19 burn helper,
+  messaging envelope codec, P2P limit aliases, operator/performance docs, and
+  `--arq-router` experimental scaffold flag.
 - Expand the OpenAPI stub with `get_service_nodes` pagination parameters and
   refresh the phase/roadmap status docs for the latest upgrade work.

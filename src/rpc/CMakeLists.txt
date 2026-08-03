@@ -111,6 +111,8 @@ target_link_libraries(rpc
     common
     cryptonote_core
     cryptonote_protocol
+    arqmq
+    arq_storage
     net
     version
     ${Boost_REGEX_LIBRARY}

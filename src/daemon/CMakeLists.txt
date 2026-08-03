@@ -55,6 +55,7 @@ target_link_libraries(daemon
     p2p
     cryptonote_protocol
     arqmq
+    arq_router
     daemonizer
     serialization
     daemon_rpc_server
