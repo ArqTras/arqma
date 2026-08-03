@@ -691,7 +691,7 @@ namespace cryptonote
       uint64_t block_weight_median;
       uint64_t start_time;
       uint64_t last_storage_server_ping;
-//      uint64_t last_arqnet_ping;
+      uint64_t last_arqnet_ping;
       uint64_t free_space;
       bool offline;
       bool untrusted;
@@ -731,7 +731,7 @@ namespace cryptonote
         KV_SERIALIZE_OPT(block_weight_median, (uint64_t)0)
         KV_SERIALIZE(start_time)
         KV_SERIALIZE(last_storage_server_ping)
-//        KV_SERIALIZE(last_arqnet_ping)
+        KV_SERIALIZE(last_arqnet_ping)
         KV_SERIALIZE(free_space)
         KV_SERIALIZE(offline)
         KV_SERIALIZE(untrusted)
@@ -2910,7 +2910,6 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
     };
   };
 
-/*
   struct COMMAND_RPC_ARQNET_PING
   {
     struct request
@@ -2929,7 +2928,6 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
       END_KV_SERIALIZE_MAP()
     };
   };
-*/
 
   struct COMMAND_RPC_GET_STAKING_REQUIREMENT
   {

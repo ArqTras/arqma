@@ -793,8 +793,8 @@ namespace cryptonote
       */
      bool set_storage_server_peer_reachable(crypto::public_key const &pubkey, bool value);
 
-     /// Time point at which the storage server last pinged us
-     std::atomic<time_t> m_last_storage_server_ping; //, m_last_arqnet_ping;
+     /// Time point at which the storage server / Arq-Net last pinged us
+     std::atomic<time_t> m_last_storage_server_ping, m_last_arqnet_ping;
 
      bool relay_txpool_transactions();
 
