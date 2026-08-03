@@ -30,7 +30,10 @@
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/read.hpp>
+#include <boost/asio/write.hpp>
 #include <boost/system/error_code.hpp>
+#include <array>
 #include <chrono>
 #include <mutex>
 #include <utility>
@@ -47,7 +50,7 @@ namespace
     return std::make_error_code(std::errc::invalid_argument);
   }
 
-  bool tcp_connect(const arq_storage::Endpoint &endpoint, std::chrono::milliseconds timeout) noexcept
+  bool tcp_connect_only(const arq_storage::Endpoint &endpoint) noexcept
   {
     try
     {
@@ -60,8 +63,45 @@ namespace
       if (ec)
         return false;
       socket.close();
-      (void) timeout; // connect uses resolver/OS timeouts; explicit deadline can be added later
       return true;
+    }
+    catch (...)
+    {
+      return false;
+    }
+  }
+
+  /// Cleartext HTTP GET probe. Any response starting with "HTTP/" counts as
+  /// reachable (including 4xx). TLS endpoints stay on TCP-only until a TLS
+  /// client stack is wired into arq_storage.
+  bool http_get_probe(const arq_storage::Endpoint &endpoint) noexcept
+  {
+    try
+    {
+      const auto request = arq_storage::format_http_get_request(endpoint);
+      if (request.empty())
+        return false;
+
+      boost::asio::io_context io;
+      boost::asio::ip::tcp::resolver resolver{io};
+      const auto results = resolver.resolve(endpoint.host, std::to_string(endpoint.port));
+      boost::asio::ip::tcp::socket socket{io};
+      boost::system::error_code ec;
+      boost::asio::connect(socket, results, ec);
+      if (ec)
+        return false;
+
+      boost::asio::write(socket, boost::asio::buffer(request), ec);
+      if (ec)
+        return false;
+
+      std::array<char, 16> buf{};
+      const std::size_t n = boost::asio::read(socket, boost::asio::buffer(buf),
+                                              boost::asio::transfer_at_least(5), ec);
+      socket.close();
+      if (n < 5)
+        return false;
+      return std::string_view{buf.data(), 5} == "HTTP/";
     }
     catch (...)
     {
@@ -88,7 +128,10 @@ namespace arq_storage
     if (!endpoint_)
       return not_connected();
 
-    return tcp_connect(endpoint_, config_.connect_timeout) ? std::error_code{} : not_connected();
+    if (endpoint_.tls)
+      return tcp_connect_only(endpoint_) ? std::error_code{} : not_connected();
+
+    return http_get_probe(endpoint_) ? std::error_code{} : not_connected();
   }
 
   std::error_code StorageClient::store(const StoreRequest &request) noexcept

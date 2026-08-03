@@ -56,6 +56,16 @@ TEST(arq_storage_endpoint, rejects_invalid_urls)
   EXPECT_FALSE(arq_storage::parse_endpoint("http://host:99999"));
 }
 
+TEST(arq_storage_endpoint, formats_http_get_request)
+{
+  const auto ep = arq_storage::parse_endpoint("http://127.0.0.1:22021/status");
+  ASSERT_TRUE(ep);
+  const auto req = arq_storage::format_http_get_request(ep);
+  EXPECT_NE(std::string::npos, req.find("GET /status HTTP/1.1\r\n"));
+  EXPECT_NE(std::string::npos, req.find("Host: 127.0.0.1\r\n"));
+  EXPECT_NE(std::string::npos, req.find("Connection: close\r\n\r\n"));
+}
+
 TEST(arq_storage_client, remote_without_url_is_not_connected)
 {
   arq_storage::StorageClient client{{arq_storage::Backend::Remote, "", std::chrono::milliseconds{100}}};

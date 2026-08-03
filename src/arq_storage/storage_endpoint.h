@@ -47,4 +47,7 @@ namespace arq_storage
   /// Parses `http://host:port[/path]` or `https://host:port[/path]`.
   /// Default ports: http=80, https=443. Returns empty Endpoint on failure.
   Endpoint parse_endpoint(std::string_view url) noexcept;
+
+  /// Minimal HTTP/1.1 GET used by cleartext reachability probes.
+  std::string format_http_get_request(const Endpoint &endpoint) noexcept;
 }

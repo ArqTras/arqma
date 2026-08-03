@@ -92,4 +92,12 @@ namespace arq_storage
       return {};
     return out;
   }
+
+  std::string format_http_get_request(const Endpoint &endpoint) noexcept
+  {
+    if (!endpoint)
+      return {};
+    const std::string &path = endpoint.path.empty() ? "/" : endpoint.path;
+    return "GET " + path + " HTTP/1.1\r\nHost: " + endpoint.host + "\r\nConnection: close\r\n\r\n";
+  }
 }

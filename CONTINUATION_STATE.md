@@ -4,34 +4,32 @@ Branch: `upgrade` · Remote: `origin/upgrade` · Authorship: ArqTras only (strip
 
 ## Local quality gate (latest)
 
-- `ninja unit_tests` → **518** passed (~2.0s)
+- `ninja unit_tests` → **519** passed (~2.0s)
 - Always local-first before push/CI
 
 ## Architecture now
 
-- ArqMQ: ACL + framing (`authorize_request`, 1MiB/16 frames)
+- ArqMQ: ACL + framing (`authorize_request`)
 - Messaging: envelope, sealed-box, multi-hop onion wrap/peel
-- Wallet RPC: soft caps + restricted auth catalog
-- Fee: `get_dynamic_base_fee` unit coverage
-- Storage: TCP reachability probe (HTTP API still deferred)
-
-## Completed this stretch (pushed)
-
-- test_tx_utils restore
-- wallet_rpc_validation + rpc_base move
-- wallet_rpc_auth restricted denials
-- ArqMQ message_limits + handler wiring
-- fee unit restore
-- onion_layer multi-hop peel (pending push)
+- Storage: HTTP GET probe for cleartext; TLS = TCP connect only
+- Wallet RPC: soft caps + restricted auth
+- Fee / tx_utils fixtures restored
 
 ## Next exact implementation
 
-1. **File:** `src/arq_storage/storage_client.cpp` / `remote_storage_client.*`
-2. **Functions:** optional HTTP GET `/ping` after TCP connect when URL scheme is http(s)
-3. **Tests:** mock or skip-if-no-server in `arq_storage_client.cpp`
-4. **Commit:** `feat: optional HTTP ping after storage TCP reachability`
-5. Then P2P preauth enforcement helper tests / ban fixture restore
+1. **File:** `src/rpc/rpc_auth.h` + `tests/unit_tests/rpc_auth.cpp` (new)
+2. **Functions:** unit coverage for `method_requires_operator` / `allow_rpc_method`
+3. **Commit:** `test: cover daemon RPC access-level helpers`
+4. Then expand `docs/PROCESS_BOUNDARIES.md` storage/messaging notes
+5. Then evaluate `ban.cpp` restore cost vs P2P limit helpers
+
+## Decision log
+
+- Storage HTTP probe accepts any `HTTP/` response (incl. 4xx) as reachability
+- TLS storage probe deferred (no TLS client in arq_storage yet)
+- Onion: max 3 hops, 64KiB payload, 96KiB ciphertext
 
 ## Authorship
 
-ArqTras only — `git -c core.hooksPath=/tmp/empty-git-hooks`
+`git -c core.hooksPath=/tmp/empty-git-hooks` · ArqTras
+`33489188+ArqTras@users.noreply.github.com`

@@ -21,6 +21,8 @@
   close gaps on `relay_tx`, `get_tx_key`, `export_key_images`, mining controls.
 - Cap ArqMQ/Arq-Net request framing (1 MiB / 16 frames / 64-byte command names)
   via `authorize_request` on vote_ob/ping/pong.
+- Cleartext storage reachability uses HTTP GET after TCP connect; TLS stays
+  TCP-only until a TLS client is wired.
 - Add ArqMQ builtin command ACL registry (`authorize` denies unknown commands).
 - Both `--arqnet-backend` values initialize; RPC exposes `transport=snnetwork`.
 - In-memory StorageClient / SwarmMap / onion validation / router lifecycle tests.
