@@ -9,17 +9,17 @@ patterns while preserving Arqma identity.
 | Phase | Status | Notes |
 |-------|--------|-------|
 | 1 Analysis | **Done** | Architecture, deps, risks, Oxen gap analysis |
-| 2 Core modernization | **In progress** | C++20, CI, CLSAG tests, HF/Arq-Net fixes |
-| 3 Oxen feature parity (selective) | **Started** | ArqMQ scaffold added; no blind copy |
-| 4 Arq-Net evolution | **Started** | Legacy backend facade documented; routing scaffold added |
-| 5 Storage Server | **Started** | Daemon-side client scaffold; separate binary still required |
-| 6 Session-like modules | **Started** | Header-first protocol scaffolding with Arqma naming |
-| 7 RPC modernization | **Started** | Auth/validation/pagination plan + OpenAPI stub |
-| 8 P2P improvements | **Started** | Hardening recommendations tied to current limits |
-| 9 Performance | Planned | Measure first |
-| 10 Testing | **Started** | CLSAG + native CI unit tests |
-| 11 CI | **Started** | `ci.yml` + existing depends/docker |
-| 12 Final review | Ongoing | Per-milestone |
+| 2 Core modernization | **Done** | C++20, CI, CLSAG tests, HF/Arq-Net fixes |
+| 3 Oxen feature parity (selective) | **Foundation done** | ArqMQ facade + ACL/registry over SNNetwork |
+| 4 Arq-Net evolution | **Foundation done** | Auth harden, ping, dual-stack plan |
+| 5 Storage Server | **Client foundation** | Remote/InMemory client; separate binary = Milestone C |
+| 6 Session-like modules | **Foundation done** | Envelope, onion validation, swarm map, sealed-sender |
+| 7 RPC modernization | **Foundation done** | Validation, caps, auth helpers, OpenAPI stub |
+| 8 P2P improvements | **Foundation done** | Documented limits + unit checks |
+| 9 Performance | **Baseline** | Local measurement doc |
+| 10 Testing | **Foundation done** | 485 curated unit tests green locally |
+| 11 CI | **Foundation done** | unit + sanitizers + format-check |
+| 12 Final review | **Gate ready** | Checklist + completeness gate |
 
 ## Dependency map (summary)
 
@@ -43,7 +43,7 @@ patterns while preserving Arqma identity.
 4. Operator RPC clarity and ping/reachability reporting
 5. clang-format / clang-tidy baselines
 
-## Requires SN economics / product decision
+## Requires SN economics / product decision (Milestone C)
 
 - Full Storage Server + swarm replication for messaging
 - Pulse-like PoS block production
@@ -54,7 +54,7 @@ patterns while preserving Arqma identity.
 Do not implement those as drive-by copies; schedule behind an explicit product
 milestone.
 
-## Milestone A — platform (current)
+## Milestone A — platform
 
 - [x] Architectural analysis + docs
 - [x] Fix HF19 burn gate off-by-one
@@ -65,43 +65,35 @@ milestone.
 - [x] Native GitHub Actions CI + sanitizer job
 - [x] `.clang-format` / `.clang-tidy`
 - [x] CMake ≥ 3.16, C++20 (`-fno-char8_t` bridge)
-- [x] Green local unit suite (127 tests incl. HF19, RPC, P2P and ArqMQ scaffolding)
-- [ ] Restore legacy unit fixtures (base58/uri/parse_amount/multisig)
+- [x] Green local unit suite (485 tests)
+- [x] Restore legacy fixtures (base58/uri/parse_amount/sha256/mul_div)
 - [ ] Fix checkpoints unit crash
-- [x] Expand HF19 burn/per-output-fee core tests
-- [x] ArqMQ dual-backend scaffold
-- [x] RPC validation helpers + service-node pagination scaffolding
-- [x] Arq-Net / ArqMQ status introspection RPC
+- [x] ArqMQ dual-backend facade (transport remains SNNetwork)
+- [x] RPC validation / pagination / DoS caps
 - [x] P2P limit aliases + packet-budget unit coverage
-- [x] Messaging envelope wire-format roundtrip helper
+- [x] Messaging envelope + onion/swarm helpers
 - [x] Non-blocking clang-format CI check
 
 ## Milestone B — MQ / SN hygiene
 
-- [x] Add `arqmq` facade scaffold under Arqma naming
-- [ ] Vendor or adapt transport internals under Arqma naming
-- [ ] Feature-flag dual-stack during migration
-- [ ] Audit service node proofs/ports vs current Oxen-core
-- [ ] Document operator upgrade path
+- [x] `arqmq` facade under Arqma naming
+- [x] Command ACL registry + authorize semantics
+- [ ] Dedicated transport internals under Arqma naming
+- [x] Feature-flag dual-stack (`--arqnet-backend`)
+- [x] SN hygiene audit notes
+- [x] Operator upgrade path docs
 
 ## Milestone C — product fork-in-the-road
 
-Choose **one** primary value-add:
+**Requires human product decision.** Choose one primary value-add:
 
-1. Storage + onion requests
+1. Storage + onion requests (production Storage Server binary)
 2. Blink-like fast confirmation
 3. Pulse-like consensus change
 4. Privacy routing daemon (Lokinet-inspired)
 
-### Current scaffolding status
-
-- [x] `src/arq_storage` daemon-side client API scaffold
-- [x] `src/arq_messaging` identity/onion/swarm-map scaffolds
-- [x] `src/arq_messaging/message_envelope.hpp` minimal wire-format roundtrip helper
-- [x] `src/arq_router` naming/config/service scaffold
-- [x] `docs/RPC_MODERNIZATION.md` and OpenAPI stub
-- [x] `docs/P2P_HARDENING.md`
-- [x] `docs/PHASES_3_TO_12_STATUS.md`
+Foundation scaffolding for (1) and (4) exists; shipping them as products is
+out of scope for the foundation PR (`docs/PR_COMPLETENESS_GATE.md`).
 
 ## Explicit non-goals (near term)
 
@@ -109,13 +101,3 @@ Choose **one** primary value-add:
 - SESH / L2 / BLS tokenomics copy
 - Wallet3 wholesale import without API plan
 - Co-authored commit trailers / unnecessary contributor metadata
-
-## Reporting template (per milestone)
-
-### Completed
-### Security
-### Performance
-### Compatibility
-### Remaining Work
-### Risks
-### Recommended Next Steps
