@@ -19,6 +19,9 @@
   `WALLET_RPC_ERROR_CODE_TOO_MANY_ENTRIES`.
 - Centralize wallet-rpc `--restricted-rpc` denials (`wallet_rpc_auth.h`) and
   close gaps on `relay_tx`, `get_tx_key`, `export_key_images`, mining controls.
+- Gate additional daemon operator RPCs (`set_bans`, `flush_txpool`, `save_bc`,
+  `relay_tx`, log controls, `pop_blocks`, `prune_blockchain`) via `rpc_auth`
+  with `CORE_RPC_ERROR_CODE_RESTRICTED`.
 - Cap ArqMQ/Arq-Net request framing (1 MiB / 16 frames / 64-byte command names)
   via `authorize_request` on vote_ob/ping/pong.
 - Cleartext storage reachability uses HTTP GET after TCP connect; TLS stays

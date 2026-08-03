@@ -191,6 +191,32 @@ namespace cryptonote
   }
 #define CHECK_CORE_READY() do { if(!check_core_ready()){res.status = CORE_RPC_STATUS_BUSY; return true;} } while(0)
 
+
+  namespace
+  {
+    bool deny_restricted_rpc(const char *method, bool restricted,
+                             const epee::net_utils::connection_context_base *ctx, std::string &status)
+    {
+      const auto access = rpc::daemon_access_level(restricted, ctx != nullptr);
+      if (rpc::allow_rpc_method(method, access))
+        return false;
+      status = std::string("Failed, restricted RPC cannot call ") + method;
+      LOG_PRINT_L0(status);
+      return true;
+    }
+
+    bool deny_restricted_rpc(const char *method, bool restricted,
+                             const epee::net_utils::connection_context_base *ctx, epee::json_rpc::error &error_resp)
+    {
+      const auto access = rpc::daemon_access_level(restricted, ctx != nullptr);
+      if (rpc::allow_rpc_method(method, access))
+        return false;
+      error_resp.code = CORE_RPC_ERROR_CODE_RESTRICTED;
+      error_resp.message = std::string("Restricted RPC cannot call ") + method;
+      return true;
+    }
+  }
+
   //------------------------------------------------------------------------------------------------------------------------------
   bool core_rpc_server::on_get_height(const COMMAND_RPC_GET_HEIGHT::request& req, COMMAND_RPC_GET_HEIGHT::response& res, const connection_context *ctx)
   {
@@ -1021,6 +1047,8 @@ namespace cryptonote
   bool core_rpc_server::on_save_bc(const COMMAND_RPC_SAVE_BC::request& req, COMMAND_RPC_SAVE_BC::response& res, const connection_context *ctx)
   {
     PERF_TIMER(on_save_bc);
+    if (deny_restricted_rpc("save_bc", m_restricted, ctx, res.status))
+      return true;
     if( !m_core.get_blockchain_storage().store_blockchain() )
     {
       res.status = "Error while storing blockchain";
@@ -1113,6 +1141,8 @@ namespace cryptonote
   bool core_rpc_server::on_set_log_level(const COMMAND_RPC_SET_LOG_LEVEL::request& req, COMMAND_RPC_SET_LOG_LEVEL::response& res, const connection_context *ctx)
   {
     PERF_TIMER(on_set_log_level);
+    if (deny_restricted_rpc("set_log_level", m_restricted, ctx, res.status))
+      return true;
     if (req.level < 0 || req.level > 4)
     {
       res.status = "Error: log level not valid";
@@ -1126,6 +1156,8 @@ namespace cryptonote
   bool core_rpc_server::on_set_log_categories(const COMMAND_RPC_SET_LOG_CATEGORIES::request& req, COMMAND_RPC_SET_LOG_CATEGORIES::response& res, const connection_context *ctx)
   {
     PERF_TIMER(on_set_log_categories);
+    if (deny_restricted_rpc("set_log_categories", m_restricted, ctx, res.status))
+      return true;
     mlog_set_log(req.categories.c_str());
     res.categories = mlog_get_categories();
     res.status = CORE_RPC_STATUS_OK;
@@ -2120,6 +2152,8 @@ namespace cryptonote
   bool core_rpc_server::on_set_bans(const COMMAND_RPC_SETBANS::request& req, COMMAND_RPC_SETBANS::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)
   {
     PERF_TIMER(on_set_bans);
+    if (deny_restricted_rpc("set_bans", m_restricted, ctx, error_resp))
+      return false;
 
     for (auto i = req.bans.begin(); i != req.bans.end(); ++i)
     {
@@ -2168,6 +2202,8 @@ namespace cryptonote
   bool core_rpc_server::on_flush_txpool(const COMMAND_RPC_FLUSH_TRANSACTION_POOL::request& req, COMMAND_RPC_FLUSH_TRANSACTION_POOL::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)
   {
     PERF_TIMER(on_flush_txpool);
+    if (deny_restricted_rpc("flush_txpool", m_restricted, ctx, error_resp))
+      return false;
 
     bool failed = false;
     std::vector<crypto::hash> txids;
@@ -2607,6 +2643,8 @@ namespace cryptonote
   bool core_rpc_server::on_pop_blocks(const COMMAND_RPC_POP_BLOCKS::request& req, COMMAND_RPC_POP_BLOCKS::response& res, const connection_context *ctx)
   {
     PERF_TIMER(on_pop_blocks);
+    if (deny_restricted_rpc("pop_blocks", m_restricted, ctx, res.status))
+      return true;
 
     m_core.get_blockchain_storage().pop_blocks(req.nblocks);
 
@@ -2655,6 +2693,8 @@ namespace cryptonote
   bool core_rpc_server::on_relay_tx(const COMMAND_RPC_RELAY_TX::request& req, COMMAND_RPC_RELAY_TX::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)
   {
     PERF_TIMER(on_relay_tx);
+    if (deny_restricted_rpc("relay_tx", m_restricted, ctx, error_resp))
+      return false;
 
     bool failed = false;
     res.status = "";
@@ -2818,6 +2858,8 @@ namespace cryptonote
   bool core_rpc_server::on_prune_blockchain(const COMMAND_RPC_PRUNE_BLOCKCHAIN::request& req, COMMAND_RPC_PRUNE_BLOCKCHAIN::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)
   {
     PERF_TIMER(on_prune_blockchain);
+    if (deny_restricted_rpc("prune_blockchain", m_restricted, ctx, error_resp))
+      return false;
 
     try
     {
