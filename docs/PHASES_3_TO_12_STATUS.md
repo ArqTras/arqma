@@ -10,14 +10,14 @@ work before it can be shipped as a complete feature.
 
 | Phase | Status | Implemented now | Still required |
 |-------|--------|-----------------|----------------|
-| 3 MQ feature parity | In progress | `src/arqmq` facade, backend enum, ACL enum, legacy path documentation, backend status introspection | Native backend port, live command routing, richer health/error reporting |
+| 3 MQ feature parity | In progress | `src/arqmq` facade, backend enum, ACL enum + `allows()`, legacy path docs, backend status introspection | Native backend port, live command routing, richer health/error reporting |
 | 4 Arq-Net evolution | In progress | `arqmq::Backend::LegacyArqNet` documents current `SNNetwork` path; `get_arqnet_status` exposes backend/init status and latest ping | Transport hardening, migration planning, dual-stack rollout |
 | 5 Storage Server | Scaffolded + status RPC | `src/arq_storage` + `get_storage_status` | Separate production storage binary, replication, swarm sync, SN incentive decisions |
 | 6 Messaging modules | In progress | `src/arq_messaging` identity, onion request, swarm map and message-envelope roundtrip helpers | Encryption, request lifecycle, interoperability tests |
 | 7 RPC modernization | In progress | validation helpers, SN hex checks, SN list pagination, batch DoS caps (txs/KIs/blocks/headers), OpenAPI stub, shared error semantics doc | auth middleware, generated API docs, more privileged-RPC hardening |
 | 8 P2P improvements | In progress | documented limit aliases, packet-budget compile-time checks, unit coverage for current limits | implementation, measurement, rollout tuning, compatibility testing |
 | 9 Performance | Baseline docs | `docs/PERFORMANCE.md` | profiling, benchmarks, targeted optimizations |
-| 10 Testing | In progress | unit coverage for `arqmq`, RPC validation, P2P limit docs, HF19 burn gate and messaging envelope roundtrips | integration tests, daemon tests, network-path regression coverage |
+| 10 Testing | In progress | curated suite expanded (incl. restored mul_div / get_xtype); coverage for arqmq ACL, RPC caps, P2P limits, HF19 burn, messaging envelopes | integration tests, daemon tests, network-path regression coverage |
 | 11 CI | In progress | current unit target remains buildable with new scaffold targets; non-blocking format-check job added for upgrade modules | dedicated matrix coverage for feature flags and future separate binaries |
 | 12 Final review | Ongoing | `docs/SECURITY_REVIEW_CHECKLIST.md` Phase-12 merge gate + docs scaffolding | soak testing, operator validation, release gating, CI sanitizer green |
 

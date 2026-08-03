@@ -65,3 +65,22 @@ TEST(arqmq_facade, native_backend_reports_not_supported)
   EXPECT_EQ(arqmq::Backend::ArqMq, arqmq::current_backend());
   EXPECT_FALSE(arqmq::is_initialized());
 }
+
+TEST(arqmq_facade, acl_allows_respects_privilege_order)
+{
+  EXPECT_FALSE(arqmq::allows(arqmq::CategoryAcl::Basic, arqmq::CategoryAcl::Denied));
+  EXPECT_TRUE(arqmq::allows(arqmq::CategoryAcl::Basic, arqmq::CategoryAcl::Basic));
+  EXPECT_TRUE(arqmq::allows(arqmq::CategoryAcl::Basic, arqmq::CategoryAcl::ServiceNode));
+  EXPECT_TRUE(arqmq::allows(arqmq::CategoryAcl::ServiceNode, arqmq::CategoryAcl::Admin));
+  EXPECT_FALSE(arqmq::allows(arqmq::CategoryAcl::Admin, arqmq::CategoryAcl::ServiceNode));
+}
+
+TEST(arqmq_facade, default_acl_is_retained_after_init)
+{
+  EXPECT_FALSE(arqmq::shutdown());
+  const arqmq::Config config{arqmq::Backend::LegacyArqNet, arqmq::CategoryAcl::ServiceNode};
+  EXPECT_FALSE(arqmq::init(config));
+  EXPECT_EQ(arqmq::CategoryAcl::ServiceNode, arqmq::default_acl());
+  EXPECT_FALSE(arqmq::shutdown());
+  EXPECT_EQ(arqmq::CategoryAcl::Denied, arqmq::default_acl());
+}

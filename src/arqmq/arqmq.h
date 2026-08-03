@@ -56,6 +56,10 @@ namespace arqmq
   const char *to_string(Backend backend) noexcept;
   const char *to_string(CategoryAcl acl) noexcept;
 
+  /// Returns true when `granted` is at least as privileged as `required`.
+  /// Ordering: Denied < Basic < ServiceNode < Admin.
+  bool allows(CategoryAcl required, CategoryAcl granted) noexcept;
+
   /// Initializes the messaging facade. `LegacyArqNet` maps to the current
   /// service-node networking path while the native ArqMQ backend remains a
   /// future porting target.
@@ -66,6 +70,9 @@ namespace arqmq
 
   /// Returns the currently selected backend, even if initialization failed.
   Backend current_backend() noexcept;
+
+  /// Returns the default ACL configured at init (Denied after shutdown).
+  CategoryAcl default_acl() noexcept;
 
   /// Returns true when the facade is initialized and ready for use.
   bool is_initialized() noexcept;

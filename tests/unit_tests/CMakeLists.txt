@@ -42,10 +42,12 @@ set(unit_tests_sources
   clsag.cpp
   command_line.cpp
   decompose_amount_into_digits.cpp
+  get_xtype_from_string.cpp
   hashchain.cpp
   hf19.cpp
   main.cpp
   memwipe.cpp
+  mul_div.cpp
   parse_amount.cpp
   p2p_limits.cpp
   rpc_validation.cpp

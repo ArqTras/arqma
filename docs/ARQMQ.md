@@ -34,10 +34,13 @@ Public names remain **Arq-Net** / **arqnet**. Internal library may be called
 
 | Category | Who | Examples |
 |----------|-----|----------|
-| `None` | rejected | — |
+| `Denied` | rejected | unknown Curve peers |
 | `Basic` | local admin / loopback helpers | diagnostics |
 | `ServiceNode` | registered SN keys | quorum votes, pings |
 | `Admin` | local control socket | privileged ops |
+
+`arqmq::allows(required, granted)` encodes the privilege order
+`Denied < Basic < ServiceNode < Admin` for future command routing.
 
 Unknown remote Curve keys stay denied (already enforced).
 

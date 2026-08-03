@@ -39,10 +39,27 @@ namespace
   {
     std::mutex mutex;
     arqmq::Backend backend = arqmq::Backend::LegacyArqNet;
+    arqmq::CategoryAcl default_acl = arqmq::CategoryAcl::Denied;
     bool initialized = false;
   };
 
   facade_state state;
+
+  int acl_rank(const arqmq::CategoryAcl acl) noexcept
+  {
+    switch (acl)
+    {
+      case arqmq::CategoryAcl::Denied:
+        return 0;
+      case arqmq::CategoryAcl::Basic:
+        return 1;
+      case arqmq::CategoryAcl::ServiceNode:
+        return 2;
+      case arqmq::CategoryAcl::Admin:
+        return 3;
+    }
+    return 0;
+  }
 }
 
 namespace arqmq
@@ -77,10 +94,16 @@ namespace arqmq
     return "unknown";
   }
 
+  bool allows(const CategoryAcl required, const CategoryAcl granted) noexcept
+  {
+    return acl_rank(granted) >= acl_rank(required);
+  }
+
   std::error_code init(const Config &config) noexcept
   {
     std::lock_guard<std::mutex> lock{state.mutex};
     state.backend = config.backend;
+    state.default_acl = config.default_acl;
 
     switch (config.backend)
     {
@@ -101,6 +124,7 @@ namespace arqmq
   {
     std::lock_guard<std::mutex> lock{state.mutex};
     state.initialized = false;
+    state.default_acl = CategoryAcl::Denied;
 
     // TODO(arqma): coordinate shutdown across the future dual-backend facade.
     return {};
@@ -110,6 +134,12 @@ namespace arqmq
   {
     std::lock_guard<std::mutex> lock{state.mutex};
     return state.backend;
+  }
+
+  CategoryAcl default_acl() noexcept
+  {
+    std::lock_guard<std::mutex> lock{state.mutex};
+    return state.default_acl;
   }
 
   bool is_initialized() noexcept

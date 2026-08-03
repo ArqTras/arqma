@@ -31,6 +31,9 @@
   while legacy Monero-era fixtures are restored incrementally.
 - Add unit coverage for RPC validation helpers, P2P hardening constants,
   ArqMQ facade state and messaging envelope roundtrips.
+- Restore `mul_div` and `get_xtype_from_string` legacy unit coverage (216
+  curated tests green locally).
+- Add `arqmq::allows` ACL privilege helper coverage and SN hygiene audit notes.
 
 ### Build / CI
 
