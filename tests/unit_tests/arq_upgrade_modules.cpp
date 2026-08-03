@@ -99,4 +99,10 @@ TEST(rpc_auth, access_levels_and_operator_methods)
   EXPECT_FALSE(cryptonote::rpc::access_allows(AccessLevel::Admin, AccessLevel::Public));
   EXPECT_TRUE(cryptonote::rpc::method_requires_operator("start_mining"));
   EXPECT_FALSE(cryptonote::rpc::method_requires_operator("get_info"));
+  EXPECT_EQ(AccessLevel::Public, cryptonote::rpc::daemon_access_level(true, true));
+  EXPECT_EQ(AccessLevel::Operator, cryptonote::rpc::daemon_access_level(false, true));
+  EXPECT_EQ(AccessLevel::Admin, cryptonote::rpc::daemon_access_level(true, false));
+  EXPECT_FALSE(cryptonote::rpc::allow_rpc_method("stop_daemon", AccessLevel::Public));
+  EXPECT_TRUE(cryptonote::rpc::allow_rpc_method("stop_daemon", AccessLevel::Operator));
+  EXPECT_TRUE(cryptonote::rpc::allow_rpc_method("get_info", AccessLevel::Public));
 }

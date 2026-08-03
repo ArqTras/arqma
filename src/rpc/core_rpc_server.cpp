@@ -58,6 +58,7 @@ using namespace epee;
 #include "rpc/rpc_args.h"
 #include "rpc/rpc_handler.h"
 #include "rpc/rpc_validation.h"
+#include "rpc/rpc_auth.h"
 #include "core_rpc_server_error_codes.h"
 #include "p2p/net_node.h"
 #include "version.h"
@@ -924,6 +925,13 @@ namespace cryptonote
   bool core_rpc_server::on_start_mining(const COMMAND_RPC_START_MINING::request& req, COMMAND_RPC_START_MINING::response& res, const connection_context *ctx)
   {
     PERF_TIMER(on_start_mining);
+    const auto access = rpc::daemon_access_level(m_restricted, ctx != nullptr);
+    if (!rpc::allow_rpc_method("start_mining", access))
+    {
+      res.status = "Failed, restricted RPC cannot start mining";
+      LOG_PRINT_L0(res.status);
+      return true;
+    }
     CHECK_CORE_READY();
     cryptonote::address_parse_info info;
     if(!get_account_address_from_str(info, m_core.get_nettype(), req.miner_address))
@@ -975,6 +983,13 @@ namespace cryptonote
   bool core_rpc_server::on_stop_mining(const COMMAND_RPC_STOP_MINING::request& req, COMMAND_RPC_STOP_MINING::response& res, const connection_context *ctx)
   {
     PERF_TIMER(on_stop_mining);
+    const auto access = rpc::daemon_access_level(m_restricted, ctx != nullptr);
+    if (!rpc::allow_rpc_method("stop_mining", access))
+    {
+      res.status = "Failed, restricted RPC cannot stop mining";
+      LOG_PRINT_L0(res.status);
+      return true;
+    }
     if(!m_core.get_miner().stop())
     {
       res.status = "Failed, mining not stopped";
@@ -1184,6 +1199,13 @@ namespace cryptonote
   bool core_rpc_server::on_stop_daemon(const COMMAND_RPC_STOP_DAEMON::request& req, COMMAND_RPC_STOP_DAEMON::response& res, const connection_context *ctx)
   {
     PERF_TIMER(on_stop_daemon);
+    const auto access = rpc::daemon_access_level(m_restricted, ctx != nullptr);
+    if (!rpc::allow_rpc_method("stop_daemon", access))
+    {
+      res.status = "Failed, restricted RPC cannot stop the daemon";
+      LOG_PRINT_L0(res.status);
+      return true;
+    }
     // FIXME: replace back to original m_p2p.send_stop_signal() after
     // investigating why that isn't working quite right.
     m_p2p.send_stop_signal();

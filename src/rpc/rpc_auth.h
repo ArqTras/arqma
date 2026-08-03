@@ -34,13 +34,14 @@ namespace cryptonote
 {
 namespace rpc
 {
-  /// Coarse RPC privilege levels for future middleware. Restricted daemons map
-  /// to Public; loopback/admin credentials map to Admin.
+  /// Coarse RPC privilege levels. Restricted public daemons map remote callers
+  /// to Public; unrestricted daemons grant Operator to RPC origins; in-process
+  /// calls (no connection context) are treated as Admin.
   enum class AccessLevel
   {
-    Public,
-    Operator,
-    Admin
+    Public = 0,
+    Operator = 1,
+    Admin = 2
   };
 
   inline bool access_allows(AccessLevel required, AccessLevel granted) noexcept
@@ -48,13 +49,33 @@ namespace rpc
     return static_cast<int>(granted) >= static_cast<int>(required);
   }
 
+  inline AccessLevel daemon_access_level(bool restricted_mode, bool has_rpc_origin) noexcept
+  {
+    if (!has_rpc_origin)
+      return AccessLevel::Admin;
+    return restricted_mode ? AccessLevel::Public : AccessLevel::Operator;
+  }
+
   inline bool method_requires_operator(std::string_view method) noexcept
   {
     return method == "start_mining"
         || method == "stop_mining"
+        || method == "stop_daemon"
         || method == "set_bans"
         || method == "flush_txpool"
-        || method == "relay_tx";
+        || method == "relay_tx"
+        || method == "set_log_level"
+        || method == "set_log_categories"
+        || method == "save_bc"
+        || method == "pop_blocks"
+        || method == "prune_blockchain";
+  }
+
+  inline bool allow_rpc_method(std::string_view method, AccessLevel granted) noexcept
+  {
+    if (!method_requires_operator(method))
+      return true;
+    return access_allows(AccessLevel::Operator, granted);
   }
 }
 }
