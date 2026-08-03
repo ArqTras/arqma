@@ -44,6 +44,7 @@ set(unit_tests_sources
   clsag.cpp
   command_line.cpp
   decompose_amount_into_digits.cpp
+  fee.cpp
   get_xtype_from_string.cpp
   hashchain.cpp
   hf19.cpp
