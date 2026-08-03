@@ -29,23 +29,51 @@
 #include "gtest/gtest.h"
 
 #include "arq_storage/storage_client.h"
+#include "arq_storage/storage_endpoint.h"
 
-TEST(arq_storage_client, remote_backend_reports_not_connected)
+TEST(arq_storage_endpoint, parses_http_and_https_urls)
 {
-  arq_storage::StorageClient client{arq_storage::Backend::Remote};
-  const auto expected = std::make_error_code(std::errc::not_connected);
+  const auto http = arq_storage::parse_endpoint("http://127.0.0.1:22021/status");
+  ASSERT_TRUE(http);
+  EXPECT_FALSE(http.tls);
+  EXPECT_EQ("127.0.0.1", http.host);
+  EXPECT_EQ(22021, http.port);
+  EXPECT_EQ("/status", http.path);
 
-  EXPECT_EQ(expected, client.ping());
-  EXPECT_EQ(expected, client.store({"messages", "hello", "world"}));
+  const auto https = arq_storage::parse_endpoint("https://storage.example");
+  ASSERT_TRUE(https);
+  EXPECT_TRUE(https.tls);
+  EXPECT_EQ("storage.example", https.host);
+  EXPECT_EQ(443, https.port);
+  EXPECT_EQ("/", https.path);
+}
 
-  const auto retrieve = client.retrieve("messages", "hello");
-  EXPECT_EQ(expected, retrieve.error);
-  EXPECT_TRUE(retrieve.value.empty());
+TEST(arq_storage_endpoint, rejects_invalid_urls)
+{
+  EXPECT_FALSE(arq_storage::parse_endpoint(""));
+  EXPECT_FALSE(arq_storage::parse_endpoint("ftp://127.0.0.1:1"));
+  EXPECT_FALSE(arq_storage::parse_endpoint("http://"));
+  EXPECT_FALSE(arq_storage::parse_endpoint("http://host:99999"));
+}
+
+TEST(arq_storage_client, remote_without_url_is_not_connected)
+{
+  arq_storage::StorageClient client{{arq_storage::Backend::Remote, "", std::chrono::milliseconds{100}}};
+  EXPECT_EQ(std::make_error_code(std::errc::not_connected), client.ping());
+}
+
+TEST(arq_storage_client, remote_with_closed_port_is_not_connected)
+{
+  // Port 1 is almost never accepting connections on developer workstations.
+  arq_storage::Config cfg{arq_storage::Backend::Remote, "http://127.0.0.1:1", std::chrono::milliseconds{200}};
+  arq_storage::StorageClient client{cfg};
+  ASSERT_TRUE(client.endpoint());
+  EXPECT_EQ(std::make_error_code(std::errc::not_connected), client.ping());
 }
 
 TEST(arq_storage_client, in_memory_store_retrieve_roundtrip)
 {
-  arq_storage::StorageClient client{arq_storage::Backend::InMemory};
+  arq_storage::StorageClient client{{arq_storage::Backend::InMemory, "", std::chrono::milliseconds{100}}};
   EXPECT_FALSE(client.ping());
   EXPECT_FALSE(client.store({"messages", "hello", "world"}));
 
@@ -58,4 +86,13 @@ TEST(arq_storage_client, in_memory_store_retrieve_roundtrip)
   ASSERT_FALSE(snodes.error);
   ASSERT_EQ(2u, snodes.value.size());
   EXPECT_EQ("sn-a", snodes.value[0]);
+}
+
+TEST(arq_storage_client, daemon_client_config_roundtrip)
+{
+  arq_storage::configure_daemon_client({arq_storage::Backend::InMemory, "", std::chrono::milliseconds{50}});
+  auto client = arq_storage::daemon_client();
+  EXPECT_EQ(arq_storage::Backend::InMemory, client.backend());
+  EXPECT_FALSE(client.ping());
+  arq_storage::configure_daemon_client({});
 }

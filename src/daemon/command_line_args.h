@@ -134,6 +134,11 @@ namespace daemon_args
   , "Enable experimental Arq privacy router scaffold (disabled by default)"
   , false
   };
+  const command_line::arg_descriptor<std::string> arg_storage_client_url = {
+    "storage-client-url"
+  , "Outbound Storage Server base URL for daemon reachability probes (e.g. http://127.0.0.1:22021)"
+  , ""
+  };
 
 }  // namespace daemon_args
 

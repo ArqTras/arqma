@@ -23,6 +23,8 @@
 
 - Restore `arqnet_ping` RPC and `last_arqnet_ping` daemon info fields.
 - Add testnet hard fork 19 at height 1200.
+- Add `--storage-client-url` for outbound Storage Server TCP reachability probes.
+- Enforce ArqMQ command ACL checks on Arq-Net `vote_ob` / `ping` / `pong` handlers.
 - Add `src/rpc/rpc_validation.*` helpers for bounded limits, fixed-size hex
   validation and pagination scaffolding.
 - Add `get_arqnet_status` JSON-RPC for backend name, initialization state and

@@ -28,6 +28,11 @@
 
 #include "storage_client.h"
 
+#include <boost/asio/connect.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/system/error_code.hpp>
+#include <chrono>
+#include <mutex>
 #include <utility>
 
 namespace
@@ -41,24 +46,54 @@ namespace
   {
     return std::make_error_code(std::errc::invalid_argument);
   }
+
+  bool tcp_connect(const arq_storage::Endpoint &endpoint, std::chrono::milliseconds timeout) noexcept
+  {
+    try
+    {
+      boost::asio::io_context io;
+      boost::asio::ip::tcp::resolver resolver{io};
+      const auto results = resolver.resolve(endpoint.host, std::to_string(endpoint.port));
+      boost::asio::ip::tcp::socket socket{io};
+      boost::system::error_code ec;
+      boost::asio::connect(socket, results, ec);
+      if (ec)
+        return false;
+      socket.close();
+      (void) timeout; // connect uses resolver/OS timeouts; explicit deadline can be added later
+      return true;
+    }
+    catch (...)
+    {
+      return false;
+    }
+  }
+
+  std::mutex g_daemon_mutex;
+  arq_storage::Config g_daemon_config{};
 }
 
 namespace arq_storage
 {
-  StorageClient::StorageClient(const Backend backend) noexcept
-    : backend_{backend}
+  StorageClient::StorageClient(Config config) noexcept
+    : config_{std::move(config)}
+    , endpoint_{parse_endpoint(config_.base_url)}
   {}
 
   std::error_code StorageClient::ping() const noexcept
   {
-    if (backend_ == Backend::InMemory)
+    if (config_.backend == Backend::InMemory)
       return {};
-    return not_connected();
+
+    if (!endpoint_)
+      return not_connected();
+
+    return tcp_connect(endpoint_, config_.connect_timeout) ? std::error_code{} : not_connected();
   }
 
   std::error_code StorageClient::store(const StoreRequest &request) noexcept
   {
-    if (backend_ != Backend::InMemory)
+    if (config_.backend != Backend::InMemory)
       return not_connected();
     if (request.namespace_name.empty() || request.key.empty())
       return invalid_argument();
@@ -70,7 +105,7 @@ namespace arq_storage
 
   Result<std::string> StorageClient::retrieve(std::string namespace_name, std::string key) const noexcept
   {
-    if (backend_ != Backend::InMemory)
+    if (config_.backend != Backend::InMemory)
       return {{}, not_connected()};
     if (namespace_name.empty() || key.empty())
       return {{}, invalid_argument()};
@@ -84,7 +119,7 @@ namespace arq_storage
 
   Result<std::vector<std::string>> StorageClient::get_snodes_for_pubkey(std::string pubkey) const noexcept
   {
-    if (backend_ != Backend::InMemory)
+    if (config_.backend != Backend::InMemory)
       return {{}, not_connected()};
     if (pubkey.empty())
       return {{}, invalid_argument()};
@@ -100,5 +135,17 @@ namespace arq_storage
   {
     std::lock_guard<std::mutex> lock{mutex_};
     snodes_[std::move(pubkey)] = std::move(snodes);
+  }
+
+  void configure_daemon_client(Config config)
+  {
+    std::lock_guard<std::mutex> lock{g_daemon_mutex};
+    g_daemon_config = std::move(config);
+  }
+
+  StorageClient daemon_client()
+  {
+    std::lock_guard<std::mutex> lock{g_daemon_mutex};
+    return StorageClient{g_daemon_config};
   }
 }

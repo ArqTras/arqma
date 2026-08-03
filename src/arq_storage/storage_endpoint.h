@@ -28,44 +28,23 @@
 
 #pragma once
 
-#include "arqmq.h"
-
+#include <cstdint>
+#include <string>
 #include <string_view>
 
-namespace arqmq
+namespace arq_storage
 {
-  /// Static command → ACL map for the future native backend. LegacyArqNet still
-  /// dispatches through SNNetwork; this registry documents intended categories.
-  struct CommandAcl
+  struct Endpoint
   {
-    std::string_view name;
-    CategoryAcl required;
+    bool tls = false;
+    std::string host;
+    std::uint16_t port = 0;
+    std::string path = "/";
+
+    explicit operator bool() const noexcept { return !host.empty() && port != 0; }
   };
 
-  inline constexpr CommandAcl k_builtin_commands[] = {
-      {"ping", CategoryAcl::Basic},
-      {"pong", CategoryAcl::Basic},
-      {"vote_ob", CategoryAcl::ServiceNode},
-      {"arqnet_status", CategoryAcl::Basic},
-      {"admin_shutdown", CategoryAcl::Admin},
-  };
-
-  inline CategoryAcl required_acl_for(std::string_view command) noexcept
-  {
-    for (const auto &entry : k_builtin_commands)
-    {
-      if (entry.name == command)
-        return entry.required;
-    }
-    return CategoryAcl::Denied;
-  }
-
-  inline bool authorize(std::string_view command, CategoryAcl granted) noexcept
-  {
-    const CategoryAcl required = required_acl_for(command);
-    // Unknown / explicitly denied commands never authorize, even for Admin.
-    if (required == CategoryAcl::Denied)
-      return false;
-    return allows(required, granted);
-  }
+  /// Parses `http://host:port[/path]` or `https://host:port[/path]`.
+  /// Default ports: http=80, https=443. Returns empty Endpoint on failure.
+  Endpoint parse_endpoint(std::string_view url) noexcept;
 }

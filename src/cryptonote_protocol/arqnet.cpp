@@ -5,6 +5,7 @@
 #include "cryptonote_core/tx_pool.h"
 #include "arqnet/sn_network.h"
 #include "arqnet/conn_matrix.h"
+#include "arqmq/command_registry.hpp"
 
 #undef ARQMA_DEFAULT_LOG_CATEGORY
 #define ARQMA_DEFAULT_LOG_CATEGORY "arqnet"
@@ -439,6 +440,13 @@ void relay_obligation_votes(void *obj, const std::vector<service_nodes::quorum_v
 
 void handle_obligation_vote(SNNetwork::message &m, void *self)
 {
+  const auto peer_acl = m.sn ? arqmq::CategoryAcl::ServiceNode : arqmq::CategoryAcl::Denied;
+  if (!arqmq::authorize("vote_ob", peer_acl))
+  {
+    MWARNING("Dropping vote_ob from unauthorized peer " << as_hex(m.pubkey));
+    return;
+  }
+
   auto &snw = SNNWrapper::from(self);
 
   MDEBUG("Received a relayed obligation vote from " << as_hex(m.pubkey));
@@ -498,6 +506,13 @@ std::enable_if_t<std::is_integral<I>::value, I> get_or(bt_dict &d, const std::st
 
 void handle_ping(SNNetwork::message &m, void *)
 {
+  const auto peer_acl = m.sn ? arqmq::CategoryAcl::ServiceNode : arqmq::CategoryAcl::Basic;
+  if (!arqmq::authorize("ping", peer_acl))
+  {
+    MWARNING("Dropping ping from unauthorized peer " << as_hex(m.pubkey));
+    return;
+  }
+
   uint64_t tag = 0;
   if (!m.data.empty())
   {
@@ -511,6 +526,13 @@ void handle_ping(SNNetwork::message &m, void *)
 
 void handle_pong(SNNetwork::message &m, void *)
 {
+  const auto peer_acl = m.sn ? arqmq::CategoryAcl::ServiceNode : arqmq::CategoryAcl::Basic;
+  if (!arqmq::authorize("pong", peer_acl))
+  {
+    MWARNING("Dropping pong from unauthorized peer " << as_hex(m.pubkey));
+    return;
+  }
+
   MINFO("Received pong from " << (m.sn ? "SN" : "non-SN") << " " << as_hex(m.pubkey));
 }
 

@@ -50,5 +50,6 @@ target_link_libraries(cryptonote_protocol
   PUBLIC
     p2p
     arqnet
+    arqmq
   PRIVATE
     ${EXTRA_LIBRARIES})

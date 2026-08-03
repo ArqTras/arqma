@@ -3130,7 +3130,7 @@ namespace cryptonote
   //------------------------------------------------------------------------------------------------------------------------------
   bool core_rpc_server::on_get_storage_status(const COMMAND_RPC_GET_STORAGE_STATUS::request&, COMMAND_RPC_GET_STORAGE_STATUS::response& res, epee::json_rpc::error&, const connection_context*)
   {
-    arq_storage::StorageClient client;
+    arq_storage::StorageClient client = arq_storage::daemon_client();
     const auto ping_ec = client.ping();
     res.client_reachable = !ping_ec;
     res.client_error = ping_ec ? ping_ec.message() : std::string{};

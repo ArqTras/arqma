@@ -39,6 +39,7 @@
 #include "cryptonote_protocol/arqnet.h"
 #include "arqmq/arqmq.h"
 #include "arq_router/router_service.h"
+#include "arq_storage/storage_client.h"
 
 #include "common/password.h"
 #include "common/util.h"
@@ -103,6 +104,21 @@ public:
         MINFO("Arq-Net messaging facade backend: " << arqmq::to_string(mq_cfg.backend)
                                                    << " (transport=" << arqmq::transport_name() << ")");
       }
+    }
+
+    {
+      arq_storage::Config storage_cfg{};
+      storage_cfg.backend = arq_storage::Backend::Remote;
+      storage_cfg.base_url = command_line::get_arg(vm, daemon_args::arg_storage_client_url);
+      if (!storage_cfg.base_url.empty() && !arq_storage::parse_endpoint(storage_cfg.base_url))
+      {
+        MWARNING("Invalid --storage-client-url '" << storage_cfg.base_url
+                                                  << "'; reachability probes disabled");
+        storage_cfg.base_url.clear();
+      }
+      arq_storage::configure_daemon_client(storage_cfg);
+      if (!storage_cfg.base_url.empty())
+        MINFO("Storage client reachability URL: " << storage_cfg.base_url);
     }
 
     if (command_line::get_arg(vm, daemon_args::arg_arq_router))
