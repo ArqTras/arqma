@@ -8,19 +8,22 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
 - `ninja unit_tests` → **529** passed (~2.0s)
 - `ctest -R 'unit_tests|hash-target'` → green
-- `BUILD_INTEGRATION_TESTS=OFF` (default) — legacy `core_tests` not built in CI
+- `BUILD_INTEGRATION_TESTS=OFF` (default)
 
-## Cross-platform gates
+## Cross-platform gates (commit `2ef4a62c` + follow-ups)
 
-- **Linux/macOS unit CI:** `.github/workflows/ci.yml` (`unit-tests` matrix + format + sanitize)
-- **Windows (+ cross macOS/Linux binaries):** `.github/workflows/depends.yml` (`build-depends-windows-x64` mingw)
+| Gate | Status |
+|------|--------|
+| Linux unit Release/Debug (`ci.yml`) | ✅ |
+| macOS-14 unit Release (`ci.yml`) | ✅ |
+| Linux ASan/UBSan (`ci.yml`) | ✅ |
+| Format check (`ci.yml`) | ✅ |
+| Windows x64 depends (mingw) | ✅ |
+| Linux x86_64 / armv8 depends | ✅ |
+| macOS depends cross (zeromq `-std=c++17`) | 🔧 fix in flight |
 
 ## Next exact implementation
 
-1. Migrate/fix legacy `core_tests` incrementally under `BUILD_INTEGRATION_TESTS=ON` (keep default OFF)
-2. Optional: native Windows MSVC unit CI once Boost/OpenSSL are pinned for `windows-latest`
+1. Land zeromq darwin CXXFLAGS fix; confirm `build-depends-macOS-*` green
+2. Migrate legacy `core_tests` under `BUILD_INTEGRATION_TESTS=ON` (default OFF)
 3. Prefer local green before every push; strip Co-authored-by
-
-## Architecture (locked decisions)
-
-See CHANGELOG-upgrade.md and prior commits on `upgrade`. Do not re-run phase-1 analysis.

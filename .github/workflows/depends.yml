@@ -40,6 +40,7 @@ jobs:
           - name: "build-depends-macOS-x64"
             host: "x86_64-apple-darwin"
             packages: "clang"
+            # Cross from Linux; native macOS unit coverage is in ci.yml (macos-14).
           - name: "build-depends-macOS-arm64"
             host: "arm64-apple-darwin"
             packages: "clang"

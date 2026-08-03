@@ -8,7 +8,8 @@ $(package)_dependencies=sodium
 define $(package)_set_vars
   $(package)_config_opts=--enable-static --disable-shared --disable-curve-keygen --enable-curve --disable-drafts --disable-libunwind --with-libsodium --without-pgm --without-norm --without-vmci --without-docs --disable-Werror
   $(package)_cxxflags_linux=-std=c++17
-  $(package)_cxxflags_darwin=-std=c++17
+  # Xcode 12.2 / SDK 11.0 libc++ + host clang cannot link with -std=c++17
+  # during libzmq's AC_COMPILE_IFELSE check; default C++11 detection is enough.
   $(package)_cxxflags_mingw32=-std=c++17
   $(package)_build_opts_mingw32=LDFLAGS="$($(package)_ldflags) -lsodium -liphlpapi"
 endef
