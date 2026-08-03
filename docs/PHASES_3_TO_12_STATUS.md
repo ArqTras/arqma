@@ -15,10 +15,9 @@ work before it can be shipped as a complete feature.
 | 5 Storage Server | Scaffolded + status RPC | `StorageClient` + `get_storage_status`; boundaries in `PROCESS_BOUNDARIES.md` | Production storage binary, replication, swarm sync |
 | 6 Messaging modules | In progress | identity, onion, swarm, envelope, sealed-sender marker/TTL | Encryption, request lifecycle |
 | 7 RPC modernization | In progress | validation, pagination, batch DoS caps incl. SN pubkeys, OpenAPI, error semantics | auth middleware, generated docs |
-| 10 Testing | In progress | curated suite **479** green locally (uri/base58/sha256 restored) | integration/daemon tests; remaining API-drift fixtures |
 | 8 P2P improvements | In progress | documented limit aliases, packet-budget compile-time checks, unit coverage for current limits | implementation, measurement, rollout tuning, compatibility testing |
-| 9 Performance | Baseline docs | `docs/PERFORMANCE.md` | profiling, benchmarks, targeted optimizations |
-| 10 Testing | In progress | curated suite ~447 green (base58/sha256/mul_div restored); arqmq ACL, RPC caps, P2P limits, HF19, messaging | integration tests, daemon tests, checkpoints crash, remaining Monero fixtures |
+| 9 Performance | Baseline docs | `docs/PERFORMANCE.md` (479 tests ~2.1s local) | profiling, benchmarks, targeted optimizations |
+| 10 Testing | In progress | curated suite **479** green locally (uri/base58/sha256 restored) | integration/daemon tests; remaining API-drift fixtures |
 | 11 CI | In progress | current unit target remains buildable with new scaffold targets; non-blocking format-check job added for upgrade modules | dedicated matrix coverage for feature flags and future separate binaries |
 | 12 Final review | Ongoing | `docs/SECURITY_REVIEW_CHECKLIST.md` Phase-12 merge gate + docs scaffolding | soak testing, operator validation, release gating, CI sanitizer green |
 
