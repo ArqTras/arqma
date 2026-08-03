@@ -26,40 +26,24 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#include "identity.hpp"
 
-#include <array>
-#include <cstdint>
-#include <system_error>
+#include <sodium/crypto_box.h>
+
+#include <cstring>
 
 namespace arq_messaging
 {
-  struct X25519PublicKey
+  std::error_code generate_identity(Identity &out) noexcept
   {
-    static constexpr std::size_t bytes = 32;
-    std::array<std::uint8_t, bytes> data{};
+    static_assert(X25519PublicKey::bytes == crypto_box_PUBLICKEYBYTES, "pubkey size");
+    static_assert(X25519PrivateKey::bytes == crypto_box_SECRETKEYBYTES, "privkey size");
 
-    bool is_null() const noexcept
-    {
-      for (auto b : data)
-        if (b != 0)
-          return false;
-      return true;
-    }
-  };
+    if (crypto_box_keypair(out.public_key.data.data(), out.private_key.data.data()) != 0)
+      return std::make_error_code(std::errc::io_error);
 
-  struct X25519PrivateKey
-  {
-    static constexpr std::size_t bytes = 32;
-    std::array<std::uint8_t, bytes> data{};
-  };
-
-  struct Identity
-  {
-    X25519PublicKey public_key{};
-    X25519PrivateKey private_key{};
-  };
-
-  /// Generates a Curve25519 identity via libsodium `crypto_box_keypair`.
-  std::error_code generate_identity(Identity &out) noexcept;
+    if (out.public_key.is_null())
+      return std::make_error_code(std::errc::io_error);
+    return {};
+  }
 }

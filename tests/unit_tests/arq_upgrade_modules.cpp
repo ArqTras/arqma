@@ -28,6 +28,7 @@
 
 #include "gtest/gtest.h"
 
+#include "arq_messaging/identity.hpp"
 #include "arq_messaging/onion_request.hpp"
 #include "arq_messaging/swarm_map.hpp"
 #include "arq_router/router_service.h"
@@ -61,6 +62,16 @@ TEST(arq_messaging_onion, validates_complete_three_hop_request)
   EXPECT_TRUE(arq_messaging::validate_onion_request(req));
   req.hops[1].port = 0;
   EXPECT_FALSE(arq_messaging::validate_onion_request(req));
+}
+
+TEST(arq_messaging_identity, generate_curve25519_keypair)
+{
+  arq_messaging::Identity a{};
+  arq_messaging::Identity b{};
+  EXPECT_FALSE(arq_messaging::generate_identity(a));
+  EXPECT_FALSE(arq_messaging::generate_identity(b));
+  EXPECT_FALSE(a.public_key.is_null());
+  EXPECT_NE(a.public_key.data, b.public_key.data);
 }
 
 TEST(arq_router, experimental_lifecycle_when_enabled)

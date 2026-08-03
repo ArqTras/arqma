@@ -79,6 +79,7 @@ target_link_libraries(unit_tests
     p2p
     arqmq
     arq_storage
+    arq_messaging
     arq_router
     version
     epee
