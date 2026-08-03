@@ -41,6 +41,7 @@ using namespace epee;
 #include "version.h"
 #include "wallet_rpc_server.h"
 #include "wallet_rpc_validation.h"
+#include "wallet_rpc_auth.h"
 #include "wallet/wallet_args.h"
 #include "common/command_line.h"
 #include "common/i18n.h"
@@ -764,12 +765,8 @@ namespace tools
 
     LOG_PRINT_L3("on_transfer starts");
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     // validate the transfer requested and populate dsts & extra
     if (!validate_transfer(req.destinations, req.payment_id, dsts, extra, true, er))
@@ -839,12 +836,8 @@ namespace tools
     std::vector<uint8_t> extra;
 
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     // validate the transfer requested and populate dsts & extra; RPC_TRANSFER::request and RPC_TRANSFER_SPLIT::request are identical types.
     if (!validate_transfer(req.destinations, req.payment_id, dsts, extra, true, er))
@@ -892,12 +885,8 @@ namespace tools
   bool wallet_rpc_server::on_sign_transfer(const wallet_rpc::COMMAND_RPC_SIGN_TRANSFER::request& req, wallet_rpc::COMMAND_RPC_SIGN_TRANSFER::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     if (m_wallet->key_on_device())
     {
       er.code = WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR;
@@ -969,12 +958,8 @@ namespace tools
   bool wallet_rpc_server::on_describe_transfer(const wallet_rpc::COMMAND_RPC_DESCRIBE_TRANSFER::request& req, wallet_rpc::COMMAND_RPC_DESCRIBE_TRANSFER::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     if (m_wallet->key_on_device())
     {
       er.code = WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR;
@@ -1176,12 +1161,8 @@ namespace tools
   bool wallet_rpc_server::on_submit_transfer(const wallet_rpc::COMMAND_RPC_SUBMIT_TRANSFER::request& req, wallet_rpc::COMMAND_RPC_SUBMIT_TRANSFER::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     if (m_wallet->key_on_device())
     {
       er.code = WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR;
@@ -1237,12 +1218,8 @@ namespace tools
   bool wallet_rpc_server::on_sweep_dust(const wallet_rpc::COMMAND_RPC_SWEEP_DUST::request& req, wallet_rpc::COMMAND_RPC_SWEEP_DUST::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     try
     {
@@ -1265,12 +1242,8 @@ namespace tools
     std::vector<uint8_t> extra;
 
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     // validate the transfer requested and populate dsts & extra
     std::list<transfer_destination> destination;
@@ -1312,12 +1285,8 @@ namespace tools
     std::vector<uint8_t> extra;
 
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     if (req.outputs < 1)
     {
@@ -1390,6 +1359,8 @@ namespace tools
   bool wallet_rpc_server::on_relay_tx(const wallet_rpc::COMMAND_RPC_RELAY_TX::request& req, wallet_rpc::COMMAND_RPC_RELAY_TX::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
+      return false;
 
     std::string blob;
     if (!epee::string_tools::parse_hexstr_to_binbuff(req.hex, blob))
@@ -1527,12 +1498,8 @@ namespace tools
   bool wallet_rpc_server::on_store(const wallet_rpc::COMMAND_RPC_STORE::request& req, wallet_rpc::COMMAND_RPC_STORE::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     try
     {
@@ -1732,12 +1699,8 @@ namespace tools
   bool wallet_rpc_server::on_query_key(const wallet_rpc::COMMAND_RPC_QUERY_KEY::request& req, wallet_rpc::COMMAND_RPC_QUERY_KEY::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
       if (!m_wallet) return not_open(er);
-      if (m_restricted)
-      {
-        er.code = WALLET_RPC_ERROR_CODE_DENIED;
-        er.message = "Command unavailable in restricted mode.";
+      if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
         return false;
-      }
 
       if (req.key_type.compare("mnemonic") == 0)
       {
@@ -1809,12 +1772,8 @@ namespace tools
   bool wallet_rpc_server::on_rescan_blockchain(const wallet_rpc::COMMAND_RPC_RESCAN_BLOCKCHAIN::request& req, wallet_rpc::COMMAND_RPC_RESCAN_BLOCKCHAIN::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     try
     {
@@ -1831,12 +1790,8 @@ namespace tools
   bool wallet_rpc_server::on_sign(const wallet_rpc::COMMAND_RPC_SIGN::request& req, wallet_rpc::COMMAND_RPC_SIGN::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     res.signature = m_wallet->sign(req.data);
     return true;
@@ -1845,12 +1800,8 @@ namespace tools
   bool wallet_rpc_server::on_verify(const wallet_rpc::COMMAND_RPC_VERIFY::request& req, wallet_rpc::COMMAND_RPC_VERIFY::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     cryptonote::address_parse_info info;
     er.message = "";
@@ -1880,12 +1831,8 @@ namespace tools
   bool wallet_rpc_server::on_stop_wallet(const wallet_rpc::COMMAND_RPC_STOP_WALLET::request& req, wallet_rpc::COMMAND_RPC_STOP_WALLET::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     try
     {
@@ -1903,12 +1850,8 @@ namespace tools
   bool wallet_rpc_server::on_set_tx_notes(const wallet_rpc::COMMAND_RPC_SET_TX_NOTES::request& req, wallet_rpc::COMMAND_RPC_SET_TX_NOTES::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     if (req.txids.size() != req.notes.size())
     {
@@ -1975,12 +1918,8 @@ namespace tools
   bool wallet_rpc_server::on_set_attribute(const wallet_rpc::COMMAND_RPC_SET_ATTRIBUTE::request& req, wallet_rpc::COMMAND_RPC_SET_ATTRIBUTE::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     m_wallet->set_attribute(req.key, req.value);
 
@@ -1990,12 +1929,8 @@ namespace tools
   bool wallet_rpc_server::on_get_attribute(const wallet_rpc::COMMAND_RPC_GET_ATTRIBUTE::request& req, wallet_rpc::COMMAND_RPC_GET_ATTRIBUTE::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     res.value = m_wallet->get_attribute(req.key);
     return true;
@@ -2003,6 +1938,8 @@ namespace tools
   bool wallet_rpc_server::on_get_tx_key(const wallet_rpc::COMMAND_RPC_GET_TX_KEY::request& req, wallet_rpc::COMMAND_RPC_GET_TX_KEY::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
+      return false;
 
     crypto::hash txid;
     if (!epee::string_tools::hex_to_pod(req.txid, txid))
@@ -2270,12 +2207,8 @@ namespace tools
   bool wallet_rpc_server::on_get_transfers(const wallet_rpc::COMMAND_RPC_GET_TRANSFERS::request& req, wallet_rpc::COMMAND_RPC_GET_TRANSFERS::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     wallet2::get_transfers_args_t args;
     args.in                = req.in;
@@ -2353,12 +2286,8 @@ namespace tools
   bool wallet_rpc_server::on_get_transfer_by_txid(const wallet_rpc::COMMAND_RPC_GET_TRANSFER_BY_TXID::request& req, wallet_rpc::COMMAND_RPC_GET_TRANSFER_BY_TXID::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     crypto::hash txid;
     std::string txid_blob;
@@ -2439,12 +2368,8 @@ namespace tools
   bool wallet_rpc_server::on_export_outputs(const wallet_rpc::COMMAND_RPC_EXPORT_OUTPUTS::request& req, wallet_rpc::COMMAND_RPC_EXPORT_OUTPUTS::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     if (m_wallet->key_on_device())
     {
       er.code = WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR;
@@ -2468,12 +2393,8 @@ namespace tools
   bool wallet_rpc_server::on_import_outputs(const wallet_rpc::COMMAND_RPC_IMPORT_OUTPUTS::request& req, wallet_rpc::COMMAND_RPC_IMPORT_OUTPUTS::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     if (m_wallet->key_on_device())
     {
       er.code = WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR;
@@ -2505,6 +2426,8 @@ namespace tools
   bool wallet_rpc_server::on_export_key_images(const wallet_rpc::COMMAND_RPC_EXPORT_KEY_IMAGES::request& req, wallet_rpc::COMMAND_RPC_EXPORT_KEY_IMAGES::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
+      return false;
     try
     {
       std::pair<size_t, std::vector<std::pair<crypto::key_image, crypto::signature>>> ski = m_wallet->export_key_images(req.all);
@@ -2529,12 +2452,8 @@ namespace tools
   bool wallet_rpc_server::on_import_key_images(const wallet_rpc::COMMAND_RPC_IMPORT_KEY_IMAGES::request& req, wallet_rpc::COMMAND_RPC_IMPORT_KEY_IMAGES::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     if (!m_wallet->is_trusted_daemon())
     {
       er.code = WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR;
@@ -2659,12 +2578,8 @@ namespace tools
   bool wallet_rpc_server::on_add_address_book(const wallet_rpc::COMMAND_RPC_ADD_ADDRESS_BOOK_ENTRY::request& req, wallet_rpc::COMMAND_RPC_ADD_ADDRESS_BOOK_ENTRY::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     cryptonote::address_parse_info info;
     er.message = "";
@@ -2701,12 +2616,8 @@ namespace tools
   bool wallet_rpc_server::on_edit_address_book(const wallet_rpc::COMMAND_RPC_EDIT_ADDRESS_BOOK_ENTRY::request& req, wallet_rpc::COMMAND_RPC_EDIT_ADDRESS_BOOK_ENTRY::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     const auto ab = m_wallet->get_address_book();
     if (req.index >= ab.size())
@@ -2763,12 +2674,8 @@ namespace tools
   bool wallet_rpc_server::on_delete_address_book(const wallet_rpc::COMMAND_RPC_DELETE_ADDRESS_BOOK_ENTRY::request& req, wallet_rpc::COMMAND_RPC_DELETE_ADDRESS_BOOK_ENTRY::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     const auto ab = m_wallet->get_address_book();
     if (req.index >= ab.size())
@@ -2789,12 +2696,8 @@ namespace tools
   bool wallet_rpc_server::on_refresh(const wallet_rpc::COMMAND_RPC_REFRESH::request& req, wallet_rpc::COMMAND_RPC_REFRESH::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     try
     {
       m_wallet->refresh(m_wallet->is_trusted_daemon(), req.start_height, res.blocks_fetched, res.received_money);
@@ -2810,12 +2713,8 @@ namespace tools
   //------------------------------------------------------------------------------------------------------------------------------
   bool wallet_rpc_server::on_auto_refresh(const wallet_rpc::COMMAND_RPC_AUTO_REFRESH::request& req, wallet_rpc::COMMAND_RPC_AUTO_REFRESH::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     try
     {
       m_auto_refresh_period = req.enable ? req.period ? std::chrono::seconds{req.period} : DEFAULT_AUTO_REFRESH_PERIOD : 0s;
@@ -2833,12 +2732,8 @@ namespace tools
   bool wallet_rpc_server::on_rescan_spent(const wallet_rpc::COMMAND_RPC_RESCAN_SPENT::request& req, wallet_rpc::COMMAND_RPC_RESCAN_SPENT::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     try
     {
       m_wallet->rescan_spent();
@@ -2855,6 +2750,8 @@ namespace tools
   bool wallet_rpc_server::on_start_mining(const wallet_rpc::COMMAND_RPC_START_MINING::request& req, wallet_rpc::COMMAND_RPC_START_MINING::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
+      return false;
     if (!m_wallet->is_trusted_daemon())
     {
       er.code = WALLET_RPC_ERROR_CODE_UNKNOWN_ERROR;
@@ -2888,6 +2785,8 @@ namespace tools
   bool wallet_rpc_server::on_stop_mining(const wallet_rpc::COMMAND_RPC_STOP_MINING::request& req, wallet_rpc::COMMAND_RPC_STOP_MINING::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
+      return false;
     cryptonote::COMMAND_RPC_STOP_MINING::request daemon_req;
     cryptonote::COMMAND_RPC_STOP_MINING::response daemon_res;
     bool r = m_wallet->invoke_http_json("/stop_mining", daemon_req, daemon_res);
@@ -3103,12 +3002,8 @@ namespace tools
   bool wallet_rpc_server::on_change_wallet_password(const wallet_rpc::COMMAND_RPC_CHANGE_WALLET_PASSWORD::request& req, wallet_rpc::COMMAND_RPC_CHANGE_WALLET_PASSWORD::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     if (m_wallet->verify_password(req.old_password))
     {
       try
@@ -3577,12 +3472,8 @@ namespace tools
   bool wallet_rpc_server::on_prepare_multisig(const wallet_rpc::COMMAND_RPC_PREPARE_MULTISIG::request& req, wallet_rpc::COMMAND_RPC_PREPARE_MULTISIG::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     if (m_wallet->multisig())
     {
       er.code = WALLET_RPC_ERROR_CODE_ALREADY_MULTISIG;
@@ -3603,12 +3494,8 @@ namespace tools
   bool wallet_rpc_server::on_make_multisig(const wallet_rpc::COMMAND_RPC_MAKE_MULTISIG::request& req, wallet_rpc::COMMAND_RPC_MAKE_MULTISIG::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     if (m_wallet->multisig())
     {
       er.code = WALLET_RPC_ERROR_CODE_ALREADY_MULTISIG;
@@ -3640,12 +3527,8 @@ namespace tools
   bool wallet_rpc_server::on_export_multisig(const wallet_rpc::COMMAND_RPC_EXPORT_MULTISIG::request& req, wallet_rpc::COMMAND_RPC_EXPORT_MULTISIG::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     bool ready;
     if (!m_wallet->multisig(&ready))
     {
@@ -3680,12 +3563,8 @@ namespace tools
   bool wallet_rpc_server::on_import_multisig(const wallet_rpc::COMMAND_RPC_IMPORT_MULTISIG::request& req, wallet_rpc::COMMAND_RPC_IMPORT_MULTISIG::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     bool ready;
     uint32_t threshold, total;
     if (!m_wallet->multisig(&ready, &threshold, &total))
@@ -3753,12 +3632,8 @@ namespace tools
   bool wallet_rpc_server::on_finalize_multisig(const wallet_rpc::COMMAND_RPC_FINALIZE_MULTISIG::request& req, wallet_rpc::COMMAND_RPC_FINALIZE_MULTISIG::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     bool ready;
     uint32_t threshold, total;
     if (!m_wallet->multisig(&ready, &threshold, &total))
@@ -3804,12 +3679,8 @@ namespace tools
   bool wallet_rpc_server::on_exchange_multisig_keys(const wallet_rpc::COMMAND_RPC_EXCHANGE_MULTISIG_KEYS::request& req, wallet_rpc::COMMAND_RPC_EXCHANGE_MULTISIG_KEYS::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     bool ready;
     uint32_t threshold, total;
     if (!m_wallet->multisig(&ready, &threshold, &total))
@@ -3853,12 +3724,8 @@ namespace tools
   bool wallet_rpc_server::on_sign_multisig(const wallet_rpc::COMMAND_RPC_SIGN_MULTISIG::request& req, wallet_rpc::COMMAND_RPC_SIGN_MULTISIG::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     bool ready;
     uint32_t threshold, total;
     if (!m_wallet->multisig(&ready, &threshold, &total))
@@ -3922,12 +3789,8 @@ namespace tools
   bool wallet_rpc_server::on_submit_multisig(const wallet_rpc::COMMAND_RPC_SUBMIT_MULTISIG::request& req, wallet_rpc::COMMAND_RPC_SUBMIT_MULTISIG::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
     if (!m_wallet) return not_open(er);
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
     bool ready;
     uint32_t threshold, total;
     if (!m_wallet->multisig(&ready, &threshold, &total))
@@ -4042,12 +3905,8 @@ namespace tools
   bool wallet_rpc_server::on_set_daemon(const wallet_rpc::COMMAND_RPC_SET_DAEMON::request& req, wallet_rpc::COMMAND_RPC_SET_DAEMON::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
 	  if (!m_wallet) return not_open(er);
-	  if (m_restricted)
-	  {
-	    er.code = WALLET_RPC_ERROR_CODE_DENIED;
-	    er.message = "Command unavailable in restricted mode.";
+	  if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
 	    return false;
-	  }
 
 	  std::vector<std::vector<uint8_t>> ssl_allowed_fingerprints;
 	  ssl_allowed_fingerprints.reserve(req.ssl_allowed_fingerprints.size());
@@ -4097,12 +3956,8 @@ namespace tools
   //------------------------------------------------------------------------------------------------------------------------------
   bool wallet_rpc_server::on_set_log_level(const wallet_rpc::COMMAND_RPC_SET_LOG_LEVEL::request& req, wallet_rpc::COMMAND_RPC_SET_LOG_LEVEL::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     if (req.level < 0 || req.level > 4)
     {
@@ -4116,12 +3971,8 @@ namespace tools
   //------------------------------------------------------------------------------------------------------------------------------
   bool wallet_rpc_server::on_set_log_categories(const wallet_rpc::COMMAND_RPC_SET_LOG_CATEGORIES::request& req, wallet_rpc::COMMAND_RPC_SET_LOG_CATEGORIES::response& res, epee::json_rpc::error& er, const connection_context *ctx)
   {
-    if (m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Command unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er))
       return false;
-    }
 
     mlog_set_log(req.categories.c_str());
     res.categories = mlog_get_categories();
@@ -4140,12 +3991,8 @@ namespace tools
     if(!m_wallet)
       return not_open(er);
 
-    if(m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Staking command not available in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er, "Staking command not available in restricted mode."))
       return false;
-    }
 
     crypto::public_key snode_key = {};
     cryptonote::address_parse_info addr_info = {};
@@ -4180,12 +4027,8 @@ namespace tools
     if(!m_wallet)
       return not_open(er);
 
-    if(m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Register service node command is unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er, "Register service node command is unavailable in restricted mode."))
       return false;
-    }
 
     std::vector<std::string> args;
     boost::split(args, req.register_service_node_str, boost::is_any_of(" "));
@@ -4213,12 +4056,8 @@ namespace tools
     if(!m_wallet)
       return not_open(er);
 
-    if(m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Stake Unlock Request unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er, "Stake Unlock Request unavailable in restricted mode."))
       return false;
-    }
 
     crypto::public_key snode_key = {};
     if(!epee::string_tools::hex_to_pod(req.service_node_key, snode_key))
@@ -4239,12 +4078,8 @@ namespace tools
     if(!m_wallet)
       return not_open(er);
 
-    if(m_restricted)
-    {
-      er.code = WALLET_RPC_ERROR_CODE_DENIED;
-      er.message = "Stake Unlock Request unavailable in restricted mode.";
+    if (tools::wallet_rpc::deny_if_restricted(m_restricted, er, "Stake Unlock Request unavailable in restricted mode."))
       return false;
-    }
 
     crypto::public_key snode_key = {};
     if(!epee::string_tools::hex_to_pod(req.service_node_key, snode_key))

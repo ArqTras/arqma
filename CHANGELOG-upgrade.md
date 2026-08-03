@@ -17,6 +17,8 @@
 - Soft-cap wallet RPC transfer destinations, bulk payment IDs, address-book
   index lists and subaddress index filters (`wallet_rpc_validation.h`); add
   `WALLET_RPC_ERROR_CODE_TOO_MANY_ENTRIES`.
+- Centralize wallet-rpc `--restricted-rpc` denials (`wallet_rpc_auth.h`) and
+  close gaps on `relay_tx`, `get_tx_key`, `export_key_images`, mining controls.
 - Add ArqMQ builtin command ACL registry (`authorize` denies unknown commands).
 - Both `--arqnet-backend` values initialize; RPC exposes `transport=snnetwork`.
 - In-memory StorageClient / SwarmMap / onion validation / router lifecycle tests.

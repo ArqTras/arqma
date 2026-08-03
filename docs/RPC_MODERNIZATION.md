@@ -54,6 +54,13 @@ Payment ID hex is validated with the shared daemon `validate_nonempty_hex`
 helper (8 or 32 bytes). Oversized requests return
 `WALLET_RPC_ERROR_CODE_TOO_MANY_ENTRIES` (-45).
 
+### Wallet RPC restricted mode (`wallet_rpc_auth.h`)
+
+`--restricted-rpc` denies spend, key-export, wallet-control and staking methods
+listed in `method_requires_full_access`. Handlers call `deny_if_restricted`
+for defense-in-depth; read helpers such as `get_balance` / `get_height` /
+`validate_address` remain available.
+
 ## Pagination Plan
 
 Prefer cursor-based pagination for dynamic collections and bounded page sizes for
