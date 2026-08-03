@@ -1,12 +1,19 @@
 openapi: 3.0.3
 info:
   title: Arqmad RPC
-  version: 0.1.0
+  version: 0.2.0
   description: >
     Minimal OpenAPI scaffold for selected Arqma daemon endpoints during the
-    upgrade branch modernization work.
+    upgrade branch modernization work. Privileged wallet-rpc methods are
+    documented under the separate `arqma-wallet-rpc` surface; daemon operator
+    methods require unrestricted RPC (see `rpc_auth.h`). Cleartext storage
+    reachability uses an HTTP GET probe after TCP connect; TLS endpoints
+    remain TCP-only until a TLS client is linked.
 servers:
   - url: http://127.0.0.1:19994
+    description: arqmad JSON-RPC / status helpers
+  - url: http://127.0.0.1:19995
+    description: arqma-wallet-rpc (restricted mode denylist in wallet_rpc_auth.h)
 paths:
   /json_rpc:
     post:
@@ -43,6 +50,11 @@ paths:
   /storage_server/ping:
     get:
       summary: Check storage integration reachability
+      description: >
+        Maps to daemon storage client ping. For `http://` URLs the daemon
+        performs TCP connect plus a minimal HTTP/1.1 GET and treats any
+        `HTTP/` response as reachable. `https://` currently uses TCP connect
+        only.
       operationId: storageServerPing
       responses:
         '200':
@@ -87,12 +99,48 @@ components:
             - get_storage_status
             - get_block_header_by_hash
             - get_block_headers_range
+            - start_mining
+            - stop_mining
+            - stop_daemon
         params:
           oneOf:
             - type: object
               additionalProperties: true
             - $ref: '#/components/schemas/GetServiceNodesParams'
             - $ref: '#/components/schemas/GetBlockHeadersRangeParams'
+    OperatorMethods:
+      type: object
+      description: >
+        Methods that require Operator/Admin access (`rpc_auth.h`). Denied on
+        restricted public RPC.
+      properties:
+        methods:
+          type: array
+          items:
+            type: string
+          example:
+            - start_mining
+            - stop_mining
+            - stop_daemon
+            - set_bans
+            - flush_txpool
+            - prune_blockchain
+    WalletRpcBatchLimits:
+      type: object
+      description: Soft caps from wallet_rpc_validation.h
+      properties:
+        max_transfer_destinations:
+          type: integer
+          const: 100
+        max_payment_ids_per_request:
+          type: integer
+          const: 100
+        max_address_book_indices_per_request:
+          type: integer
+          const: 1000
+        max_subaddr_indices_per_request:
+          type: integer
+          const: 1000
     BatchLimits:
       type: object
       description: Soft DoS caps enforced by rpc_validation helpers
