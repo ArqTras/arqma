@@ -32,22 +32,21 @@
 #include <string>
 #include <string_view>
 
-namespace arq_storage
+namespace arq_storage {
+struct Endpoint
 {
-  struct Endpoint
-  {
-    bool tls = false;
-    std::string host;
-    std::uint16_t port = 0;
-    std::string path = "/";
+  bool tls = false;
+  std::string host;
+  std::uint16_t port = 0;
+  std::string path = "/";
 
-    explicit operator bool() const noexcept { return !host.empty() && port != 0; }
-  };
+  explicit operator bool() const noexcept { return !host.empty() && port != 0; }
+};
 
-  /// Parses `http://host:port[/path]` or `https://host:port[/path]`.
-  /// Default ports: http=80, https=443. Returns empty Endpoint on failure.
-  Endpoint parse_endpoint(std::string_view url) noexcept;
+/// Parses `http://host:port[/path]` or `https://host:port[/path]`.
+/// Default ports: http=80, https=443. Returns empty Endpoint on failure.
+Endpoint parse_endpoint(std::string_view url) noexcept;
 
-  /// Minimal HTTP/1.1 GET used by cleartext reachability probes.
-  std::string format_http_get_request(const Endpoint &endpoint) noexcept;
-}
+/// Minimal HTTP/1.1 GET used by cleartext reachability probes.
+std::string format_http_get_request(const Endpoint& endpoint) noexcept;
+} // namespace arq_storage

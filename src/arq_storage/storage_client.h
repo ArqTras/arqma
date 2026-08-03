@@ -39,64 +39,63 @@
 #include <utility>
 #include <vector>
 
-namespace arq_storage
+namespace arq_storage {
+template <typename T>
+struct Result
 {
-  template <typename T>
-  struct Result
-  {
-    T value{};
-    std::error_code error{};
+  T value{};
+  std::error_code error{};
 
-    explicit operator bool() const noexcept { return !error; }
-  };
+  explicit operator bool() const noexcept { return !error; }
+};
 
-  struct StoreRequest
-  {
-    std::string namespace_name;
-    std::string key;
-    std::string value;
-  };
+struct StoreRequest
+{
+  std::string namespace_name;
+  std::string key;
+  std::string value;
+};
 
-  /// Remote talks to an external Storage Server. InMemory is for tests only.
-  enum class Backend
-  {
-    Remote,
-    InMemory
-  };
+/// Remote talks to an external Storage Server. InMemory is for tests only.
+enum class Backend
+{
+  Remote,
+  InMemory
+};
 
-  struct Config
-  {
-    Backend backend = Backend::Remote;
-    /// Example: http://127.0.0.1:22021 — required for Remote reachability probes.
-    std::string base_url;
-    std::chrono::milliseconds connect_timeout{2000};
-  };
+struct Config
+{
+  Backend backend = Backend::Remote;
+  /// Example: http://127.0.0.1:22021 — required for Remote reachability probes.
+  std::string base_url;
+  std::chrono::milliseconds connect_timeout{2000};
+};
 
-  class StorageClient
-  {
-   public:
-    explicit StorageClient(Config config = {}) noexcept;
+class StorageClient
+{
+public:
+  explicit StorageClient(Config config = {}) noexcept;
 
-    Backend backend() const noexcept { return config_.backend; }
-    const Config &config() const noexcept { return config_; }
-    Endpoint endpoint() const noexcept { return endpoint_; }
+  Backend backend() const noexcept { return config_.backend; }
+  const Config& config() const noexcept { return config_; }
+  Endpoint endpoint() const noexcept { return endpoint_; }
 
-    std::error_code ping() const noexcept;
-    std::error_code store(const StoreRequest &request) noexcept;
-    Result<std::string> retrieve(std::string namespace_name, std::string key) const noexcept;
-    Result<std::vector<std::string>> get_snodes_for_pubkey(std::string pubkey) const noexcept;
+  std::error_code ping() const noexcept;
+  std::error_code store(const StoreRequest& request) noexcept;
+  Result<std::string> retrieve(std::string namespace_name, std::string key) const noexcept;
+  Result<std::vector<std::string>> get_snodes_for_pubkey(std::string pubkey) const noexcept;
 
-    void set_snodes_for_pubkey(std::string pubkey, std::vector<std::string> snodes);
+  void set_snodes_for_pubkey(std::string pubkey, std::vector<std::string> snodes);
 
-   private:
-    Config config_;
-    Endpoint endpoint_;
-    mutable std::mutex mutex_;
-    std::map<std::pair<std::string, std::string>, std::string> values_;
-    std::map<std::string, std::vector<std::string>> snodes_;
-  };
+private:
+  Config config_;
+  Endpoint endpoint_;
+  mutable std::mutex mutex_;
+  std::map<std::pair<std::string, std::string>, std::string> values_;
+  std::map<std::string, std::vector<std::string>> snodes_;
+};
 
-  /// Process-wide client used by daemon RPC status handlers.
-  void configure_daemon_client(Config config);
-  StorageClient daemon_client();
-}
+/// Process-wide client used by daemon RPC status handlers.
+void configure_daemon_client(Config config);
+StorageClient daemon_client();
+} // namespace arq_storage

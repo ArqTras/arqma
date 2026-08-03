@@ -35,66 +35,62 @@
 #include <string_view>
 #include <vector>
 
-namespace arq_messaging
+namespace arq_messaging {
+struct MessageEnvelope
 {
-  struct MessageEnvelope
-  {
-    static constexpr std::uint8_t current_version = 1;
+  static constexpr std::uint8_t current_version = 1;
 
-    std::uint8_t version = current_version;
-    X25519PublicKey recipient_x25519{};
-    std::vector<std::uint8_t> payload;
-    std::uint32_t ttl_seconds = 0;
-  };
+  std::uint8_t version = current_version;
+  X25519PublicKey recipient_x25519{};
+  std::vector<std::uint8_t> payload;
+  std::uint32_t ttl_seconds = 0;
+};
 
-  namespace detail
-  {
-    inline void append_u32_le(std::vector<std::uint8_t> &out, std::uint32_t value)
-    {
-      out.push_back(static_cast<std::uint8_t>(value & 0xff));
-      out.push_back(static_cast<std::uint8_t>((value >> 8) & 0xff));
-      out.push_back(static_cast<std::uint8_t>((value >> 16) & 0xff));
-      out.push_back(static_cast<std::uint8_t>((value >> 24) & 0xff));
-    }
-
-    inline std::uint32_t read_u32_le(const std::uint8_t *ptr) noexcept
-    {
-      return static_cast<std::uint32_t>(ptr[0])
-          | (static_cast<std::uint32_t>(ptr[1]) << 8)
-          | (static_cast<std::uint32_t>(ptr[2]) << 16)
-          | (static_cast<std::uint32_t>(ptr[3]) << 24);
-    }
-  }
-
-  inline std::vector<std::uint8_t> encode_message_envelope(const MessageEnvelope &envelope)
-  {
-    std::vector<std::uint8_t> encoded;
-    encoded.reserve(1 + envelope.recipient_x25519.data.size() + 8 + envelope.payload.size());
-
-    encoded.push_back(envelope.version);
-    encoded.insert(encoded.end(), envelope.recipient_x25519.data.begin(), envelope.recipient_x25519.data.end());
-    detail::append_u32_le(encoded, envelope.ttl_seconds);
-    detail::append_u32_le(encoded, static_cast<std::uint32_t>(envelope.payload.size()));
-    encoded.insert(encoded.end(), envelope.payload.begin(), envelope.payload.end());
-
-    return encoded;
-  }
-
-  inline bool decode_message_envelope(std::string_view encoded, MessageEnvelope &envelope) noexcept
-  {
-    constexpr std::size_t fixed_size = 1 + X25519PublicKey::bytes + 4 + 4;
-    if (encoded.size() < fixed_size)
-      return false;
-
-    const auto *bytes = reinterpret_cast<const std::uint8_t *>(encoded.data());
-    const auto payload_size = static_cast<std::size_t>(detail::read_u32_le(bytes + 1 + X25519PublicKey::bytes + 4));
-    if (encoded.size() != fixed_size + payload_size)
-      return false;
-
-    envelope.version = bytes[0];
-    std::memcpy(envelope.recipient_x25519.data.data(), bytes + 1, X25519PublicKey::bytes);
-    envelope.ttl_seconds = detail::read_u32_le(bytes + 1 + X25519PublicKey::bytes);
-    envelope.payload.assign(bytes + fixed_size, bytes + fixed_size + payload_size);
-    return true;
-  }
+namespace detail {
+inline void append_u32_le(std::vector<std::uint8_t>& out, std::uint32_t value)
+{
+  out.push_back(static_cast<std::uint8_t>(value & 0xff));
+  out.push_back(static_cast<std::uint8_t>((value >> 8) & 0xff));
+  out.push_back(static_cast<std::uint8_t>((value >> 16) & 0xff));
+  out.push_back(static_cast<std::uint8_t>((value >> 24) & 0xff));
 }
+
+inline std::uint32_t read_u32_le(const std::uint8_t* ptr) noexcept
+{
+  return static_cast<std::uint32_t>(ptr[0]) | (static_cast<std::uint32_t>(ptr[1]) << 8) |
+         (static_cast<std::uint32_t>(ptr[2]) << 16) | (static_cast<std::uint32_t>(ptr[3]) << 24);
+}
+} // namespace detail
+
+inline std::vector<std::uint8_t> encode_message_envelope(const MessageEnvelope& envelope)
+{
+  std::vector<std::uint8_t> encoded;
+  encoded.reserve(1 + envelope.recipient_x25519.data.size() + 8 + envelope.payload.size());
+
+  encoded.push_back(envelope.version);
+  encoded.insert(encoded.end(), envelope.recipient_x25519.data.begin(), envelope.recipient_x25519.data.end());
+  detail::append_u32_le(encoded, envelope.ttl_seconds);
+  detail::append_u32_le(encoded, static_cast<std::uint32_t>(envelope.payload.size()));
+  encoded.insert(encoded.end(), envelope.payload.begin(), envelope.payload.end());
+
+  return encoded;
+}
+
+inline bool decode_message_envelope(std::string_view encoded, MessageEnvelope& envelope) noexcept
+{
+  constexpr std::size_t fixed_size = 1 + X25519PublicKey::bytes + 4 + 4;
+  if (encoded.size() < fixed_size)
+    return false;
+
+  const auto* bytes = reinterpret_cast<const std::uint8_t*>(encoded.data());
+  const auto payload_size = static_cast<std::size_t>(detail::read_u32_le(bytes + 1 + X25519PublicKey::bytes + 4));
+  if (encoded.size() != fixed_size + payload_size)
+    return false;
+
+  envelope.version = bytes[0];
+  std::memcpy(envelope.recipient_x25519.data.data(), bytes + 1, X25519PublicKey::bytes);
+  envelope.ttl_seconds = detail::read_u32_le(bytes + 1 + X25519PublicKey::bytes);
+  envelope.payload.assign(bytes + fixed_size, bytes + fixed_size + payload_size);
+  return true;
+}
+} // namespace arq_messaging

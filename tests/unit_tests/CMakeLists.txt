@@ -57,12 +57,14 @@ set(unit_tests_sources
   rpc_validation.cpp
   rpc_auth.cpp
   sha256.cpp
+  serialization_basic.cpp
   slow_memmem.cpp
   subaddress.cpp
   test_tx_utils.cpp
   varint.cpp
   vercmp.cpp
   uri.cpp
+  hardfork_versions.cpp
   wallet_rpc_auth.cpp
   wallet_rpc_validation.cpp
 )

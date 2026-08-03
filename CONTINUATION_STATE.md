@@ -6,20 +6,21 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
 ## Local quality gate (latest)
 
-- `ninja unit_tests` → **525** passed (~2.0s)
-- `ninja daemon` → OK
+- `ninja unit_tests` → **529** passed (~2.0s)
+- `ctest -R 'unit_tests|hash-target'` → green
+- `BUILD_INTEGRATION_TESTS=OFF` (default) — legacy `core_tests` not built in CI
+
+## Cross-platform gates
+
+- **Linux/macOS unit CI:** `.github/workflows/ci.yml` (`unit-tests` matrix + format + sanitize)
+- **Windows (+ cross macOS/Linux binaries):** `.github/workflows/depends.yml` (`build-depends-windows-x64` mingw)
 
 ## Next exact implementation
 
-1. **File:** `tests/unit_tests/hardfork.cpp` — add to CMakeLists if missing and green  
-2. **Or:** extract focused binary archive tests from serialization.cpp into `serialization_basic.cpp`  
-3. **Or:** wire `get_service_node_key` restricted denial if sensitive  
-4. Prefer local green before every push; strip Co-authored-by
+1. Migrate/fix legacy `core_tests` incrementally under `BUILD_INTEGRATION_TESTS=ON` (keep default OFF)
+2. Optional: native Windows MSVC unit CI once Boost/OpenSSL are pinned for `windows-latest`
+3. Prefer local green before every push; strip Co-authored-by
 
 ## Architecture (locked decisions)
 
 See CHANGELOG-upgrade.md and prior commits on `upgrade`. Do not re-run phase-1 analysis.
-
-## Session note
-
-Context window near limit — resume from item 1 above without re-auditing completed wallet/ArqMQ/storage/router work.

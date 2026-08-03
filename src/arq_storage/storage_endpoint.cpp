@@ -31,73 +31,64 @@
 #include <cctype>
 #include <cstdlib>
 
-namespace arq_storage
+namespace arq_storage {
+Endpoint parse_endpoint(const std::string_view url) noexcept
 {
-  Endpoint parse_endpoint(const std::string_view url) noexcept
-  {
-    Endpoint out{};
-    if (url.empty())
-      return out;
-
-    std::string_view rest = url;
-    if (rest.size() >= 8 && rest.substr(0, 8) == "https://")
-    {
-      out.tls = true;
-      rest.remove_prefix(8);
-    }
-    else if (rest.size() >= 7 && rest.substr(0, 7) == "http://")
-    {
-      out.tls = false;
-      rest.remove_prefix(7);
-    }
-    else
-      return {};
-
-    const auto slash = rest.find('/');
-    const std::string_view hostport = slash == std::string_view::npos ? rest : rest.substr(0, slash);
-    if (slash != std::string_view::npos)
-      out.path = std::string{rest.substr(slash)};
-    if (out.path.empty())
-      out.path = "/";
-
-    if (hostport.empty() || hostport.find(' ') != std::string_view::npos)
-      return {};
-
-    const auto colon = hostport.rfind(':');
-    if (colon == std::string_view::npos)
-    {
-      out.host = std::string{hostport};
-      out.port = out.tls ? 443 : 80;
-    }
-    else
-    {
-      if (colon == 0)
-        return {};
-      out.host = std::string{hostport.substr(0, colon)};
-      const auto port_sv = hostport.substr(colon + 1);
-      if (port_sv.empty())
-        return {};
-      for (char c : port_sv)
-      {
-        if (!std::isdigit(static_cast<unsigned char>(c)))
-          return {};
-      }
-      const long port = std::strtol(std::string{port_sv}.c_str(), nullptr, 10);
-      if (port <= 0 || port > 65535)
-        return {};
-      out.port = static_cast<std::uint16_t>(port);
-    }
-
-    if (out.host.empty() || out.host == "." || out.host.find('/') != std::string::npos)
-      return {};
+  Endpoint out{};
+  if (url.empty())
     return out;
+
+  std::string_view rest = url;
+  if (rest.size() >= 8 && rest.substr(0, 8) == "https://") {
+    out.tls = true;
+    rest.remove_prefix(8);
+  } else if (rest.size() >= 7 && rest.substr(0, 7) == "http://") {
+    out.tls = false;
+    rest.remove_prefix(7);
+  } else
+    return {};
+
+  const auto slash = rest.find('/');
+  const std::string_view hostport = slash == std::string_view::npos ? rest : rest.substr(0, slash);
+  if (slash != std::string_view::npos)
+    out.path = std::string{rest.substr(slash)};
+  if (out.path.empty())
+    out.path = "/";
+
+  if (hostport.empty() || hostport.find(' ') != std::string_view::npos)
+    return {};
+
+  const auto colon = hostport.rfind(':');
+  if (colon == std::string_view::npos) {
+    out.host = std::string{hostport};
+    out.port = out.tls ? 443 : 80;
+  } else {
+    if (colon == 0)
+      return {};
+    out.host = std::string{hostport.substr(0, colon)};
+    const auto port_sv = hostport.substr(colon + 1);
+    if (port_sv.empty())
+      return {};
+    for (char c : port_sv) {
+      if (!std::isdigit(static_cast<unsigned char>(c)))
+        return {};
+    }
+    const long port = std::strtol(std::string{port_sv}.c_str(), nullptr, 10);
+    if (port <= 0 || port > 65535)
+      return {};
+    out.port = static_cast<std::uint16_t>(port);
   }
 
-  std::string format_http_get_request(const Endpoint &endpoint) noexcept
-  {
-    if (!endpoint)
-      return {};
-    const std::string &path = endpoint.path.empty() ? "/" : endpoint.path;
-    return "GET " + path + " HTTP/1.1\r\nHost: " + endpoint.host + "\r\nConnection: close\r\n\r\n";
-  }
+  if (out.host.empty() || out.host == "." || out.host.find('/') != std::string::npos)
+    return {};
+  return out;
 }
+
+std::string format_http_get_request(const Endpoint& endpoint) noexcept
+{
+  if (!endpoint)
+    return {};
+  const std::string& path = endpoint.path.empty() ? "/" : endpoint.path;
+  return "GET " + path + " HTTP/1.1\r\nHost: " + endpoint.host + "\r\nConnection: close\r\n\r\n";
+}
+} // namespace arq_storage

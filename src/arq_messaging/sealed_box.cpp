@@ -30,35 +30,30 @@
 
 #include <sodium/crypto_box.h>
 
-namespace arq_messaging
+namespace arq_messaging {
+std::error_code seal_payload(const X25519PublicKey& recipient, const std::vector<std::uint8_t>& plaintext,
+                             std::vector<std::uint8_t>& ciphertext) noexcept
 {
-  std::error_code seal_payload(const X25519PublicKey &recipient,
-                               const std::vector<std::uint8_t> &plaintext,
-                               std::vector<std::uint8_t> &ciphertext) noexcept
-  {
-    ciphertext.assign(plaintext.size() + crypto_box_SEALBYTES, 0);
-    if (crypto_box_seal(ciphertext.data(), plaintext.data(), plaintext.size(), recipient.data.data()) != 0)
-    {
-      ciphertext.clear();
-      return std::make_error_code(std::errc::io_error);
-    }
-    return {};
+  ciphertext.assign(plaintext.size() + crypto_box_SEALBYTES, 0);
+  if (crypto_box_seal(ciphertext.data(), plaintext.data(), plaintext.size(), recipient.data.data()) != 0) {
+    ciphertext.clear();
+    return std::make_error_code(std::errc::io_error);
   }
-
-  std::error_code open_payload(const Identity &recipient,
-                               const std::vector<std::uint8_t> &ciphertext,
-                               std::vector<std::uint8_t> &plaintext) noexcept
-  {
-    if (ciphertext.size() < crypto_box_SEALBYTES)
-      return std::make_error_code(std::errc::invalid_argument);
-
-    plaintext.assign(ciphertext.size() - crypto_box_SEALBYTES, 0);
-    if (crypto_box_seal_open(plaintext.data(), ciphertext.data(), ciphertext.size(),
-                             recipient.public_key.data.data(), recipient.private_key.data.data()) != 0)
-    {
-      plaintext.clear();
-      return std::make_error_code(std::errc::permission_denied);
-    }
-    return {};
-  }
+  return {};
 }
+
+std::error_code open_payload(const Identity& recipient, const std::vector<std::uint8_t>& ciphertext,
+                             std::vector<std::uint8_t>& plaintext) noexcept
+{
+  if (ciphertext.size() < crypto_box_SEALBYTES)
+    return std::make_error_code(std::errc::invalid_argument);
+
+  plaintext.assign(ciphertext.size() - crypto_box_SEALBYTES, 0);
+  if (crypto_box_seal_open(plaintext.data(), ciphertext.data(), ciphertext.size(), recipient.public_key.data.data(),
+                           recipient.private_key.data.data()) != 0) {
+    plaintext.clear();
+    return std::make_error_code(std::errc::permission_denied);
+  }
+  return {};
+}
+} // namespace arq_messaging

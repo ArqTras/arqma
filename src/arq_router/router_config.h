@@ -28,11 +28,10 @@
 
 #pragma once
 
-namespace arq_router
-{
-  inline constexpr const char *config_enabled = "arq-router-enabled";
-  inline constexpr const char *config_data_dir = "arq-router-data-dir";
-  inline constexpr const char *config_listen = "arq-router-listen";
-  inline constexpr const char *config_public_address = "arq-router-public-address";
-  inline constexpr const char *config_bootstrap = "arq-router-bootstrap";
-}
+namespace arq_router {
+inline constexpr const char* config_enabled = "arq-router-enabled";
+inline constexpr const char* config_data_dir = "arq-router-data-dir";
+inline constexpr const char* config_listen = "arq-router-listen";
+inline constexpr const char* config_public_address = "arq-router-public-address";
+inline constexpr const char* config_bootstrap = "arq-router-bootstrap";
+} // namespace arq_router

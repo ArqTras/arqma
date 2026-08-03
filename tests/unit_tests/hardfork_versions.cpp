@@ -26,52 +26,23 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#include "gtest/gtest.h"
 
-#include "arqmq.h"
-#include "message_limits.hpp"
+#include "cryptonote_config.h"
 
-#include <string_view>
+using namespace cryptonote;
 
-namespace arqmq {
-/// Static command → ACL map for the future native backend. LegacyArqNet still
-/// dispatches through SNNetwork; this registry documents intended categories.
-struct CommandAcl
+TEST(hardfork_versions, network_version_ordering)
 {
-  std::string_view name;
-  CategoryAcl required;
-};
-
-inline constexpr CommandAcl k_builtin_commands[] = {
-    {"ping", CategoryAcl::Basic},           {"pong", CategoryAcl::Basic},
-    {"vote_ob", CategoryAcl::ServiceNode},  {"arqnet_status", CategoryAcl::Basic},
-    {"admin_shutdown", CategoryAcl::Admin},
-};
-
-inline CategoryAcl required_acl_for(std::string_view command) noexcept
-{
-  for (const auto& entry : k_builtin_commands) {
-    if (entry.name == command)
-      return entry.required;
-  }
-  return CategoryAcl::Denied;
+  EXPECT_LT(network_version_12, network_version_13);
+  EXPECT_LT(network_version_16, network_version_19);
+  EXPECT_EQ(19u, static_cast<unsigned>(network_version_19));
 }
 
-inline bool authorize(std::string_view command, CategoryAcl granted) noexcept
+TEST(hardfork_versions, per_byte_and_burn_gates)
 {
-  const CategoryAcl required = required_acl_for(command);
-  // Unknown / explicitly denied commands never authorize, even for Admin.
-  if (required == CategoryAcl::Denied)
-    return false;
-  return allows(required, granted);
+  EXPECT_EQ(network_version_13, HF_VERSION_PER_BYTE_FEE);
+  EXPECT_EQ(network_version_19, HF_VERSION_BURN);
+  EXPECT_EQ(network_version_19, HF_VERSION_CLSAG);
+  EXPECT_GT(HF_19_OUTPUT_FEE, 0u);
 }
-
-/// Framing + ACL gate for inbound ArqMQ/Arq-Net commands.
-inline bool authorize_request(std::string_view command, CategoryAcl granted, size_t payload_bytes,
-                              size_t payload_frames = 1) noexcept
-{
-  if (!accept_request(command, payload_bytes, payload_frames))
-    return false;
-  return authorize(command, granted);
-}
-} // namespace arqmq

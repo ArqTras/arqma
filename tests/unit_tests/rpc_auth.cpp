@@ -50,6 +50,8 @@ TEST(rpc_auth, operator_methods_denied_for_public)
   EXPECT_TRUE(cryptonote::rpc::method_requires_operator("start_mining"));
   EXPECT_TRUE(cryptonote::rpc::method_requires_operator("stop_daemon"));
   EXPECT_TRUE(cryptonote::rpc::method_requires_operator("prune_blockchain"));
+  EXPECT_TRUE(cryptonote::rpc::method_requires_operator("get_service_node_key"));
+  EXPECT_TRUE(cryptonote::rpc::method_requires_operator("get_service_node_privkey"));
   EXPECT_FALSE(cryptonote::rpc::method_requires_operator("get_info"));
 
   EXPECT_FALSE(cryptonote::rpc::allow_rpc_method("start_mining", cryptonote::rpc::AccessLevel::Public));

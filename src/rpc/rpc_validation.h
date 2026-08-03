@@ -32,32 +32,30 @@
 #include <cstdint>
 #include <string_view>
 
-namespace cryptonote
+namespace cryptonote {
+namespace rpc {
+uint64_t clamp_limit(uint64_t requested, uint64_t default_limit, uint64_t max_limit) noexcept;
+
+bool validate_nonempty_hex(std::string_view value, size_t expected_bytes) noexcept;
+
+struct pagination
 {
-namespace rpc
-{
-  uint64_t clamp_limit(uint64_t requested, uint64_t default_limit, uint64_t max_limit) noexcept;
+  static constexpr uint64_t default_limit = 100;
+  static constexpr uint64_t max_limit = 1000;
 
-  bool validate_nonempty_hex(std::string_view value, size_t expected_bytes) noexcept;
+  uint64_t offset = 0;
+  uint64_t limit = default_limit;
 
-  struct pagination
-  {
-    static constexpr uint64_t default_limit = 100;
-    static constexpr uint64_t max_limit = 1000;
+  static pagination make(uint64_t requested_offset = 0, uint64_t requested_limit = 0,
+                         uint64_t fallback_limit = default_limit, uint64_t hard_max_limit = max_limit) noexcept;
+};
 
-    uint64_t offset = 0;
-    uint64_t limit = default_limit;
-
-    static pagination make(uint64_t requested_offset = 0, uint64_t requested_limit = 0,
-                           uint64_t fallback_limit = default_limit, uint64_t hard_max_limit = max_limit) noexcept;
-  };
-
-  /// Soft caps for batch RPC requests to reduce easy DoS amplification.
-  constexpr uint64_t max_tx_hashes_per_request = 100;
-  constexpr uint64_t max_key_images_per_request = 1000;
-  constexpr uint64_t max_block_heights_per_request = 100;
-  constexpr uint64_t max_block_hashes_per_request = 100;
-  constexpr uint64_t max_block_headers_range = 1000;
-  constexpr uint64_t max_service_node_pubkeys_per_request = 1000;
-}
-}
+/// Soft caps for batch RPC requests to reduce easy DoS amplification.
+constexpr uint64_t max_tx_hashes_per_request = 100;
+constexpr uint64_t max_key_images_per_request = 1000;
+constexpr uint64_t max_block_heights_per_request = 100;
+constexpr uint64_t max_block_hashes_per_request = 100;
+constexpr uint64_t max_block_headers_range = 1000;
+constexpr uint64_t max_service_node_pubkeys_per_request = 1000;
+} // namespace rpc
+} // namespace cryptonote

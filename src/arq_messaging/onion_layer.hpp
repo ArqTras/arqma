@@ -37,30 +37,25 @@
 #include <system_error>
 #include <vector>
 
-namespace arq_messaging
-{
-  /// Soft caps for onion ciphertext growth (3 hops × seal overhead + payload).
-  constexpr std::size_t max_onion_payload_bytes = 64 * 1024;
-  constexpr std::size_t max_onion_ciphertext_bytes = 96 * 1024;
+namespace arq_messaging {
+/// Soft caps for onion ciphertext growth (3 hops × seal overhead + payload).
+constexpr std::size_t max_onion_payload_bytes = 64 * 1024;
+constexpr std::size_t max_onion_ciphertext_bytes = 96 * 1024;
 
-  /// Wrap plaintext for a single hop (libsodium sealed-box to hop pubkey).
-  std::error_code wrap_onion_layer(const X25519PublicKey &hop_pubkey,
-                                   const std::vector<std::uint8_t> &inner,
-                                   std::vector<std::uint8_t> &outer) noexcept;
+/// Wrap plaintext for a single hop (libsodium sealed-box to hop pubkey).
+std::error_code wrap_onion_layer(const X25519PublicKey& hop_pubkey, const std::vector<std::uint8_t>& inner,
+                                 std::vector<std::uint8_t>& outer) noexcept;
 
-  /// Peel one hop with the local identity.
-  std::error_code peel_onion_layer(const Identity &hop,
-                                   const std::vector<std::uint8_t> &outer,
-                                   std::vector<std::uint8_t> &inner) noexcept;
+/// Peel one hop with the local identity.
+std::error_code peel_onion_layer(const Identity& hop, const std::vector<std::uint8_t>& outer,
+                                 std::vector<std::uint8_t>& inner) noexcept;
 
-  /// Build a multi-hop onion sealed successively to hops[0]..hops[n-1]
-  /// (outermost sealed to hops[0]). `hop_pubkeys` must be non-empty and ≤ hop_count.
-  std::error_code build_onion(const std::vector<X25519PublicKey> &hop_pubkeys,
-                              const std::vector<std::uint8_t> &payload,
-                              std::vector<std::uint8_t> &onion) noexcept;
+/// Build a multi-hop onion sealed successively to hops[0]..hops[n-1]
+/// (outermost sealed to hops[0]). `hop_pubkeys` must be non-empty and ≤ hop_count.
+std::error_code build_onion(const std::vector<X25519PublicKey>& hop_pubkeys, const std::vector<std::uint8_t>& payload,
+                            std::vector<std::uint8_t>& onion) noexcept;
 
-  /// Peel successive layers with matching hop identities (outermost first).
-  std::error_code peel_onion(const std::vector<Identity> &hop_identities,
-                             const std::vector<std::uint8_t> &onion,
-                             std::vector<std::uint8_t> &payload) noexcept;
-}
+/// Peel successive layers with matching hop identities (outermost first).
+std::error_code peel_onion(const std::vector<Identity>& hop_identities, const std::vector<std::uint8_t>& onion,
+                           std::vector<std::uint8_t>& payload) noexcept;
+} // namespace arq_messaging

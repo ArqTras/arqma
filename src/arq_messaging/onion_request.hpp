@@ -33,41 +33,39 @@
 #include <string>
 #include <string_view>
 
-namespace arq_messaging
+namespace arq_messaging {
+struct OnionHop
 {
-  struct OnionHop
-  {
-    std::string service_node_pubkey;
-    std::string address;
-    std::uint16_t port = 0;
-  };
+  std::string service_node_pubkey;
+  std::string address;
+  std::uint16_t port = 0;
+};
 
-  struct OnionRequest
-  {
-    static constexpr std::size_t hop_count = 3;
+struct OnionRequest
+{
+  static constexpr std::size_t hop_count = 3;
 
-    std::array<OnionHop, hop_count> hops{};
-    std::string endpoint;
-    std::string payload;
-  };
+  std::array<OnionHop, hop_count> hops{};
+  std::string endpoint;
+  std::string payload;
+};
 
-  inline bool hop_is_complete(const OnionHop &hop) noexcept
-  {
-    return !hop.service_node_pubkey.empty() && !hop.address.empty() && hop.port != 0;
-  }
-
-  /// Structural validation only — no cryptography or network I/O.
-  inline bool validate_onion_request(const OnionRequest &request) noexcept
-  {
-    if (request.endpoint.empty())
-      return false;
-    if (request.payload.size() > 64 * 1024)
-      return false;
-    for (const auto &hop : request.hops)
-    {
-      if (!hop_is_complete(hop))
-        return false;
-    }
-    return true;
-  }
+inline bool hop_is_complete(const OnionHop& hop) noexcept
+{
+  return !hop.service_node_pubkey.empty() && !hop.address.empty() && hop.port != 0;
 }
+
+/// Structural validation only — no cryptography or network I/O.
+inline bool validate_onion_request(const OnionRequest& request) noexcept
+{
+  if (request.endpoint.empty())
+    return false;
+  if (request.payload.size() > 64 * 1024)
+    return false;
+  for (const auto& hop : request.hops) {
+    if (!hop_is_complete(hop))
+      return false;
+  }
+  return true;
+}
+} // namespace arq_messaging

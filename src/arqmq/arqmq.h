@@ -30,55 +30,54 @@
 
 #include <system_error>
 
-namespace arqmq
+namespace arqmq {
+/// Messaging facade backends. Both currently delegate mesh I/O to the
+/// production `arqnet::SNNetwork` path; `ArqMq` selects the Arqma-named
+/// command/ACL facade while transport remains SNNetwork until a dedicated
+/// socket stack is ported.
+enum class Backend
 {
-  /// Messaging facade backends. Both currently delegate mesh I/O to the
-  /// production `arqnet::SNNetwork` path; `ArqMq` selects the Arqma-named
-  /// command/ACL facade while transport remains SNNetwork until a dedicated
-  /// socket stack is ported.
-  enum class Backend
-  {
-    LegacyArqNet,
-    ArqMq
-  };
+  LegacyArqNet,
+  ArqMq
+};
 
-  enum class CategoryAcl
-  {
-    Denied,
-    Basic,
-    ServiceNode,
-    Admin
-  };
+enum class CategoryAcl
+{
+  Denied,
+  Basic,
+  ServiceNode,
+  Admin
+};
 
-  struct Config
-  {
-    Backend backend = Backend::LegacyArqNet;
-    CategoryAcl default_acl = CategoryAcl::Denied;
-  };
+struct Config
+{
+  Backend backend = Backend::LegacyArqNet;
+  CategoryAcl default_acl = CategoryAcl::Denied;
+};
 
-  const char *to_string(Backend backend) noexcept;
-  const char *to_string(CategoryAcl acl) noexcept;
+const char* to_string(Backend backend) noexcept;
+const char* to_string(CategoryAcl acl) noexcept;
 
-  /// Returns true when `granted` is at least as privileged as `required`.
-  /// Ordering: Denied < Basic < ServiceNode < Admin.
-  bool allows(CategoryAcl required, CategoryAcl granted) noexcept;
+/// Returns true when `granted` is at least as privileged as `required`.
+/// Ordering: Denied < Basic < ServiceNode < Admin.
+bool allows(CategoryAcl required, CategoryAcl granted) noexcept;
 
-  /// Initializes the messaging facade. Both backends mark the facade ready and
-  /// document that live Curve/ZMQ transport continues via SNNetwork.
-  std::error_code init(const Config &config = {}) noexcept;
+/// Initializes the messaging facade. Both backends mark the facade ready and
+/// document that live Curve/ZMQ transport continues via SNNetwork.
+std::error_code init(const Config& config = {}) noexcept;
 
-  /// Shuts down the messaging facade.
-  std::error_code shutdown() noexcept;
+/// Shuts down the messaging facade.
+std::error_code shutdown() noexcept;
 
-  /// Returns the currently selected backend, even if initialization failed.
-  Backend current_backend() noexcept;
+/// Returns the currently selected backend, even if initialization failed.
+Backend current_backend() noexcept;
 
-  /// Stable name of the active wire transport under the facade.
-  const char *transport_name() noexcept;
+/// Stable name of the active wire transport under the facade.
+const char* transport_name() noexcept;
 
-  /// Returns the default ACL configured at init (Denied after shutdown).
-  CategoryAcl default_acl() noexcept;
+/// Returns the default ACL configured at init (Denied after shutdown).
+CategoryAcl default_acl() noexcept;
 
-  /// Returns true when the facade is initialized and ready for use.
-  bool is_initialized() noexcept;
-}
+/// Returns true when the facade is initialized and ready for use.
+bool is_initialized() noexcept;
+} // namespace arqmq

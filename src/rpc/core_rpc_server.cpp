@@ -2642,6 +2642,8 @@ namespace cryptonote
   bool core_rpc_server::on_get_service_node_key(const COMMAND_RPC_GET_SERVICE_NODE_KEY::request& req, COMMAND_RPC_GET_SERVICE_NODE_KEY::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx)
   {
     PERF_TIMER(on_get_service_node_key);
+    if (deny_restricted_rpc("get_service_node_key", m_restricted, ctx, error_resp))
+      return false;
 
     if (auto keys = m_core.get_service_node_keys())
     {
@@ -2660,6 +2662,8 @@ namespace cryptonote
   bool core_rpc_server::on_get_service_node_privkey(const COMMAND_RPC_GET_SERVICE_NODE_PRIVKEY::request& req, COMMAND_RPC_GET_SERVICE_NODE_PRIVKEY::response& res, epee::json_rpc::error &error_resp, const connection_context *ctx)
   {
     PERF_TIMER(on_get_service_node_key);
+    if (deny_restricted_rpc("get_service_node_privkey", m_restricted, ctx, error_resp))
+      return false;
 
     if (auto keys = m_core.get_service_node_keys())
     {

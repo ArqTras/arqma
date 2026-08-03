@@ -32,34 +32,33 @@
 #include <cstdint>
 #include <system_error>
 
-namespace arq_messaging
+namespace arq_messaging {
+struct X25519PublicKey
 {
-  struct X25519PublicKey
+  static constexpr std::size_t bytes = 32;
+  std::array<std::uint8_t, bytes> data{};
+
+  bool is_null() const noexcept
   {
-    static constexpr std::size_t bytes = 32;
-    std::array<std::uint8_t, bytes> data{};
+    for (auto b : data)
+      if (b != 0)
+        return false;
+    return true;
+  }
+};
 
-    bool is_null() const noexcept
-    {
-      for (auto b : data)
-        if (b != 0)
-          return false;
-      return true;
-    }
-  };
+struct X25519PrivateKey
+{
+  static constexpr std::size_t bytes = 32;
+  std::array<std::uint8_t, bytes> data{};
+};
 
-  struct X25519PrivateKey
-  {
-    static constexpr std::size_t bytes = 32;
-    std::array<std::uint8_t, bytes> data{};
-  };
+struct Identity
+{
+  X25519PublicKey public_key{};
+  X25519PrivateKey private_key{};
+};
 
-  struct Identity
-  {
-    X25519PublicKey public_key{};
-    X25519PrivateKey private_key{};
-  };
-
-  /// Generates a Curve25519 identity via libsodium `crypto_box_keypair`.
-  std::error_code generate_identity(Identity &out) noexcept;
-}
+/// Generates a Curve25519 identity via libsodium `crypto_box_keypair`.
+std::error_code generate_identity(Identity& out) noexcept;
+} // namespace arq_messaging

@@ -38,157 +38,147 @@
 #include <mutex>
 #include <utility>
 
-namespace
+namespace {
+std::error_code not_connected() noexcept
 {
-  std::error_code not_connected() noexcept
-  {
-    return std::make_error_code(std::errc::not_connected);
-  }
-
-  std::error_code invalid_argument() noexcept
-  {
-    return std::make_error_code(std::errc::invalid_argument);
-  }
-
-  bool tcp_connect_only(const arq_storage::Endpoint &endpoint) noexcept
-  {
-    try
-    {
-      boost::asio::io_context io;
-      boost::asio::ip::tcp::resolver resolver{io};
-      const auto results = resolver.resolve(endpoint.host, std::to_string(endpoint.port));
-      boost::asio::ip::tcp::socket socket{io};
-      boost::system::error_code ec;
-      boost::asio::connect(socket, results, ec);
-      if (ec)
-        return false;
-      socket.close();
-      return true;
-    }
-    catch (...)
-    {
-      return false;
-    }
-  }
-
-  /// Cleartext HTTP GET probe. Any response starting with "HTTP/" counts as
-  /// reachable (including 4xx). TLS endpoints stay on TCP-only until a TLS
-  /// client stack is wired into arq_storage.
-  bool http_get_probe(const arq_storage::Endpoint &endpoint) noexcept
-  {
-    try
-    {
-      const auto request = arq_storage::format_http_get_request(endpoint);
-      if (request.empty())
-        return false;
-
-      boost::asio::io_context io;
-      boost::asio::ip::tcp::resolver resolver{io};
-      const auto results = resolver.resolve(endpoint.host, std::to_string(endpoint.port));
-      boost::asio::ip::tcp::socket socket{io};
-      boost::system::error_code ec;
-      boost::asio::connect(socket, results, ec);
-      if (ec)
-        return false;
-
-      boost::asio::write(socket, boost::asio::buffer(request), ec);
-      if (ec)
-        return false;
-
-      std::array<char, 16> buf{};
-      const std::size_t n = boost::asio::read(socket, boost::asio::buffer(buf),
-                                              boost::asio::transfer_at_least(5), ec);
-      socket.close();
-      if (n < 5)
-        return false;
-      return std::string_view{buf.data(), 5} == "HTTP/";
-    }
-    catch (...)
-    {
-      return false;
-    }
-  }
-
-  std::mutex g_daemon_mutex;
-  arq_storage::Config g_daemon_config{};
+  return std::make_error_code(std::errc::not_connected);
 }
 
-namespace arq_storage
+std::error_code invalid_argument() noexcept
 {
-  StorageClient::StorageClient(Config config) noexcept
-    : config_{std::move(config)}
-    , endpoint_{parse_endpoint(config_.base_url)}
-  {}
+  return std::make_error_code(std::errc::invalid_argument);
+}
 
-  std::error_code StorageClient::ping() const noexcept
-  {
-    if (config_.backend == Backend::InMemory)
-      return {};
-
-    if (!endpoint_)
-      return not_connected();
-
-    if (endpoint_.tls)
-      return tcp_connect_only(endpoint_) ? std::error_code{} : not_connected();
-
-    return http_get_probe(endpoint_) ? std::error_code{} : not_connected();
+bool tcp_connect_only(const arq_storage::Endpoint& endpoint) noexcept
+{
+  try {
+    boost::asio::io_context io;
+    boost::asio::ip::tcp::resolver resolver{io};
+    const auto results = resolver.resolve(endpoint.host, std::to_string(endpoint.port));
+    boost::asio::ip::tcp::socket socket{io};
+    boost::system::error_code ec;
+    boost::asio::connect(socket, results, ec);
+    if (ec)
+      return false;
+    socket.close();
+    return true;
+  } catch (...) {
+    return false;
   }
+}
 
-  std::error_code StorageClient::store(const StoreRequest &request) noexcept
-  {
-    if (config_.backend != Backend::InMemory)
-      return not_connected();
-    if (request.namespace_name.empty() || request.key.empty())
-      return invalid_argument();
+/// Cleartext HTTP GET probe. Any response starting with "HTTP/" counts as
+/// reachable (including 4xx). TLS endpoints stay on TCP-only until a TLS
+/// client stack is wired into arq_storage.
+bool http_get_probe(const arq_storage::Endpoint& endpoint) noexcept
+{
+  try {
+    const auto request = arq_storage::format_http_get_request(endpoint);
+    if (request.empty())
+      return false;
 
-    std::lock_guard<std::mutex> lock{mutex_};
-    values_[{request.namespace_name, request.key}] = request.value;
+    boost::asio::io_context io;
+    boost::asio::ip::tcp::resolver resolver{io};
+    const auto results = resolver.resolve(endpoint.host, std::to_string(endpoint.port));
+    boost::asio::ip::tcp::socket socket{io};
+    boost::system::error_code ec;
+    boost::asio::connect(socket, results, ec);
+    if (ec)
+      return false;
+
+    boost::asio::write(socket, boost::asio::buffer(request), ec);
+    if (ec)
+      return false;
+
+    std::array<char, 16> buf{};
+    const std::size_t n = boost::asio::read(socket, boost::asio::buffer(buf), boost::asio::transfer_at_least(5), ec);
+    socket.close();
+    if (n < 5)
+      return false;
+    return std::string_view{buf.data(), 5} == "HTTP/";
+  } catch (...) {
+    return false;
+  }
+}
+
+std::mutex g_daemon_mutex;
+arq_storage::Config g_daemon_config{};
+} // namespace
+
+namespace arq_storage {
+StorageClient::StorageClient(Config config) noexcept
+    : config_{std::move(config)}, endpoint_{parse_endpoint(config_.base_url)}
+{}
+
+std::error_code StorageClient::ping() const noexcept
+{
+  if (config_.backend == Backend::InMemory)
     return {};
-  }
 
-  Result<std::string> StorageClient::retrieve(std::string namespace_name, std::string key) const noexcept
-  {
-    if (config_.backend != Backend::InMemory)
-      return {{}, not_connected()};
-    if (namespace_name.empty() || key.empty())
-      return {{}, invalid_argument()};
+  if (!endpoint_)
+    return not_connected();
 
-    std::lock_guard<std::mutex> lock{mutex_};
-    const auto it = values_.find({namespace_name, key});
-    if (it == values_.end())
-      return {{}, std::make_error_code(std::errc::no_such_file_or_directory)};
-    return {it->second, {}};
-  }
+  if (endpoint_.tls)
+    return tcp_connect_only(endpoint_) ? std::error_code{} : not_connected();
 
-  Result<std::vector<std::string>> StorageClient::get_snodes_for_pubkey(std::string pubkey) const noexcept
-  {
-    if (config_.backend != Backend::InMemory)
-      return {{}, not_connected()};
-    if (pubkey.empty())
-      return {{}, invalid_argument()};
-
-    std::lock_guard<std::mutex> lock{mutex_};
-    const auto it = snodes_.find(pubkey);
-    if (it == snodes_.end())
-      return {{}, {}};
-    return {it->second, {}};
-  }
-
-  void StorageClient::set_snodes_for_pubkey(std::string pubkey, std::vector<std::string> snodes)
-  {
-    std::lock_guard<std::mutex> lock{mutex_};
-    snodes_[std::move(pubkey)] = std::move(snodes);
-  }
-
-  void configure_daemon_client(Config config)
-  {
-    std::lock_guard<std::mutex> lock{g_daemon_mutex};
-    g_daemon_config = std::move(config);
-  }
-
-  StorageClient daemon_client()
-  {
-    std::lock_guard<std::mutex> lock{g_daemon_mutex};
-    return StorageClient{g_daemon_config};
-  }
+  return http_get_probe(endpoint_) ? std::error_code{} : not_connected();
 }
+
+std::error_code StorageClient::store(const StoreRequest& request) noexcept
+{
+  if (config_.backend != Backend::InMemory)
+    return not_connected();
+  if (request.namespace_name.empty() || request.key.empty())
+    return invalid_argument();
+
+  std::lock_guard<std::mutex> lock{mutex_};
+  values_[{request.namespace_name, request.key}] = request.value;
+  return {};
+}
+
+Result<std::string> StorageClient::retrieve(std::string namespace_name, std::string key) const noexcept
+{
+  if (config_.backend != Backend::InMemory)
+    return {{}, not_connected()};
+  if (namespace_name.empty() || key.empty())
+    return {{}, invalid_argument()};
+
+  std::lock_guard<std::mutex> lock{mutex_};
+  const auto it = values_.find({namespace_name, key});
+  if (it == values_.end())
+    return {{}, std::make_error_code(std::errc::no_such_file_or_directory)};
+  return {it->second, {}};
+}
+
+Result<std::vector<std::string>> StorageClient::get_snodes_for_pubkey(std::string pubkey) const noexcept
+{
+  if (config_.backend != Backend::InMemory)
+    return {{}, not_connected()};
+  if (pubkey.empty())
+    return {{}, invalid_argument()};
+
+  std::lock_guard<std::mutex> lock{mutex_};
+  const auto it = snodes_.find(pubkey);
+  if (it == snodes_.end())
+    return {{}, {}};
+  return {it->second, {}};
+}
+
+void StorageClient::set_snodes_for_pubkey(std::string pubkey, std::vector<std::string> snodes)
+{
+  std::lock_guard<std::mutex> lock{mutex_};
+  snodes_[std::move(pubkey)] = std::move(snodes);
+}
+
+void configure_daemon_client(Config config)
+{
+  std::lock_guard<std::mutex> lock{g_daemon_mutex};
+  g_daemon_config = std::move(config);
+}
+
+StorageClient daemon_client()
+{
+  std::lock_guard<std::mutex> lock{g_daemon_mutex};
+  return StorageClient{g_daemon_config};
+}
+} // namespace arq_storage

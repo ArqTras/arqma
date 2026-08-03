@@ -32,25 +32,23 @@
 
 #include <algorithm>
 
-namespace cryptonote
+namespace cryptonote {
+namespace rpc {
+uint64_t clamp_limit(uint64_t requested, uint64_t default_limit, uint64_t max_limit) noexcept
 {
-namespace rpc
+  const uint64_t value = requested == 0 ? default_limit : requested;
+  return max_limit == 0 ? value : std::min(value, max_limit);
+}
+
+bool validate_nonempty_hex(std::string_view value, size_t expected_bytes) noexcept
 {
-  uint64_t clamp_limit(uint64_t requested, uint64_t default_limit, uint64_t max_limit) noexcept
-  {
-    const uint64_t value = requested == 0 ? default_limit : requested;
-    return max_limit == 0 ? value : std::min(value, max_limit);
-  }
-
-  bool validate_nonempty_hex(std::string_view value, size_t expected_bytes) noexcept
-  {
-    return !value.empty() && value.size() == expected_bytes * 2 && tools::is_hex(value);
-  }
-
-  pagination pagination::make(uint64_t requested_offset, uint64_t requested_limit,
-                              uint64_t fallback_limit, uint64_t hard_max_limit) noexcept
-  {
-    return {requested_offset, clamp_limit(requested_limit, fallback_limit, hard_max_limit)};
-  }
+  return !value.empty() && value.size() == expected_bytes * 2 && tools::is_hex(value);
 }
+
+pagination pagination::make(uint64_t requested_offset, uint64_t requested_limit, uint64_t fallback_limit,
+                            uint64_t hard_max_limit) noexcept
+{
+  return {requested_offset, clamp_limit(requested_limit, fallback_limit, hard_max_limit)};
 }
+} // namespace rpc
+} // namespace cryptonote

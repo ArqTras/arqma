@@ -31,120 +31,114 @@
 #include <mutex>
 #include <system_error>
 
-namespace
+namespace {
+struct facade_state
 {
-  struct facade_state
-  {
-    std::mutex mutex;
-    arqmq::Backend backend = arqmq::Backend::LegacyArqNet;
-    arqmq::CategoryAcl default_acl = arqmq::CategoryAcl::Denied;
-    bool initialized = false;
-  };
+  std::mutex mutex;
+  arqmq::Backend backend = arqmq::Backend::LegacyArqNet;
+  arqmq::CategoryAcl default_acl = arqmq::CategoryAcl::Denied;
+  bool initialized = false;
+};
 
-  facade_state state;
+facade_state state;
 
-  int acl_rank(const arqmq::CategoryAcl acl) noexcept
-  {
-    switch (acl)
-    {
-      case arqmq::CategoryAcl::Denied:
-        return 0;
-      case arqmq::CategoryAcl::Basic:
-        return 1;
-      case arqmq::CategoryAcl::ServiceNode:
-        return 2;
-      case arqmq::CategoryAcl::Admin:
-        return 3;
-    }
+int acl_rank(const arqmq::CategoryAcl acl) noexcept
+{
+  switch (acl) {
+  case arqmq::CategoryAcl::Denied:
     return 0;
+  case arqmq::CategoryAcl::Basic:
+    return 1;
+  case arqmq::CategoryAcl::ServiceNode:
+    return 2;
+  case arqmq::CategoryAcl::Admin:
+    return 3;
   }
+  return 0;
+}
+} // namespace
+
+namespace arqmq {
+const char* to_string(const Backend backend) noexcept
+{
+  switch (backend) {
+  case Backend::LegacyArqNet:
+    return "legacy-arqnet";
+  case Backend::ArqMq:
+    return "arqmq";
+  }
+
+  return "unknown";
 }
 
-namespace arqmq
+const char* to_string(const CategoryAcl acl) noexcept
 {
-  const char *to_string(const Backend backend) noexcept
-  {
-    switch (backend)
-    {
-      case Backend::LegacyArqNet:
-        return "legacy-arqnet";
-      case Backend::ArqMq:
-        return "arqmq";
-    }
-
-    return "unknown";
+  switch (acl) {
+  case CategoryAcl::Denied:
+    return "denied";
+  case CategoryAcl::Basic:
+    return "basic";
+  case CategoryAcl::ServiceNode:
+    return "service-node";
+  case CategoryAcl::Admin:
+    return "admin";
   }
 
-  const char *to_string(const CategoryAcl acl) noexcept
-  {
-    switch (acl)
-    {
-      case CategoryAcl::Denied:
-        return "denied";
-      case CategoryAcl::Basic:
-        return "basic";
-      case CategoryAcl::ServiceNode:
-        return "service-node";
-      case CategoryAcl::Admin:
-        return "admin";
-    }
+  return "unknown";
+}
 
-    return "unknown";
-  }
+bool allows(const CategoryAcl required, const CategoryAcl granted) noexcept
+{
+  return acl_rank(granted) >= acl_rank(required);
+}
 
-  bool allows(const CategoryAcl required, const CategoryAcl granted) noexcept
-  {
-    return acl_rank(granted) >= acl_rank(required);
-  }
+std::error_code init(const Config& config) noexcept
+{
+  std::lock_guard<std::mutex> lock{state.mutex};
+  state.backend = config.backend;
+  state.default_acl = config.default_acl;
 
-  std::error_code init(const Config &config) noexcept
-  {
-    std::lock_guard<std::mutex> lock{state.mutex};
-    state.backend = config.backend;
-    state.default_acl = config.default_acl;
-
-    switch (config.backend)
-    {
-      case Backend::LegacyArqNet:
-      case Backend::ArqMq:
-        // Wire transport remains arqnet::SNNetwork (started from core::init).
-        // ArqMq enables the Arqma command/ACL facade naming without a second listener.
-        state.initialized = true;
-        return {};
-    }
-
-    state.initialized = false;
-    return std::make_error_code(std::errc::invalid_argument);
-  }
-
-  std::error_code shutdown() noexcept
-  {
-    std::lock_guard<std::mutex> lock{state.mutex};
-    state.initialized = false;
-    state.default_acl = CategoryAcl::Denied;
+  switch (config.backend) {
+  case Backend::LegacyArqNet:
+  case Backend::ArqMq:
+    // Wire transport remains arqnet::SNNetwork (started from core::init).
+    // ArqMq enables the Arqma command/ACL facade naming without a second listener.
+    state.initialized = true;
     return {};
   }
 
-  Backend current_backend() noexcept
-  {
-    std::lock_guard<std::mutex> lock{state.mutex};
-    return state.backend;
-  }
-
-  const char *transport_name() noexcept
-  {
-    return "snnetwork";
-  }
-
-  CategoryAcl default_acl() noexcept
-  {
-    std::lock_guard<std::mutex> lock{state.mutex};
-    return state.default_acl;
-  }
-
-  bool is_initialized() noexcept
-  {
-    std::lock_guard<std::mutex> lock{state.mutex};
-    return state.initialized;
-  }
+  state.initialized = false;
+  return std::make_error_code(std::errc::invalid_argument);
 }
+
+std::error_code shutdown() noexcept
+{
+  std::lock_guard<std::mutex> lock{state.mutex};
+  state.initialized = false;
+  state.default_acl = CategoryAcl::Denied;
+  return {};
+}
+
+Backend current_backend() noexcept
+{
+  std::lock_guard<std::mutex> lock{state.mutex};
+  return state.backend;
+}
+
+const char* transport_name() noexcept
+{
+  return "snnetwork";
+}
+
+CategoryAcl default_acl() noexcept
+{
+  std::lock_guard<std::mutex> lock{state.mutex};
+  return state.default_acl;
+}
+
+bool is_initialized() noexcept
+{
+  std::lock_guard<std::mutex> lock{state.mutex};
+  return state.initialized;
+}
+} // namespace arqmq

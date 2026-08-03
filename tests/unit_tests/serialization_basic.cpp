@@ -1,4 +1,5 @@
 // Copyright (c) 2018 - 2026, The Arqma Network
+// Copyright (c) 2014-2020, The Monero Project
 //
 // All rights reserved.
 //
@@ -26,52 +27,53 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#pragma once
+#include "gtest/gtest.h"
 
-#include "arqmq.h"
-#include "message_limits.hpp"
+#include <cstdint>
+#include <string>
 
-#include <string_view>
+#include "serialization/binary_utils.h"
 
-namespace arqmq {
-/// Static command → ACL map for the future native backend. LegacyArqNet still
-/// dispatches through SNNetwork; this registry documents intended categories.
-struct CommandAcl
+namespace
 {
-  std::string_view name;
-  CategoryAcl required;
-};
+  struct TinyBlob
+  {
+    uint32_t a = 0;
+    uint16_t b = 0;
 
-inline constexpr CommandAcl k_builtin_commands[] = {
-    {"ping", CategoryAcl::Basic},           {"pong", CategoryAcl::Basic},
-    {"vote_ob", CategoryAcl::ServiceNode},  {"arqnet_status", CategoryAcl::Basic},
-    {"admin_shutdown", CategoryAcl::Admin},
-};
-
-inline CategoryAcl required_acl_for(std::string_view command) noexcept
-{
-  for (const auto& entry : k_builtin_commands) {
-    if (entry.name == command)
-      return entry.required;
-  }
-  return CategoryAcl::Denied;
+    BEGIN_SERIALIZE_OBJECT()
+      FIELD(a)
+      FIELD(b)
+    END_SERIALIZE()
+  };
 }
 
-inline bool authorize(std::string_view command, CategoryAcl granted) noexcept
+TEST(serialization_basic, binary_roundtrip_tiny_object)
 {
-  const CategoryAcl required = required_acl_for(command);
-  // Unknown / explicitly denied commands never authorize, even for Admin.
-  if (required == CategoryAcl::Denied)
-    return false;
-  return allows(required, granted);
+  TinyBlob in{};
+  in.a = 0x11223344u;
+  in.b = 0xabcd;
+
+  std::string blob;
+  ASSERT_TRUE(serialization::dump_binary(in, blob));
+  ASSERT_FALSE(blob.empty());
+
+  TinyBlob out{};
+  ASSERT_TRUE(serialization::parse_binary(blob, out));
+  EXPECT_EQ(in.a, out.a);
+  EXPECT_EQ(in.b, out.b);
 }
 
-/// Framing + ACL gate for inbound ArqMQ/Arq-Net commands.
-inline bool authorize_request(std::string_view command, CategoryAcl granted, size_t payload_bytes,
-                              size_t payload_frames = 1) noexcept
+TEST(serialization_basic, rejects_truncated_blob)
 {
-  if (!accept_request(command, payload_bytes, payload_frames))
-    return false;
-  return authorize(command, granted);
+  TinyBlob in{};
+  in.a = 7;
+  in.b = 9;
+  std::string blob;
+  ASSERT_TRUE(serialization::dump_binary(in, blob));
+  ASSERT_GT(blob.size(), 1u);
+  blob.resize(blob.size() - 1);
+
+  TinyBlob out{};
+  EXPECT_FALSE(serialization::parse_binary(blob, out));
 }
-} // namespace arqmq

@@ -36,103 +36,97 @@
 #include <system_error>
 #include <vector>
 
-namespace arq_messaging
+namespace arq_messaging {
+using swarm_id = std::uint64_t;
+
+/// Soft caps for in-memory swarm membership until Storage Server owns the map.
+constexpr std::size_t max_service_nodes_per_swarm = 100;
+constexpr std::size_t max_swarm_mappings = 10000;
+
+inline bool allow_service_node_count(std::size_t count) noexcept
 {
-  using swarm_id = std::uint64_t;
-
-  /// Soft caps for in-memory swarm membership until Storage Server owns the map.
-  constexpr std::size_t max_service_nodes_per_swarm = 100;
-  constexpr std::size_t max_swarm_mappings = 10000;
-
-  inline bool allow_service_node_count(std::size_t count) noexcept
-  {
-    return count <= max_service_nodes_per_swarm;
-  }
-
-  /// Deterministic swarm id from pubkey bytes (FNV-1a 64-bit). Not a
-  /// consensus primitive — scaffolding until Storage Server owns assignment.
-  inline swarm_id hash_pubkey_to_swarm(std::string_view pubkey) noexcept
-  {
-    constexpr std::uint64_t offset = 14695981039346656037ull;
-    constexpr std::uint64_t prime = 1099511628211ull;
-    std::uint64_t hash = offset;
-    for (unsigned char c : pubkey)
-    {
-      hash ^= static_cast<std::uint64_t>(c);
-      hash *= prime;
-    }
-    return hash == 0 ? 1 : hash;
-  }
-
-  struct SwarmMapping
-  {
-    swarm_id id = 0;
-    std::vector<std::string> service_nodes;
-    std::error_code error{};
-
-    explicit operator bool() const noexcept { return !error; }
-  };
-
-  class SwarmMap
-  {
-   public:
-    virtual ~SwarmMap() = default;
-
-    virtual std::error_code refresh() { return std::make_error_code(std::errc::function_not_supported); }
-
-    virtual SwarmMapping get_swarm(std::string_view pubkey) const
-    {
-      (void) pubkey;
-      SwarmMapping mapping;
-      mapping.error = std::make_error_code(std::errc::function_not_supported);
-      return mapping;
-    }
-  };
-
-  /// Deterministic in-memory swarm assignment for tests and local scaffolding.
-  class InMemorySwarmMap : public SwarmMap
-  {
-   public:
-    std::error_code set_mapping(std::string pubkey, SwarmMapping mapping)
-    {
-      if (pubkey.empty())
-        return std::make_error_code(std::errc::invalid_argument);
-      if (!allow_service_node_count(mapping.service_nodes.size()))
-        return std::make_error_code(std::errc::message_size);
-
-      std::lock_guard<std::mutex> lock{mutex_};
-      if (mappings_.find(pubkey) == mappings_.end() && mappings_.size() >= max_swarm_mappings)
-        return std::make_error_code(std::errc::no_space_on_device);
-      mappings_[std::move(pubkey)] = std::move(mapping);
-      return {};
-    }
-
-    std::size_t size() const
-    {
-      std::lock_guard<std::mutex> lock{mutex_};
-      return mappings_.size();
-    }
-
-    std::error_code refresh() override
-    {
-      return {};
-    }
-
-    SwarmMapping get_swarm(std::string_view pubkey) const override
-    {
-      std::lock_guard<std::mutex> lock{mutex_};
-      const auto it = mappings_.find(std::string{pubkey});
-      if (it == mappings_.end())
-      {
-        SwarmMapping missing;
-        missing.error = std::make_error_code(std::errc::no_such_file_or_directory);
-        return missing;
-      }
-      return it->second;
-    }
-
-   private:
-    mutable std::mutex mutex_;
-    std::map<std::string, SwarmMapping> mappings_;
-  };
+  return count <= max_service_nodes_per_swarm;
 }
+
+/// Deterministic swarm id from pubkey bytes (FNV-1a 64-bit). Not a
+/// consensus primitive — scaffolding until Storage Server owns assignment.
+inline swarm_id hash_pubkey_to_swarm(std::string_view pubkey) noexcept
+{
+  constexpr std::uint64_t offset = 14695981039346656037ull;
+  constexpr std::uint64_t prime = 1099511628211ull;
+  std::uint64_t hash = offset;
+  for (unsigned char c : pubkey) {
+    hash ^= static_cast<std::uint64_t>(c);
+    hash *= prime;
+  }
+  return hash == 0 ? 1 : hash;
+}
+
+struct SwarmMapping
+{
+  swarm_id id = 0;
+  std::vector<std::string> service_nodes;
+  std::error_code error{};
+
+  explicit operator bool() const noexcept { return !error; }
+};
+
+class SwarmMap
+{
+public:
+  virtual ~SwarmMap() = default;
+
+  virtual std::error_code refresh() { return std::make_error_code(std::errc::function_not_supported); }
+
+  virtual SwarmMapping get_swarm(std::string_view pubkey) const
+  {
+    (void)pubkey;
+    SwarmMapping mapping;
+    mapping.error = std::make_error_code(std::errc::function_not_supported);
+    return mapping;
+  }
+};
+
+/// Deterministic in-memory swarm assignment for tests and local scaffolding.
+class InMemorySwarmMap : public SwarmMap
+{
+public:
+  std::error_code set_mapping(std::string pubkey, SwarmMapping mapping)
+  {
+    if (pubkey.empty())
+      return std::make_error_code(std::errc::invalid_argument);
+    if (!allow_service_node_count(mapping.service_nodes.size()))
+      return std::make_error_code(std::errc::message_size);
+
+    std::lock_guard<std::mutex> lock{mutex_};
+    if (mappings_.find(pubkey) == mappings_.end() && mappings_.size() >= max_swarm_mappings)
+      return std::make_error_code(std::errc::no_space_on_device);
+    mappings_[std::move(pubkey)] = std::move(mapping);
+    return {};
+  }
+
+  std::size_t size() const
+  {
+    std::lock_guard<std::mutex> lock{mutex_};
+    return mappings_.size();
+  }
+
+  std::error_code refresh() override { return {}; }
+
+  SwarmMapping get_swarm(std::string_view pubkey) const override
+  {
+    std::lock_guard<std::mutex> lock{mutex_};
+    const auto it = mappings_.find(std::string{pubkey});
+    if (it == mappings_.end()) {
+      SwarmMapping missing;
+      missing.error = std::make_error_code(std::errc::no_such_file_or_directory);
+      return missing;
+    }
+    return it->second;
+  }
+
+private:
+  mutable std::mutex mutex_;
+  std::map<std::string, SwarmMapping> mappings_;
+};
+} // namespace arq_messaging

@@ -32,34 +32,31 @@
 #include <cstdint>
 #include <string_view>
 
-namespace arqmq
+namespace arqmq {
+/// Align with `SN_ZMQ_MAX_MSG_SIZE` in sn_network.cpp so the facade and
+/// live SNNetwork transport reject oversized payloads consistently.
+constexpr size_t max_message_bytes = 1024 * 1024;
+constexpr size_t max_command_name_bytes = 64;
+constexpr size_t max_payload_frames = 16;
+
+inline bool allow_message_size(size_t bytes) noexcept
 {
-  /// Align with `SN_ZMQ_MAX_MSG_SIZE` in sn_network.cpp so the facade and
-  /// live SNNetwork transport reject oversized payloads consistently.
-  constexpr size_t max_message_bytes = 1024 * 1024;
-  constexpr size_t max_command_name_bytes = 64;
-  constexpr size_t max_payload_frames = 16;
-
-  inline bool allow_message_size(size_t bytes) noexcept
-  {
-    return bytes <= max_message_bytes;
-  }
-
-  inline bool allow_command_name(std::string_view name) noexcept
-  {
-    return !name.empty() && name.size() <= max_command_name_bytes;
-  }
-
-  inline bool allow_payload_frame_count(size_t frames) noexcept
-  {
-    return frames <= max_payload_frames;
-  }
-
-  /// Combined framing gate used before ACL authorize / dispatch.
-  inline bool accept_request(std::string_view command, size_t payload_bytes, size_t payload_frames = 1) noexcept
-  {
-    return allow_command_name(command)
-        && allow_message_size(payload_bytes)
-        && allow_payload_frame_count(payload_frames);
-  }
+  return bytes <= max_message_bytes;
 }
+
+inline bool allow_command_name(std::string_view name) noexcept
+{
+  return !name.empty() && name.size() <= max_command_name_bytes;
+}
+
+inline bool allow_payload_frame_count(size_t frames) noexcept
+{
+  return frames <= max_payload_frames;
+}
+
+/// Combined framing gate used before ACL authorize / dispatch.
+inline bool accept_request(std::string_view command, size_t payload_bytes, size_t payload_frames = 1) noexcept
+{
+  return allow_command_name(command) && allow_message_size(payload_bytes) && allow_payload_frame_count(payload_frames);
+}
+} // namespace arqmq

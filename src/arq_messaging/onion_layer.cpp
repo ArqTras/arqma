@@ -28,81 +28,70 @@
 
 #include "onion_layer.hpp"
 
-namespace arq_messaging
+namespace arq_messaging {
+std::error_code wrap_onion_layer(const X25519PublicKey& hop_pubkey, const std::vector<std::uint8_t>& inner,
+                                 std::vector<std::uint8_t>& outer) noexcept
 {
-  std::error_code wrap_onion_layer(const X25519PublicKey &hop_pubkey,
-                                   const std::vector<std::uint8_t> &inner,
-                                   std::vector<std::uint8_t> &outer) noexcept
-  {
-    if (inner.size() > max_onion_ciphertext_bytes)
-      return std::make_error_code(std::errc::message_size);
-    return seal_payload(hop_pubkey, inner, outer);
-  }
-
-  std::error_code peel_onion_layer(const Identity &hop,
-                                   const std::vector<std::uint8_t> &outer,
-                                   std::vector<std::uint8_t> &inner) noexcept
-  {
-    if (outer.size() > max_onion_ciphertext_bytes)
-      return std::make_error_code(std::errc::message_size);
-    return open_payload(hop, outer, inner);
-  }
-
-  std::error_code build_onion(const std::vector<X25519PublicKey> &hop_pubkeys,
-                              const std::vector<std::uint8_t> &payload,
-                              std::vector<std::uint8_t> &onion) noexcept
-  {
-    if (hop_pubkeys.empty() || hop_pubkeys.size() > OnionRequest::hop_count)
-      return std::make_error_code(std::errc::invalid_argument);
-    if (payload.size() > max_onion_payload_bytes)
-      return std::make_error_code(std::errc::message_size);
-
-    onion = payload;
-    // Innermost sealed to last hop; outermost to first hop.
-    for (std::size_t i = hop_pubkeys.size(); i > 0; --i)
-    {
-      std::vector<std::uint8_t> next;
-      if (auto ec = wrap_onion_layer(hop_pubkeys[i - 1], onion, next))
-      {
-        onion.clear();
-        return ec;
-      }
-      if (next.size() > max_onion_ciphertext_bytes)
-      {
-        onion.clear();
-        return std::make_error_code(std::errc::message_size);
-      }
-      onion = std::move(next);
-    }
-    return {};
-  }
-
-  std::error_code peel_onion(const std::vector<Identity> &hop_identities,
-                             const std::vector<std::uint8_t> &onion_in,
-                             std::vector<std::uint8_t> &payload) noexcept
-  {
-    if (hop_identities.empty() || hop_identities.size() > OnionRequest::hop_count)
-      return std::make_error_code(std::errc::invalid_argument);
-    if (onion_in.size() > max_onion_ciphertext_bytes)
-      return std::make_error_code(std::errc::message_size);
-
-    std::vector<std::uint8_t> current = onion_in;
-    for (const auto &hop : hop_identities)
-    {
-      std::vector<std::uint8_t> next;
-      if (auto ec = peel_onion_layer(hop, current, next))
-      {
-        payload.clear();
-        return ec;
-      }
-      current = std::move(next);
-    }
-    if (current.size() > max_onion_payload_bytes)
-    {
-      payload.clear();
-      return std::make_error_code(std::errc::message_size);
-    }
-    payload = std::move(current);
-    return {};
-  }
+  if (inner.size() > max_onion_ciphertext_bytes)
+    return std::make_error_code(std::errc::message_size);
+  return seal_payload(hop_pubkey, inner, outer);
 }
+
+std::error_code peel_onion_layer(const Identity& hop, const std::vector<std::uint8_t>& outer,
+                                 std::vector<std::uint8_t>& inner) noexcept
+{
+  if (outer.size() > max_onion_ciphertext_bytes)
+    return std::make_error_code(std::errc::message_size);
+  return open_payload(hop, outer, inner);
+}
+
+std::error_code build_onion(const std::vector<X25519PublicKey>& hop_pubkeys, const std::vector<std::uint8_t>& payload,
+                            std::vector<std::uint8_t>& onion) noexcept
+{
+  if (hop_pubkeys.empty() || hop_pubkeys.size() > OnionRequest::hop_count)
+    return std::make_error_code(std::errc::invalid_argument);
+  if (payload.size() > max_onion_payload_bytes)
+    return std::make_error_code(std::errc::message_size);
+
+  onion = payload;
+  // Innermost sealed to last hop; outermost to first hop.
+  for (std::size_t i = hop_pubkeys.size(); i > 0; --i) {
+    std::vector<std::uint8_t> next;
+    if (auto ec = wrap_onion_layer(hop_pubkeys[i - 1], onion, next)) {
+      onion.clear();
+      return ec;
+    }
+    if (next.size() > max_onion_ciphertext_bytes) {
+      onion.clear();
+      return std::make_error_code(std::errc::message_size);
+    }
+    onion = std::move(next);
+  }
+  return {};
+}
+
+std::error_code peel_onion(const std::vector<Identity>& hop_identities, const std::vector<std::uint8_t>& onion_in,
+                           std::vector<std::uint8_t>& payload) noexcept
+{
+  if (hop_identities.empty() || hop_identities.size() > OnionRequest::hop_count)
+    return std::make_error_code(std::errc::invalid_argument);
+  if (onion_in.size() > max_onion_ciphertext_bytes)
+    return std::make_error_code(std::errc::message_size);
+
+  std::vector<std::uint8_t> current = onion_in;
+  for (const auto& hop : hop_identities) {
+    std::vector<std::uint8_t> next;
+    if (auto ec = peel_onion_layer(hop, current, next)) {
+      payload.clear();
+      return ec;
+    }
+    current = std::move(next);
+  }
+  if (current.size() > max_onion_payload_bytes) {
+    payload.clear();
+    return std::make_error_code(std::errc::message_size);
+  }
+  payload = std::move(current);
+  return {};
+}
+} // namespace arq_messaging

@@ -32,18 +32,17 @@
 
 #include <cstring>
 
-namespace arq_messaging
+namespace arq_messaging {
+std::error_code generate_identity(Identity& out) noexcept
 {
-  std::error_code generate_identity(Identity &out) noexcept
-  {
-    static_assert(X25519PublicKey::bytes == crypto_box_PUBLICKEYBYTES, "pubkey size");
-    static_assert(X25519PrivateKey::bytes == crypto_box_SECRETKEYBYTES, "privkey size");
+  static_assert(X25519PublicKey::bytes == crypto_box_PUBLICKEYBYTES, "pubkey size");
+  static_assert(X25519PrivateKey::bytes == crypto_box_SECRETKEYBYTES, "privkey size");
 
-    if (crypto_box_keypair(out.public_key.data.data(), out.private_key.data.data()) != 0)
-      return std::make_error_code(std::errc::io_error);
+  if (crypto_box_keypair(out.public_key.data.data(), out.private_key.data.data()) != 0)
+    return std::make_error_code(std::errc::io_error);
 
-    if (out.public_key.is_null())
-      return std::make_error_code(std::errc::io_error);
-    return {};
-  }
+  if (out.public_key.is_null())
+    return std::make_error_code(std::errc::io_error);
+  return {};
 }
+} // namespace arq_messaging
