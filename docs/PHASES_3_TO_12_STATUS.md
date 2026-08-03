@@ -11,7 +11,7 @@ work before it can be shipped as a complete feature.
 | Phase | Status | Implemented now | Still required |
 |-------|--------|-----------------|----------------|
 | 3 MQ feature parity | In progress | `src/arqmq` facade, backend enum, ACL enum + `allows()`, legacy path docs, backend status introspection | Native backend port, live command routing, richer health/error reporting |
-| 4 Arq-Net evolution | In progress | `arqmq::Backend::LegacyArqNet` documents current `SNNetwork` path; `get_arqnet_status` exposes backend/init status and latest ping | Transport hardening, migration planning, dual-stack rollout |
+| 4 Arq-Net evolution | In progress | Legacy path + status RPC; dual-stack migration plan in `docs/ARQNET_DUAL_STACK.md` | Native transport, dual-run CI, cutover criteria |
 | 5 Storage Server | Scaffolded + status RPC | `src/arq_storage` + `get_storage_status` | Separate production storage binary, replication, swarm sync, SN incentive decisions |
 | 6 Messaging modules | In progress | identity, onion, swarm, envelope roundtrip, sealed-sender marker + TTL bound helpers | Encryption, request lifecycle, interoperability tests |
 | 7 RPC modernization | In progress | validation helpers, SN hex checks, SN list pagination, batch DoS caps (txs/KIs/blocks/headers), OpenAPI stub, shared error semantics doc | auth middleware, generated API docs, more privileged-RPC hardening |
