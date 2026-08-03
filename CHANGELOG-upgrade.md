@@ -44,6 +44,7 @@
   encode/decode roundtrip helpers.
 - Add multi-hop onion wrap/peel helpers (`onion_layer.*`) using sealed-box
   with payload/ciphertext size caps.
+- Bound in-memory swarm map membership (`max_service_nodes_per_swarm`).
 
 ### Tests
 

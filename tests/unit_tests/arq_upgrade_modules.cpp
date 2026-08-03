@@ -41,13 +41,23 @@ TEST(arq_messaging_swarm, in_memory_mapping_roundtrip)
   arq_messaging::SwarmMapping mapping;
   mapping.id = 42;
   mapping.service_nodes = {"a", "b"};
-  map.set_mapping("pk", mapping);
+  EXPECT_FALSE(map.set_mapping("pk", mapping));
 
   EXPECT_FALSE(map.refresh());
   const auto got = map.get_swarm("pk");
   ASSERT_TRUE(got);
   EXPECT_EQ(42u, got.id);
   ASSERT_EQ(2u, got.service_nodes.size());
+}
+
+TEST(arq_messaging_swarm, rejects_oversized_membership)
+{
+  arq_messaging::InMemorySwarmMap map;
+  arq_messaging::SwarmMapping mapping;
+  mapping.id = 1;
+  mapping.service_nodes.assign(arq_messaging::max_service_nodes_per_swarm + 1, "sn");
+  EXPECT_EQ(std::make_error_code(std::errc::message_size), map.set_mapping("pk", mapping));
+  EXPECT_EQ(std::make_error_code(std::errc::invalid_argument), map.set_mapping("", mapping));
 }
 
 TEST(arq_messaging_onion, validates_complete_three_hop_request)

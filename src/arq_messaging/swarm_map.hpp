@@ -40,6 +40,15 @@ namespace arq_messaging
 {
   using swarm_id = std::uint64_t;
 
+  /// Soft caps for in-memory swarm membership until Storage Server owns the map.
+  constexpr std::size_t max_service_nodes_per_swarm = 100;
+  constexpr std::size_t max_swarm_mappings = 10000;
+
+  inline bool allow_service_node_count(std::size_t count) noexcept
+  {
+    return count <= max_service_nodes_per_swarm;
+  }
+
   struct SwarmMapping
   {
     swarm_id id = 0;
@@ -69,10 +78,24 @@ namespace arq_messaging
   class InMemorySwarmMap : public SwarmMap
   {
    public:
-    void set_mapping(std::string pubkey, SwarmMapping mapping)
+    std::error_code set_mapping(std::string pubkey, SwarmMapping mapping)
+    {
+      if (pubkey.empty())
+        return std::make_error_code(std::errc::invalid_argument);
+      if (!allow_service_node_count(mapping.service_nodes.size()))
+        return std::make_error_code(std::errc::message_size);
+
+      std::lock_guard<std::mutex> lock{mutex_};
+      if (mappings_.find(pubkey) == mappings_.end() && mappings_.size() >= max_swarm_mappings)
+        return std::make_error_code(std::errc::no_space_on_device);
+      mappings_[std::move(pubkey)] = std::move(mapping);
+      return {};
+    }
+
+    std::size_t size() const
     {
       std::lock_guard<std::mutex> lock{mutex_};
-      mappings_[std::move(pubkey)] = std::move(mapping);
+      return mappings_.size();
     }
 
     std::error_code refresh() override
