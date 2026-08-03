@@ -13,6 +13,7 @@ a production-grade foundation PR:
 - [x] Automated unit tests green on curated suite
 - [x] Module scaffolding with tests/docs/CI for MQ, storage, messaging, router
 - [x] RPC OpenAPI stub + modernization/P2P docs
+- [x] Soft batch RPC DoS caps + Phase-12 security checklist
 - [x] Arqma branding preserved; no Co-Authored-By trailers
 - [x] Daemon `--arqnet-backend` feature flag for MQ facade
 

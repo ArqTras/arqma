@@ -9,6 +9,10 @@
 - Deny unknown Curve25519 peers on Arq-Net (service nodes only).
 - Add explicit HF19 burn gate helper coverage and document current P2P packet /
   connection ceilings with compile-time assertions and unit tests.
+- Soft-cap batch RPC DoS amplification for `get_transactions`,
+  `is_key_image_spent`, `get_blocks_by_height`, batch
+  `get_block_header_by_hash`, and `get_block_headers_range`; fix missing early
+  return on key-image size mismatch.
 
 ### Features
 
@@ -42,6 +46,7 @@
 - Add architecture, security, Arq-Net, migration and upgrade roadmap docs under
   `docs/`.
 - Add phase 3–12 status matrix, RPC/P2P plans, OpenAPI stub and PR completeness gate.
+- Add `SECURITY_REVIEW_CHECKLIST.md` and `ERROR_SEMANTICS.md` for Phase 12 gating.
 - Scaffold `arqmq`, `arq_storage`, `arq_messaging`, `arq_router` modules with unit tests.
 - Add daemon `--arqnet-backend` flag for messaging facade selection.
 - Restore `parse_amount` unit coverage for Arqma 9-decimal amounts.

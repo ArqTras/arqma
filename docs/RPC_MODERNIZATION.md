@@ -28,6 +28,19 @@
 - centralize pagination validation so limits/cursors are enforced consistently
 - keep transport-level parse failures distinct from business-logic failures
 
+### Soft batch caps (landed on `upgrade`)
+
+| Endpoint | Cap constant | Limit |
+|----------|--------------|-------|
+| `get_transactions` | `max_tx_hashes_per_request` | 100 |
+| `is_key_image_spent` | `max_key_images_per_request` | 1000 |
+| `get_blocks_by_height` | `max_block_heights_per_request` | 100 |
+| `get_block_header_by_hash` (batch `hashes`) | `max_block_hashes_per_request` | 100 |
+| `get_block_headers_range` | `max_block_headers_range` | 1000 |
+
+Oversized requests return a status / JSON-RPC error without executing the heavy
+handler path. See `docs/ERROR_SEMANTICS.md`.
+
 ## Pagination Plan
 
 Prefer cursor-based pagination for dynamic collections and bounded page sizes for

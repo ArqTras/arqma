@@ -14,12 +14,12 @@ work before it can be shipped as a complete feature.
 | 4 Arq-Net evolution | In progress | `arqmq::Backend::LegacyArqNet` documents current `SNNetwork` path; `get_arqnet_status` exposes backend/init status and latest ping | Transport hardening, migration planning, dual-stack rollout |
 | 5 Storage Server | Scaffolded + status RPC | `src/arq_storage` + `get_storage_status` | Separate production storage binary, replication, swarm sync, SN incentive decisions |
 | 6 Messaging modules | In progress | `src/arq_messaging` identity, onion request, swarm map and message-envelope roundtrip helpers | Encryption, request lifecycle, interoperability tests |
-| 7 RPC modernization | In progress | validation helpers, service-node request hex checks, paginated service-node listing docs, OpenAPI stub | auth middleware, broader request validation, generated API docs |
+| 7 RPC modernization | In progress | validation helpers, SN hex checks, SN list pagination, batch DoS caps (txs/KIs/blocks/headers), OpenAPI stub, shared error semantics doc | auth middleware, generated API docs, more privileged-RPC hardening |
 | 8 P2P improvements | In progress | documented limit aliases, packet-budget compile-time checks, unit coverage for current limits | implementation, measurement, rollout tuning, compatibility testing |
 | 9 Performance | Baseline docs | `docs/PERFORMANCE.md` | profiling, benchmarks, targeted optimizations |
 | 10 Testing | In progress | unit coverage for `arqmq`, RPC validation, P2P limit docs, HF19 burn gate and messaging envelope roundtrips | integration tests, daemon tests, network-path regression coverage |
 | 11 CI | In progress | current unit target remains buildable with new scaffold targets; non-blocking format-check job added for upgrade modules | dedicated matrix coverage for feature flags and future separate binaries |
-| 12 Final review | Ongoing | documentation and compile-time scaffolding reduce later integration risk | security review, soak testing, operator validation, release gating |
+| 12 Final review | Ongoing | `docs/SECURITY_REVIEW_CHECKLIST.md` Phase-12 merge gate + docs scaffolding | soak testing, operator validation, release gating, CI sanitizer green |
 
 ## Notes by Area
 
@@ -52,6 +52,7 @@ work before it can be shipped as a complete feature.
 
 ## Recommended next milestone outputs
 
-1. Define shared error semantics for cross-module upgrade components.
+1. ~~Define shared error semantics for cross-module upgrade components.~~ (`docs/ERROR_SEMANTICS.md`)
 2. Decide which features remain in-process versus separate-binary integrations.
-3. Extend RPC modernization beyond service-node list endpoints.
+3. Wire native ArqMQ transport behind `--arqnet-backend=arqmq` without breaking LegacyArqNet.
+4. Restore additional legacy unit fixtures that are safe under Arqma 9-decimal / C++20.

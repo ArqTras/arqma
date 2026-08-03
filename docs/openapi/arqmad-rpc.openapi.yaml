@@ -80,12 +80,53 @@ components:
             - type: integer
         method:
           type: string
-          enum: [get_info, get_service_nodes]
+          enum:
+            - get_info
+            - get_service_nodes
+            - get_arqnet_status
+            - get_storage_status
+            - get_block_header_by_hash
+            - get_block_headers_range
         params:
           oneOf:
             - type: object
               additionalProperties: true
             - $ref: '#/components/schemas/GetServiceNodesParams'
+            - $ref: '#/components/schemas/GetBlockHeadersRangeParams'
+    BatchLimits:
+      type: object
+      description: Soft DoS caps enforced by rpc_validation helpers
+      properties:
+        max_tx_hashes_per_request:
+          type: integer
+          const: 100
+        max_key_images_per_request:
+          type: integer
+          const: 1000
+        max_block_heights_per_request:
+          type: integer
+          const: 100
+        max_block_hashes_per_request:
+          type: integer
+          const: 100
+        max_block_headers_range:
+          type: integer
+          const: 1000
+    GetBlockHeadersRangeParams:
+      type: object
+      required: [start_height, end_height]
+      properties:
+        start_height:
+          type: integer
+          format: uint64
+          minimum: 0
+        end_height:
+          type: integer
+          format: uint64
+          minimum: 0
+        fill_pow_hash:
+          type: boolean
+          default: false
     JsonRpcResponse:
       type: object
       required:

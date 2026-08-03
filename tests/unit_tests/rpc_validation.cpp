@@ -55,3 +55,12 @@ TEST(rpc_validation, pagination_builder_clamps_requested_limit)
   EXPECT_EQ(3u, defaults.offset);
   EXPECT_EQ(25u, defaults.limit);
 }
+
+TEST(rpc_validation, batch_request_caps_are_defined)
+{
+  EXPECT_EQ(100u, cryptonote::rpc::max_tx_hashes_per_request);
+  EXPECT_EQ(1000u, cryptonote::rpc::max_key_images_per_request);
+  EXPECT_EQ(100u, cryptonote::rpc::max_block_heights_per_request);
+  EXPECT_EQ(100u, cryptonote::rpc::max_block_hashes_per_request);
+  EXPECT_EQ(1000u, cryptonote::rpc::max_block_headers_range);
+}

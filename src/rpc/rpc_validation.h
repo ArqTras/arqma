@@ -51,5 +51,12 @@ namespace rpc
     static pagination make(uint64_t requested_offset = 0, uint64_t requested_limit = 0,
                            uint64_t fallback_limit = default_limit, uint64_t hard_max_limit = max_limit) noexcept;
   };
+
+  /// Soft caps for batch RPC requests to reduce easy DoS amplification.
+  constexpr uint64_t max_tx_hashes_per_request = 100;
+  constexpr uint64_t max_key_images_per_request = 1000;
+  constexpr uint64_t max_block_heights_per_request = 100;
+  constexpr uint64_t max_block_hashes_per_request = 100;
+  constexpr uint64_t max_block_headers_range = 1000;
 }
 }

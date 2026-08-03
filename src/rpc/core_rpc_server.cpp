@@ -426,6 +426,11 @@ namespace cryptonote
       return r;
 
     res.status = "Failed";
+    if (req.heights.size() > rpc::max_block_heights_per_request)
+    {
+      res.status = "Too many block heights requested";
+      return true;
+    }
     res.blocks.clear();
     res.blocks.reserve(req.heights.size());
     for (uint64_t height : req.heights)
@@ -567,18 +572,24 @@ namespace cryptonote
     if (use_bootstrap_daemon_if_necessary<COMMAND_RPC_GET_TRANSACTIONS>(invoke_http_mode::JON, "/gettransactions", req, res, ok))
       return ok;
 
+    if (req.txs_hashes.size() > rpc::max_tx_hashes_per_request)
+    {
+      res.status = "Too many transaction hashes requested";
+      return true;
+    }
+
     std::vector<crypto::hash> vh;
     for(const auto& tx_hex_str: req.txs_hashes)
     {
-      std::string b;
-      if(!string_tools::parse_hexstr_to_binbuff(tx_hex_str, b))
+      if (!rpc::validate_nonempty_hex(tx_hex_str, sizeof(crypto::hash)))
       {
         res.status = "Failed to parse hex representation of transaction hash";
         return true;
       }
-      if(b.size() != sizeof(crypto::hash))
+      std::string b;
+      if(!string_tools::parse_hexstr_to_binbuff(tx_hex_str, b) || b.size() != sizeof(crypto::hash))
       {
-        res.status = "Failed, size of data mismatch";
+        res.status = "Failed to parse hex representation of transaction hash";
         return true;
       }
       vh.push_back(*reinterpret_cast<const crypto::hash*>(b.data()));
@@ -776,8 +787,18 @@ namespace cryptonote
     const bool request_has_rpc_origin = ctx != NULL;
 
     std::vector<crypto::key_image> key_images;
+    if (req.key_images.size() > rpc::max_key_images_per_request)
+    {
+      res.status = "Too many key images requested";
+      return true;
+    }
     for(const auto& ki_hex_str: req.key_images)
     {
+      if (!rpc::validate_nonempty_hex(ki_hex_str, sizeof(crypto::key_image)))
+      {
+        res.status = "Failed to parse hex representation of key image";
+        return true;
+      }
       std::string b;
       if(!string_tools::parse_hexstr_to_binbuff(ki_hex_str, b))
       {
@@ -787,6 +808,7 @@ namespace cryptonote
       if(b.size() != sizeof(crypto::key_image))
       {
         res.status = "Failed, size of data mismatch";
+        return true;
       }
       key_images.push_back(*reinterpret_cast<const crypto::key_image*>(b.data()));
     }
@@ -1719,6 +1741,12 @@ namespace cryptonote
       if(!get(req.hash, req.fill_pow_hash, res.block_header, error_resp))
         return false;
     }
+    if (req.hashes.size() > rpc::max_block_hashes_per_request)
+    {
+      error_resp.code = CORE_RPC_ERROR_CODE_WRONG_PARAM;
+      error_resp.message = "Too many block hashes requested";
+      return false;
+    }
     res.block_headers.reserve(req.hashes.size());
     for(const std::string &hash: req.hashes)
     {
@@ -1743,6 +1771,12 @@ namespace cryptonote
     {
       error_resp.code = CORE_RPC_ERROR_CODE_TOO_BIG_HEIGHT;
       error_resp.message = "Invalid start/end heights.";
+      return false;
+    }
+    if (req.end_height - req.start_height + 1 > rpc::max_block_headers_range)
+    {
+      error_resp.code = CORE_RPC_ERROR_CODE_TOO_BIG_HEIGHT;
+      error_resp.message = "Requested block headers range is too large";
       return false;
     }
     for (uint64_t h = req.start_height; h <= req.end_height; ++h)
