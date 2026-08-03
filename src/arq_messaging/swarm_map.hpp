@@ -49,6 +49,21 @@ namespace arq_messaging
     return count <= max_service_nodes_per_swarm;
   }
 
+  /// Deterministic swarm id from pubkey bytes (FNV-1a 64-bit). Not a
+  /// consensus primitive — scaffolding until Storage Server owns assignment.
+  inline swarm_id hash_pubkey_to_swarm(std::string_view pubkey) noexcept
+  {
+    constexpr std::uint64_t offset = 14695981039346656037ull;
+    constexpr std::uint64_t prime = 1099511628211ull;
+    std::uint64_t hash = offset;
+    for (unsigned char c : pubkey)
+    {
+      hash ^= static_cast<std::uint64_t>(c);
+      hash *= prime;
+    }
+    return hash == 0 ? 1 : hash;
+  }
+
   struct SwarmMapping
   {
     swarm_id id = 0;

@@ -1,25 +1,19 @@
 # CONTINUATION_STATE
 
 Branch: `upgrade` · Remote: `origin/upgrade` · Authorship: ArqTras only  
-Hooks: `git -c core.hooksPath=/tmp/empty-git-hooks`  
-Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
+Hooks: `git -c core.hooksPath=/tmp/empty-git-hooks`
 
 ## Local quality gate (latest)
 
-- `ninja unit_tests` → **524** passed (~2.0s)
-- HEAD: `c450aa6b` (OpenAPI stub expansion)
+- `ninja unit_tests` → **525** passed (~2.1s)
 
 ## Next exact implementation
 
-1. **File:** `src/arq_messaging/swarm_map.hpp`  
-2. **Function:** `swarm_id hash_pubkey_to_swarm(std::string_view pubkey)` deterministic  
-3. **Tests:** in `arq_upgrade_modules.cpp`  
-4. **Commit:** `feat: add deterministic pubkey-to-swarm_id helper`  
-5. Then evaluate restoring `serialization.cpp` unit fixture  
-6. Keep local-first green before every push
+1. **File:** `tests/unit_tests/serialization.cpp` — attempt restore in CMakeLists  
+2. If compile/runtime fails: leave commented with TODO and move to `varint`/`hardfork` restore  
+3. **Commit:** `test: restore serialization unit coverage` (or skip note)  
+4. Then CI workflow sanity / `docs/UPGRADE_ROADMAP.md` bump  
 
-## Architecture (do not re-analyze)
+## Last completed
 
-ArqMQ ACL+framing · messaging onion/sealed · storage HTTP GET · wallet
-validation+auth · router validate_config · rpc_auth tests · fee/tx_utils ·
-OpenAPI 0.2.0 · Levin=P2P_PREAUTH lock · swarm membership caps
+- `hash_pubkey_to_swarm` FNV-1a helper + tests (pending push with this state)

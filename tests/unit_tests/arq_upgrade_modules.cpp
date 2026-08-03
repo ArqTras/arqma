@@ -60,6 +60,16 @@ TEST(arq_messaging_swarm, rejects_oversized_membership)
   EXPECT_EQ(std::make_error_code(std::errc::invalid_argument), map.set_mapping("", mapping));
 }
 
+TEST(arq_messaging_swarm, hash_pubkey_to_swarm_is_deterministic)
+{
+  const auto a = arq_messaging::hash_pubkey_to_swarm("abc");
+  const auto b = arq_messaging::hash_pubkey_to_swarm("abc");
+  const auto c = arq_messaging::hash_pubkey_to_swarm("abd");
+  EXPECT_EQ(a, b);
+  EXPECT_NE(a, c);
+  EXPECT_NE(0u, a);
+}
+
 TEST(arq_messaging_onion, validates_complete_three_hop_request)
 {
   arq_messaging::OnionRequest req;
