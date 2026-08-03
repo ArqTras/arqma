@@ -57,6 +57,7 @@ set(unit_tests_sources
   sha256.cpp
   slow_memmem.cpp
   subaddress.cpp
+  test_tx_utils.cpp
   varint.cpp
   vercmp.cpp
   uri.cpp
