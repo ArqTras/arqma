@@ -30,10 +30,10 @@
 
 #include "arq_storage/storage_client.h"
 
-TEST(arq_storage_client, operations_report_not_supported)
+TEST(arq_storage_client, remote_backend_reports_not_connected)
 {
-  const arq_storage::StorageClient client{};
-  const auto expected = std::make_error_code(std::errc::function_not_supported);
+  arq_storage::StorageClient client{arq_storage::Backend::Remote};
+  const auto expected = std::make_error_code(std::errc::not_connected);
 
   EXPECT_EQ(expected, client.ping());
   EXPECT_EQ(expected, client.store({"messages", "hello", "world"}));
@@ -41,8 +41,21 @@ TEST(arq_storage_client, operations_report_not_supported)
   const auto retrieve = client.retrieve("messages", "hello");
   EXPECT_EQ(expected, retrieve.error);
   EXPECT_TRUE(retrieve.value.empty());
+}
 
-  const auto snodes = client.get_snodes_for_pubkey("pubkey");
-  EXPECT_EQ(expected, snodes.error);
-  EXPECT_TRUE(snodes.value.empty());
+TEST(arq_storage_client, in_memory_store_retrieve_roundtrip)
+{
+  arq_storage::StorageClient client{arq_storage::Backend::InMemory};
+  EXPECT_FALSE(client.ping());
+  EXPECT_FALSE(client.store({"messages", "hello", "world"}));
+
+  const auto retrieve = client.retrieve("messages", "hello");
+  EXPECT_FALSE(retrieve.error);
+  EXPECT_EQ("world", retrieve.value);
+
+  client.set_snodes_for_pubkey("pk", {"sn-a", "sn-b"});
+  const auto snodes = client.get_snodes_for_pubkey("pk");
+  ASSERT_FALSE(snodes.error);
+  ASSERT_EQ(2u, snodes.value.size());
+  EXPECT_EQ("sn-a", snodes.value[0]);
 }

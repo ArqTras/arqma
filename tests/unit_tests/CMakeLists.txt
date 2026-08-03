@@ -32,6 +32,7 @@
 set(unit_tests_sources
   arq_messaging_envelope.cpp
   arq_storage_client.cpp
+  arq_upgrade_modules.cpp
   arqmq_facade.cpp
   apply_permutation.cpp
   base58.cpp
@@ -77,6 +78,7 @@ target_link_libraries(unit_tests
     p2p
     arqmq
     arq_storage
+    arq_router
     version
     epee
     ${Boost_CHRONO_LIBRARY}

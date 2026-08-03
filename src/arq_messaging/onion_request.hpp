@@ -31,6 +31,7 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 namespace arq_messaging
 {
@@ -49,4 +50,22 @@ namespace arq_messaging
     std::string endpoint;
     std::string payload;
   };
+
+  inline bool hop_is_complete(const OnionHop &hop) noexcept
+  {
+    return !hop.service_node_pubkey.empty() && !hop.address.empty() && hop.port != 0;
+  }
+
+  /// Structural validation only — no cryptography or network I/O.
+  inline bool validate_onion_request(const OnionRequest &request) noexcept
+  {
+    if (request.endpoint.empty())
+      return false;
+    for (const auto &hop : request.hops)
+    {
+      if (!hop_is_complete(hop))
+        return false;
+    }
+    return true;
+  }
 }

@@ -26,37 +26,35 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "router_service.h"
+#pragma once
 
-#include <system_error>
-#include <utility>
+#include <string_view>
 
-namespace arq_router
+namespace cryptonote
 {
-  RouterService::RouterService(RouterConfig config)
-    : config_{std::move(config)}
-  {}
-
-  std::error_code RouterService::init() noexcept
+namespace rpc
+{
+  /// Coarse RPC privilege levels for future middleware. Restricted daemons map
+  /// to Public; loopback/admin credentials map to Admin.
+  enum class AccessLevel
   {
-    if (!config_.enabled)
-      return std::make_error_code(std::errc::operation_not_permitted);
-    // Experimental lifecycle only — no onion routing sockets yet.
-    running_ = false;
-    return {};
+    Public,
+    Operator,
+    Admin
+  };
+
+  inline bool access_allows(AccessLevel required, AccessLevel granted) noexcept
+  {
+    return static_cast<int>(granted) >= static_cast<int>(required);
   }
 
-  std::error_code RouterService::start() noexcept
+  inline bool method_requires_operator(std::string_view method) noexcept
   {
-    if (!config_.enabled)
-      return std::make_error_code(std::errc::operation_not_permitted);
-    running_ = true;
-    return {};
+    return method == "start_mining"
+        || method == "stop_mining"
+        || method == "set_bans"
+        || method == "flush_txpool"
+        || method == "relay_tx";
   }
-
-  std::error_code RouterService::stop() noexcept
-  {
-    running_ = false;
-    return {};
-  }
+}
 }

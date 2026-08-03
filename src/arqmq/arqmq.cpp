@@ -33,8 +33,6 @@
 
 namespace
 {
-  constexpr auto not_supported = std::errc::function_not_supported;
-
   struct facade_state
   {
     std::mutex mutex;
@@ -108,12 +106,11 @@ namespace arqmq
     switch (config.backend)
     {
       case Backend::LegacyArqNet:
+      case Backend::ArqMq:
+        // Wire transport remains arqnet::SNNetwork (started from core::init).
+        // ArqMq enables the Arqma command/ACL facade naming without a second listener.
         state.initialized = true;
         return {};
-      case Backend::ArqMq:
-        // TODO(arqma): implement the native ArqMQ backend under Arqma naming.
-        state.initialized = false;
-        return std::make_error_code(not_supported);
     }
 
     state.initialized = false;
@@ -125,8 +122,6 @@ namespace arqmq
     std::lock_guard<std::mutex> lock{state.mutex};
     state.initialized = false;
     state.default_acl = CategoryAcl::Denied;
-
-    // TODO(arqma): coordinate shutdown across the future dual-backend facade.
     return {};
   }
 
@@ -134,6 +129,11 @@ namespace arqmq
   {
     std::lock_guard<std::mutex> lock{state.mutex};
     return state.backend;
+  }
+
+  const char *transport_name() noexcept
+  {
+    return "snnetwork";
   }
 
   CategoryAcl default_acl() noexcept

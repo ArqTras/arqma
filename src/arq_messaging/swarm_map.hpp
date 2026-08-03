@@ -29,6 +29,8 @@
 #pragma once
 
 #include <cstdint>
+#include <map>
+#include <mutex>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -42,7 +44,7 @@ namespace arq_messaging
   {
     swarm_id id = 0;
     std::vector<std::string> service_nodes;
-    std::error_code error = std::make_error_code(std::errc::function_not_supported);
+    std::error_code error{};
 
     explicit operator bool() const noexcept { return !error; }
   };
@@ -57,7 +59,42 @@ namespace arq_messaging
     virtual SwarmMapping get_swarm(std::string_view pubkey) const
     {
       (void) pubkey;
+      SwarmMapping mapping;
+      mapping.error = std::make_error_code(std::errc::function_not_supported);
+      return mapping;
+    }
+  };
+
+  /// Deterministic in-memory swarm assignment for tests and local scaffolding.
+  class InMemorySwarmMap : public SwarmMap
+  {
+   public:
+    void set_mapping(std::string pubkey, SwarmMapping mapping)
+    {
+      std::lock_guard<std::mutex> lock{mutex_};
+      mappings_[std::move(pubkey)] = std::move(mapping);
+    }
+
+    std::error_code refresh() override
+    {
       return {};
     }
+
+    SwarmMapping get_swarm(std::string_view pubkey) const override
+    {
+      std::lock_guard<std::mutex> lock{mutex_};
+      const auto it = mappings_.find(std::string{pubkey});
+      if (it == mappings_.end())
+      {
+        SwarmMapping missing;
+        missing.error = std::make_error_code(std::errc::no_such_file_or_directory);
+        return missing;
+      }
+      return it->second;
+    }
+
+   private:
+    mutable std::mutex mutex_;
+    std::map<std::string, SwarmMapping> mappings_;
   };
 }

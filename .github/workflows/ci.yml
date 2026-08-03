@@ -81,6 +81,7 @@ jobs:
             src/arq_router/**/*.{h,hpp,cpp}
             src/rpc/rpc_validation.h
             src/rpc/rpc_validation.cpp
+            src/rpc/rpc_auth.h
           )
 
           if [ ${#files[@]} -eq 0 ]; then

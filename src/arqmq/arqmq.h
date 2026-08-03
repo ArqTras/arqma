@@ -32,7 +32,10 @@
 
 namespace arqmq
 {
-  /// The active production path today is the legacy `arqnet::SNNetwork` transport.
+  /// Messaging facade backends. Both currently delegate mesh I/O to the
+  /// production `arqnet::SNNetwork` path; `ArqMq` selects the Arqma-named
+  /// command/ACL facade while transport remains SNNetwork until a dedicated
+  /// socket stack is ported.
   enum class Backend
   {
     LegacyArqNet,
@@ -60,9 +63,8 @@ namespace arqmq
   /// Ordering: Denied < Basic < ServiceNode < Admin.
   bool allows(CategoryAcl required, CategoryAcl granted) noexcept;
 
-  /// Initializes the messaging facade. `LegacyArqNet` maps to the current
-  /// service-node networking path while the native ArqMQ backend remains a
-  /// future porting target.
+  /// Initializes the messaging facade. Both backends mark the facade ready and
+  /// document that live Curve/ZMQ transport continues via SNNetwork.
   std::error_code init(const Config &config = {}) noexcept;
 
   /// Shuts down the messaging facade.
@@ -70,6 +72,9 @@ namespace arqmq
 
   /// Returns the currently selected backend, even if initialization failed.
   Backend current_backend() noexcept;
+
+  /// Stable name of the active wire transport under the facade.
+  const char *transport_name() noexcept;
 
   /// Returns the default ACL configured at init (Denied after shutdown).
   CategoryAcl default_acl() noexcept;

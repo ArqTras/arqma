@@ -2946,11 +2946,13 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
     {
       std::string backend;
       bool initialized = false;
+      std::string transport;
       uint64_t last_arqnet_ping = 0;
       std::string status;
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(backend)
         KV_SERIALIZE(initialized)
+        KV_SERIALIZE(transport)
         KV_SERIALIZE(last_arqnet_ping)
         KV_SERIALIZE(status)
       END_KV_SERIALIZE_MAP()

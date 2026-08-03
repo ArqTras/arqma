@@ -15,6 +15,9 @@
   return on key-image size mismatch.
 - Cap `get_service_nodes` pubkey filter lists (`max_service_node_pubkeys_per_request`).
 - Add ArqMQ builtin command ACL registry (`authorize` denies unknown commands).
+- Both `--arqnet-backend` values initialize; RPC exposes `transport=snnetwork`.
+- In-memory StorageClient / SwarmMap / onion validation / router lifecycle tests.
+- RPC access-level helpers (`rpc_auth.h`).
 
 ### Features
 

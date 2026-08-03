@@ -7,15 +7,24 @@ by OxenMQ, while preserving Arqma naming, ports and operator UX.
 
 ## Current state
 
-`src/arqnet` already provides:
+`src/arqnet` provides the live Curve/ZMQ mesh (`SNNetwork`).
 
-- ZMQ transport + Curve25519 auth
-- Worker pool / proxy thread
-- bt-style serialization
-- Quorum command dispatch (`vote_ob`, `ping`/`pong`)
+`src/arqmq` is the Arqma-named facade:
 
-This is a viable base. Blind replacement with upstream OxenMQ would create
-unnecessary branding and history noise.
+- `--arqnet-backend=legacy-arqnet` or `arqmq` both initialize successfully
+- wire transport name reported by RPC/status is always `snnetwork` today
+- command ACL registry documents intended privilege levels
+- a dedicated ArqMQ socket stack remains future work (Milestone C / later)
+
+## Migration steps
+
+1. ~~Extract stable facade headers from `SNNetwork` usage sites.~~
+2. ~~Add feature flag `--arqnet-backend=legacy|arqmq` (daemon arg).~~
+3. Vendor OxenMQ **or** port selected subsystems under Arqma copyright/license
+   notices without Co-Authored-By trailers (remaining).
+4. Dual-run on testnet/stagenet.
+5. Make dedicated `arqmq` transport default; keep SNNetwork until one stable release.
+6. Optionally require Arq-Net ping for uptime proofs after operator notice.
 
 ## Target architecture
 

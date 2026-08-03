@@ -28,40 +28,77 @@
 
 #include "storage_client.h"
 
-#include <system_error>
 #include <utility>
 
 namespace
 {
-  std::error_code not_implemented() noexcept
+  std::error_code not_connected() noexcept
   {
-    return std::make_error_code(std::errc::function_not_supported);
+    return std::make_error_code(std::errc::not_connected);
+  }
+
+  std::error_code invalid_argument() noexcept
+  {
+    return std::make_error_code(std::errc::invalid_argument);
   }
 }
 
 namespace arq_storage
 {
+  StorageClient::StorageClient(const Backend backend) noexcept
+    : backend_{backend}
+  {}
+
   std::error_code StorageClient::ping() const noexcept
   {
-    return not_implemented();
+    if (backend_ == Backend::InMemory)
+      return {};
+    return not_connected();
   }
 
-  std::error_code StorageClient::store(const StoreRequest &request) const noexcept
+  std::error_code StorageClient::store(const StoreRequest &request) noexcept
   {
-    (void) request;
-    return not_implemented();
+    if (backend_ != Backend::InMemory)
+      return not_connected();
+    if (request.namespace_name.empty() || request.key.empty())
+      return invalid_argument();
+
+    std::lock_guard<std::mutex> lock{mutex_};
+    values_[{request.namespace_name, request.key}] = request.value;
+    return {};
   }
 
   Result<std::string> StorageClient::retrieve(std::string namespace_name, std::string key) const noexcept
   {
-    (void) namespace_name;
-    (void) key;
-    return {{}, not_implemented()};
+    if (backend_ != Backend::InMemory)
+      return {{}, not_connected()};
+    if (namespace_name.empty() || key.empty())
+      return {{}, invalid_argument()};
+
+    std::lock_guard<std::mutex> lock{mutex_};
+    const auto it = values_.find({namespace_name, key});
+    if (it == values_.end())
+      return {{}, std::make_error_code(std::errc::no_such_file_or_directory)};
+    return {it->second, {}};
   }
 
   Result<std::vector<std::string>> StorageClient::get_snodes_for_pubkey(std::string pubkey) const noexcept
   {
-    (void) pubkey;
-    return {{}, not_implemented()};
+    if (backend_ != Backend::InMemory)
+      return {{}, not_connected()};
+    if (pubkey.empty())
+      return {{}, invalid_argument()};
+
+    std::lock_guard<std::mutex> lock{mutex_};
+    const auto it = snodes_.find(pubkey);
+    if (it == snodes_.end())
+      return {{}, {}};
+    return {it->second, {}};
+  }
+
+  void StorageClient::set_snodes_for_pubkey(std::string pubkey, std::vector<std::string> snodes)
+  {
+    std::lock_guard<std::mutex> lock{mutex_};
+    snodes_[std::move(pubkey)] = std::move(snodes);
   }
 }

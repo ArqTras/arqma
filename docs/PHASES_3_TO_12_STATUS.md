@@ -2,57 +2,27 @@
 
 Branch: `upgrade`
 
-This document tracks what is implemented as production-ready scaffolding versus
-what still requires deeper protocol, service-node economics or separate-binary
-work before it can be shipped as a complete feature.
+Foundation engineering for phases 3–12 is landed. Product-scale binaries
+(Storage Server, Lokinet-class router, Session clients, Pulse/Blink) remain
+Milestone C decisions.
 
 ## Status Matrix
 
-| Phase | Status | Implemented now | Still required |
-|-------|--------|-----------------|----------------|
-| 3 MQ feature parity | In progress | facade, ACL `allows()`, builtin command registry, status RPC | Native backend port, live command routing |
-| 4 Arq-Net evolution | In progress | Legacy path + status RPC; dual-stack plan `ARQNET_DUAL_STACK.md` | Native transport, dual-run, cutover |
-| 5 Storage Server | Scaffolded + status RPC | `StorageClient` + `get_storage_status`; boundaries in `PROCESS_BOUNDARIES.md` | Production storage binary, replication, swarm sync |
-| 6 Messaging modules | In progress | identity, onion, swarm, envelope, sealed-sender marker/TTL | Encryption, request lifecycle |
-| 7 RPC modernization | In progress | validation, pagination, batch DoS caps incl. SN pubkeys, OpenAPI, error semantics | auth middleware, generated docs |
-| 8 P2P improvements | In progress | documented limit aliases, packet-budget compile-time checks, unit coverage for current limits | implementation, measurement, rollout tuning, compatibility testing |
-| 9 Performance | Baseline docs | `docs/PERFORMANCE.md` (479 tests ~2.1s local) | profiling, benchmarks, targeted optimizations |
-| 10 Testing | In progress | curated suite **479** green locally (uri/base58/sha256 restored) | integration/daemon tests; remaining API-drift fixtures |
-| 11 CI | In progress | current unit target remains buildable with new scaffold targets; non-blocking format-check job added for upgrade modules | dedicated matrix coverage for feature flags and future separate binaries |
-| 12 Final review | Ongoing | `docs/SECURITY_REVIEW_CHECKLIST.md` Phase-12 merge gate + docs scaffolding | soak testing, operator validation, release gating, CI sanitizer green |
-
-## Notes by Area
-
-### Messaging facade
-
-- Public API remains Arqma-named.
-- `LegacyArqNet` is the only backend that initializes successfully today.
-- The native `ArqMq` backend intentionally reports not-supported until a real
-  port exists.
-- The daemon now exposes a lightweight `get_arqnet_status` JSON-RPC method for
-  backend selection, initialization state and the last Arq-Net ping timestamp.
-
-### Storage integration
-
-- The daemon-side `StorageClient` is intentionally thin.
-- A full storage deployment remains a separate binary concern, not an
-  in-daemon shortcut.
-
-### Privacy routing
-
-- `src/arq_router` is naming and lifecycle scaffolding only.
-- No claim is made that production routing exists yet.
-
-### RPC and validation
-
-- `src/rpc/rpc_validation.*` centralizes small helper logic for limit clamping,
-  pagination defaults and fixed-size hex validation.
-- `get_service_nodes` now accepts optional `offset` and `limit` parameters
-  without breaking existing full-list callers.
+| Phase | Status | Implemented now | Still required (Milestone C / later) |
+|-------|--------|-----------------|--------------------------------------|
+| 3 MQ feature parity | Foundation done | facade, ACL, command registry, both backends init, `transport=snnetwork` | Dedicated ArqMQ socket stack |
+| 4 Arq-Net evolution | Foundation done | SN-only auth, ping RPC, dual-stack docs, status+transport RPC | Dual-run CI for future socket stack |
+| 5 Storage Server | Client foundation | Remote vs InMemory client; status RPC; boundaries doc | Production storage binary + replication |
+| 6 Messaging modules | Foundation done | identity, onion validation, swarm in-memory, envelope, sealed-sender | Full crypto + wire interoperability |
+| 7 RPC modernization | Foundation done | validation, pagination, DoS caps, auth helpers, OpenAPI | Generated OpenAPI + full auth middleware wiring |
+| 8 P2P improvements | Foundation done | limit aliases, compile-time budget checks, unit coverage | Measured rollout tuning |
+| 9 Performance | Baseline done | `docs/PERFORMANCE.md` local timings | CI hardware baselines / IBD profiles |
+| 10 Testing | Foundation done | curated suite **485** green locally | integration/daemon network tests; remaining API-drift fixtures |
+| 11 CI | Foundation done | unit Release/Debug, ASan/UBSan, format-check | TSan optional; coverage artifacts |
+| 12 Final review | Gate ready | security checklist + completeness gate | soak / signed release / stagenet |
 
 ## Recommended next milestone outputs
 
-1. ~~Define shared error semantics for cross-module upgrade components.~~ (`docs/ERROR_SEMANTICS.md`)
-2. ~~Decide which features remain in-process versus separate-binary integrations.~~ (`docs/PROCESS_BOUNDARIES.md`)
-3. Wire native ArqMQ transport behind `--arqnet-backend=arqmq` without breaking LegacyArqNet.
-4. Restore additional legacy unit fixtures that are safe under Arqma 9-decimal / C++20.
+1. Choose Milestone C primary value-add (Storage / Blink / Pulse / Router).
+2. Port dedicated ArqMQ transport behind feature flag without breaking SNNetwork.
+3. Restore remaining safe legacy fixtures (`fee` API, `hardfork` mocks, …).

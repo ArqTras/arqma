@@ -100,7 +100,8 @@ public:
       }
       else
       {
-        MINFO("Arq-Net messaging facade backend: " << arqmq::to_string(mq_cfg.backend));
+        MINFO("Arq-Net messaging facade backend: " << arqmq::to_string(mq_cfg.backend)
+                                                   << " (transport=" << arqmq::transport_name() << ")");
       }
     }
 
@@ -113,7 +114,11 @@ public:
       if (router_ec)
         MWARNING("Arq router scaffold init failed: " << router_ec.message());
       else
-        MINFO("Arq privacy router scaffold initialized (experimental; not a production onion router)");
+      {
+        (void)router.start();
+        MINFO("Arq privacy router experimental lifecycle started (no production onion routing yet)");
+        (void)router.stop();
+      }
     }
 
     const auto restricted = command_line::get_arg(vm, cryptonote::core_rpc_server::arg_restricted_rpc);

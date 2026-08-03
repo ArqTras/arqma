@@ -28,8 +28,11 @@
 
 #pragma once
 
+#include <map>
+#include <mutex>
 #include <string>
 #include <system_error>
+#include <utility>
 #include <vector>
 
 namespace arq_storage
@@ -50,15 +53,33 @@ namespace arq_storage
     std::string value;
   };
 
-  /// This is the daemon-side client API only. Production storage service
-  /// behavior belongs in a separate binary and is intentionally not embedded
-  /// into `arqmad`.
+  /// Daemon-side storage client. `Remote` talks to an external Storage Server
+  /// (not embedded in arqmad). `InMemory` is for tests and local scaffolding only.
+  enum class Backend
+  {
+    Remote,
+    InMemory
+  };
+
   class StorageClient
   {
    public:
+    explicit StorageClient(Backend backend = Backend::Remote) noexcept;
+
+    Backend backend() const noexcept { return backend_; }
+
     std::error_code ping() const noexcept;
-    std::error_code store(const StoreRequest &request) const noexcept;
+    std::error_code store(const StoreRequest &request) noexcept;
     Result<std::string> retrieve(std::string namespace_name, std::string key) const noexcept;
     Result<std::vector<std::string>> get_snodes_for_pubkey(std::string pubkey) const noexcept;
+
+    /// Test helper: seed swarm lookup results for InMemory backend.
+    void set_snodes_for_pubkey(std::string pubkey, std::vector<std::string> snodes);
+
+   private:
+    Backend backend_;
+    mutable std::mutex mutex_;
+    std::map<std::pair<std::string, std::string>, std::string> values_;
+    std::map<std::string, std::vector<std::string>> snodes_;
   };
 }
