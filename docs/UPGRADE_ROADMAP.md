@@ -12,12 +12,12 @@ patterns while preserving Arqma identity.
 | 2 Core modernization | **Done** | C++20, CI, CLSAG tests, HF/Arq-Net fixes |
 | 3 Oxen feature parity (selective) | **Foundation done** | ArqMQ facade + ACL/registry over SNNetwork |
 | 4 Arq-Net evolution | **Foundation done** | Auth harden, ping, dual-stack plan |
-| 5 Storage Server | **Client foundation** | Remote/InMemory client; separate binary = Milestone C |
-| 6 Session-like modules | **Foundation done** | Envelope, onion validation, swarm map, sealed-sender |
-| 7 RPC modernization | **Foundation done** | Validation, caps, auth helpers, OpenAPI stub |
-| 8 P2P improvements | **Foundation done** | Documented limits + unit checks |
+| 5 Storage Server | **Client foundation** | HTTP GET cleartext probe; TLS TCP-only; separate binary = Milestone C |
+| 6 Session-like modules | **Foundation done** | Envelope, onion peel, swarm bounds + hash, sealed-box |
+| 7 RPC modernization | **Foundation done** | Validation, wallet caps/auth, OpenAPI 0.2.0 |
+| 8 P2P improvements | **Foundation done** | Limits + Levin/preauth lock |
 | 9 Performance | **Baseline** | Local measurement doc |
-| 10 Testing | **Foundation done** | 485 curated unit tests green locally |
+| 10 Testing | **In progress** | 525 curated unit tests green locally |
 | 11 CI | **Foundation done** | unit + sanitizers + format-check |
 | 12 Final review | **Gate ready** | Checklist + completeness gate |
 

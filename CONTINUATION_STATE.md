@@ -1,19 +1,20 @@
 # CONTINUATION_STATE
 
 Branch: `upgrade` · Remote: `origin/upgrade` · Authorship: ArqTras only  
-Hooks: `git -c core.hooksPath=/tmp/empty-git-hooks`
+Hooks: `git -c core.hooksPath=/tmp/empty-git-hooks`  
+Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
 ## Local quality gate (latest)
 
 - `ninja unit_tests` → **525** passed (~2.1s)
+- HEAD includes swarm hash + OpenAPI 0.2.0 + router/storage/wallet/ArqMQ work
 
 ## Next exact implementation
 
-1. **File:** `tests/unit_tests/serialization.cpp` — attempt restore in CMakeLists  
-2. If compile/runtime fails: leave commented with TODO and move to `varint`/`hardfork` restore  
-3. **Commit:** `test: restore serialization unit coverage` (or skip note)  
-4. Then CI workflow sanity / `docs/UPGRADE_ROADMAP.md` bump  
+1. **Skip** full `serialization.cpp` (1181 lines, high API drift) for now  
+2. **File:** `tests/unit_tests/hardfork.cpp` — ensure in CMakeLists / green  
+3. Or: `src/rpc/core_rpc_server.cpp` — wire more methods through `allow_rpc_method`  
+4. **Commit:** `feat: gate additional daemon RPC methods via rpc_auth`  
+5. Keep local-first; no Co-authored-by
 
-## Last completed
-
-- `hash_pubkey_to_swarm` FNV-1a helper + tests (pending push with this state)
+## Do not restart from phase 1 analysis
