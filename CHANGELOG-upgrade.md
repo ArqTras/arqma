@@ -13,6 +13,8 @@
   `is_key_image_spent`, `get_blocks_by_height`, batch
   `get_block_header_by_hash`, and `get_block_headers_range`; fix missing early
   return on key-image size mismatch.
+- Cap `get_service_nodes` pubkey filter lists (`max_service_node_pubkeys_per_request`).
+- Add ArqMQ builtin command ACL registry (`authorize` denies unknown commands).
 
 ### Features
 
@@ -35,6 +37,7 @@
   curated tests green locally).
 - Restore `sha256` unit coverage after `tools::sha256sum_str` API migration.
 - Restore `base58` / account-address unit coverage with Arqma mainnet (`ar`) vectors.
+- Restore `uri` wallet URI coverage for `arqma:` scheme with generated testnet addresses.
 - Add `arqmq::allows` ACL privilege helper coverage and SN hygiene audit notes.
 - Add sealed-sender marker / TTL bound helpers for messaging envelopes.
 
@@ -53,6 +56,7 @@
   `docs/`.
 - Add phase 3–12 status matrix, RPC/P2P plans, OpenAPI stub and PR completeness gate.
 - Add `SECURITY_REVIEW_CHECKLIST.md` and `ERROR_SEMANTICS.md` for Phase 12 gating.
+- Add `PROCESS_BOUNDARIES.md` and ArqMQ command registry notes.
 - Scaffold `arqmq`, `arq_storage`, `arq_messaging`, `arq_router` modules with unit tests.
 - Add daemon `--arqnet-backend` flag for messaging facade selection.
 - Restore `parse_amount` unit coverage for Arqma 9-decimal amounts.

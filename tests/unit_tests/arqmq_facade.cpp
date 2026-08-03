@@ -29,6 +29,7 @@
 #include "gtest/gtest.h"
 
 #include "arqmq/arqmq.h"
+#include "arqmq/command_registry.hpp"
 
 TEST(arqmq_facade, backend_names_match_scaffold)
 {
@@ -83,4 +84,16 @@ TEST(arqmq_facade, default_acl_is_retained_after_init)
   EXPECT_EQ(arqmq::CategoryAcl::ServiceNode, arqmq::default_acl());
   EXPECT_FALSE(arqmq::shutdown());
   EXPECT_EQ(arqmq::CategoryAcl::Denied, arqmq::default_acl());
+}
+
+TEST(arqmq_facade, command_registry_maps_builtin_acls)
+{
+  EXPECT_EQ(arqmq::CategoryAcl::ServiceNode, arqmq::required_acl_for("vote_ob"));
+  EXPECT_EQ(arqmq::CategoryAcl::Basic, arqmq::required_acl_for("arqnet_status"));
+  EXPECT_EQ(arqmq::CategoryAcl::Admin, arqmq::required_acl_for("admin_shutdown"));
+  EXPECT_EQ(arqmq::CategoryAcl::Denied, arqmq::required_acl_for("unknown.command"));
+
+  EXPECT_TRUE(arqmq::authorize("ping", arqmq::CategoryAcl::ServiceNode));
+  EXPECT_FALSE(arqmq::authorize("admin_shutdown", arqmq::CategoryAcl::ServiceNode));
+  EXPECT_FALSE(arqmq::authorize("unknown.command", arqmq::CategoryAcl::Admin));
 }

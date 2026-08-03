@@ -10,11 +10,12 @@ work before it can be shipped as a complete feature.
 
 | Phase | Status | Implemented now | Still required |
 |-------|--------|-----------------|----------------|
-| 3 MQ feature parity | In progress | `src/arqmq` facade, backend enum, ACL enum + `allows()`, legacy path docs, backend status introspection | Native backend port, live command routing, richer health/error reporting |
-| 4 Arq-Net evolution | In progress | Legacy path + status RPC; dual-stack migration plan in `docs/ARQNET_DUAL_STACK.md` | Native transport, dual-run CI, cutover criteria |
-| 5 Storage Server | Scaffolded + status RPC | `src/arq_storage` + `get_storage_status` | Separate production storage binary, replication, swarm sync, SN incentive decisions |
-| 6 Messaging modules | In progress | identity, onion, swarm, envelope roundtrip, sealed-sender marker + TTL bound helpers | Encryption, request lifecycle, interoperability tests |
-| 7 RPC modernization | In progress | validation helpers, SN hex checks, SN list pagination, batch DoS caps (txs/KIs/blocks/headers), OpenAPI stub, shared error semantics doc | auth middleware, generated API docs, more privileged-RPC hardening |
+| 3 MQ feature parity | In progress | facade, ACL `allows()`, builtin command registry, status RPC | Native backend port, live command routing |
+| 4 Arq-Net evolution | In progress | Legacy path + status RPC; dual-stack plan `ARQNET_DUAL_STACK.md` | Native transport, dual-run, cutover |
+| 5 Storage Server | Scaffolded + status RPC | `StorageClient` + `get_storage_status`; boundaries in `PROCESS_BOUNDARIES.md` | Production storage binary, replication, swarm sync |
+| 6 Messaging modules | In progress | identity, onion, swarm, envelope, sealed-sender marker/TTL | Encryption, request lifecycle |
+| 7 RPC modernization | In progress | validation, pagination, batch DoS caps incl. SN pubkeys, OpenAPI, error semantics | auth middleware, generated docs |
+| 10 Testing | In progress | curated suite **479** green locally (uri/base58/sha256 restored) | integration/daemon tests; remaining API-drift fixtures |
 | 8 P2P improvements | In progress | documented limit aliases, packet-budget compile-time checks, unit coverage for current limits | implementation, measurement, rollout tuning, compatibility testing |
 | 9 Performance | Baseline docs | `docs/PERFORMANCE.md` | profiling, benchmarks, targeted optimizations |
 | 10 Testing | In progress | curated suite ~447 green (base58/sha256/mul_div restored); arqmq ACL, RPC caps, P2P limits, HF19, messaging | integration tests, daemon tests, checkpoints crash, remaining Monero fixtures |
@@ -53,6 +54,6 @@ work before it can be shipped as a complete feature.
 ## Recommended next milestone outputs
 
 1. ~~Define shared error semantics for cross-module upgrade components.~~ (`docs/ERROR_SEMANTICS.md`)
-2. Decide which features remain in-process versus separate-binary integrations.
+2. ~~Decide which features remain in-process versus separate-binary integrations.~~ (`docs/PROCESS_BOUNDARIES.md`)
 3. Wire native ArqMQ transport behind `--arqnet-backend=arqmq` without breaking LegacyArqNet.
 4. Restore additional legacy unit fixtures that are safe under Arqma 9-decimal / C++20.

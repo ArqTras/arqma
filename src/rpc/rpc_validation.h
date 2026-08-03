@@ -58,5 +58,6 @@ namespace rpc
   constexpr uint64_t max_block_heights_per_request = 100;
   constexpr uint64_t max_block_hashes_per_request = 100;
   constexpr uint64_t max_block_headers_range = 1000;
+  constexpr uint64_t max_service_node_pubkeys_per_request = 1000;
 }
 }

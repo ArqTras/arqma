@@ -2953,6 +2953,13 @@ namespace cryptonote
   {
     PERF_TIMER(on_get_service_nodes);
 
+    if (req.service_node_pubkeys.size() > rpc::max_service_node_pubkeys_per_request)
+    {
+      error_resp.code = CORE_RPC_ERROR_CODE_WRONG_PARAM;
+      error_resp.message = "Too many service node pubkeys requested";
+      return false;
+    }
+
     std::vector<crypto::public_key> pubkeys(req.service_node_pubkeys.size());
     for(size_t i = 0; i < req.service_node_pubkeys.size(); i++)
     {

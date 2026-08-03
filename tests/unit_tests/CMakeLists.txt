@@ -57,6 +57,7 @@ set(unit_tests_sources
   subaddress.cpp
   varint.cpp
   vercmp.cpp
+  uri.cpp
 )
 
 set(unit_tests_headers

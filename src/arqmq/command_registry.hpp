@@ -26,42 +26,46 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "gtest/gtest.h"
+#pragma once
 
-#include "rpc/rpc_validation.h"
+#include "arqmq.h"
 
-TEST(rpc_validation, clamp_limit_uses_default_and_maximum)
+#include <string_view>
+
+namespace arqmq
 {
-  EXPECT_EQ(25u, cryptonote::rpc::clamp_limit(0, 25, 100));
-  EXPECT_EQ(100u, cryptonote::rpc::clamp_limit(250, 25, 100));
-  EXPECT_EQ(17u, cryptonote::rpc::clamp_limit(17, 25, 100));
-}
+  /// Static command → ACL map for the future native backend. LegacyArqNet still
+  /// dispatches through SNNetwork; this registry documents intended categories.
+  struct CommandAcl
+  {
+    std::string_view name;
+    CategoryAcl required;
+  };
 
-TEST(rpc_validation, validate_nonempty_hex_checks_length)
-{
-  EXPECT_TRUE(cryptonote::rpc::validate_nonempty_hex("aabbccdd", 4));
-  EXPECT_FALSE(cryptonote::rpc::validate_nonempty_hex("", 4));
-  EXPECT_FALSE(cryptonote::rpc::validate_nonempty_hex("aabbcc", 4));
-  EXPECT_FALSE(cryptonote::rpc::validate_nonempty_hex("zzbbccdd", 4));
-}
+  inline constexpr CommandAcl k_builtin_commands[] = {
+      {"ping", CategoryAcl::ServiceNode},
+      {"pong", CategoryAcl::ServiceNode},
+      {"vote_ob", CategoryAcl::ServiceNode},
+      {"arqnet_status", CategoryAcl::Basic},
+      {"admin_shutdown", CategoryAcl::Admin},
+  };
 
-TEST(rpc_validation, pagination_builder_clamps_requested_limit)
-{
-  const auto pagination = cryptonote::rpc::pagination::make(7, 400, 25, 100);
-  EXPECT_EQ(7u, pagination.offset);
-  EXPECT_EQ(100u, pagination.limit);
+  inline CategoryAcl required_acl_for(std::string_view command) noexcept
+  {
+    for (const auto &entry : k_builtin_commands)
+    {
+      if (entry.name == command)
+        return entry.required;
+    }
+    return CategoryAcl::Denied;
+  }
 
-  const auto defaults = cryptonote::rpc::pagination::make(3, 0, 25, 100);
-  EXPECT_EQ(3u, defaults.offset);
-  EXPECT_EQ(25u, defaults.limit);
-}
-
-TEST(rpc_validation, batch_request_caps_are_defined)
-{
-  EXPECT_EQ(100u, cryptonote::rpc::max_tx_hashes_per_request);
-  EXPECT_EQ(1000u, cryptonote::rpc::max_key_images_per_request);
-  EXPECT_EQ(100u, cryptonote::rpc::max_block_heights_per_request);
-  EXPECT_EQ(100u, cryptonote::rpc::max_block_hashes_per_request);
-  EXPECT_EQ(1000u, cryptonote::rpc::max_block_headers_range);
-  EXPECT_EQ(1000u, cryptonote::rpc::max_service_node_pubkeys_per_request);
+  inline bool authorize(std::string_view command, CategoryAcl granted) noexcept
+  {
+    const CategoryAcl required = required_acl_for(command);
+    // Unknown / explicitly denied commands never authorize, even for Admin.
+    if (required == CategoryAcl::Denied)
+      return false;
+    return allows(required, granted);
+  }
 }
