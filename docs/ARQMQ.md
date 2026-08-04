@@ -19,7 +19,7 @@ by OxenMQ, while preserving Arqma naming, ports and operator UX.
 ## Migration steps
 
 1. ~~Extract stable facade headers from `SNNetwork` usage sites.~~
-2. ~~Add feature flag `--arqnet-backend=legacy|arqmq` (daemon arg).~~
+2. ~~Add feature flag `--arqnet-backend=legacy-arqnet|arqmq` (daemon arg).~~
 3. Vendor OxenMQ **or** port selected subsystems under Arqma copyright/license
    notices without Co-Authored-By trailers (remaining).
 4. Dual-run on testnet/stagenet.
@@ -69,7 +69,7 @@ Aligned with `SN_ZMQ_MAX_MSG_SIZE` (1 MiB):
 ## Migration steps
 
 1. Extract stable facade headers from `SNNetwork` usage sites.
-2. Add feature flag `--arqnet-backend=legacy|arqmq` (daemon arg).
+2. Add feature flag `--arqnet-backend=legacy-arqnet|arqmq` (daemon arg).
 3. Vendor OxenMQ **or** port selected subsystems under Arqma copyright/license
    notices without Co-Authored-By trailers.
 4. Dual-run on testnet/stagenet.

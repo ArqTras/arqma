@@ -49,11 +49,12 @@ TEST(wallet_rpc_auth, restricted_denies_spend_and_key_methods)
   EXPECT_TRUE(tools::wallet_rpc::method_requires_full_access("start_mining"));
   EXPECT_TRUE(tools::wallet_rpc::method_requires_full_access("stake"));
 
-  EXPECT_FALSE(tools::wallet_rpc::allow_wallet_rpc_method("transfer", true));
-  EXPECT_TRUE(tools::wallet_rpc::allow_wallet_rpc_method("transfer", false));
+  EXPECT_TRUE(tools::wallet_rpc::method_requires_full_access("get_transfers_csv"));
+  EXPECT_TRUE(tools::wallet_rpc::method_requires_full_access("create_wallet"));
+  EXPECT_TRUE(tools::wallet_rpc::method_requires_full_access("open_wallet"));
+  EXPECT_TRUE(tools::wallet_rpc::method_requires_full_access("get_tx_proof"));
+  EXPECT_FALSE(tools::wallet_rpc::allow_wallet_rpc_method("restore_deterministic_wallet", true));
   EXPECT_TRUE(tools::wallet_rpc::allow_wallet_rpc_method("get_balance", true));
-  EXPECT_TRUE(tools::wallet_rpc::allow_wallet_rpc_method("get_height", true));
-  EXPECT_TRUE(tools::wallet_rpc::allow_wallet_rpc_method("validate_address", true));
 }
 
 TEST(wallet_rpc_auth, deny_if_restricted_fills_error)

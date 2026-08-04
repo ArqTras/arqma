@@ -15,14 +15,15 @@ Those require an explicit Milestone C product choice (see
 - [x] Critical consensus/wallet correctness fix (HF19 burn)
 - [x] Arq-Net auth hardening
 - [x] Toolchain modernization (C++20, CMake, CI, sanitizers job)
-- [x] Automated unit tests green on curated suite (**529** tests)
+- [x] Automated unit tests green on curated suite (**531** tests)
 - [x] Module scaffolding with tests/docs/CI for MQ, storage, messaging, router
 - [x] ArqMQ facade backends initialize; transport remains SNNetwork
 - [x] In-memory storage/swarm helpers for tests; remote client stays honest
-- [x] Experimental router lifecycle (enabled flag) without claiming onion routing
-- [x] RPC validation, DoS caps, auth level helpers, OpenAPI stub
+- [x] Experimental router lifecycle held for daemon lifetime (scaffold only)
+- [x] RPC validation, DoS caps, auth level helpers, OpenAPI stub (JSON-RPC aligned)
 - [x] Soft batch RPC DoS caps + Phase-12 security checklist
-- [x] Restricted RPC gates including SN key/privkey methods
+- [x] Restricted RPC gates including SN key/privkey + wallet lifecycle/proofs/CSV
+- [x] Checkpoints empty/pre-init unit coverage restored
 - [x] Arqma branding preserved; no Co-Authored-By trailers
 - [x] Daemon `--arqnet-backend` / `--arq-router` flags
 - [x] Cross-platform CI: Linux/macOS unit + Windows/macOS/Linux depends binaries

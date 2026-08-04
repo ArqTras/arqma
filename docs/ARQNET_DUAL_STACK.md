@@ -5,7 +5,7 @@ backend without breaking operators.
 
 ## Goals
 
-- Keep `--arqnet-backend=legacy` as the default until one stable release cycle
+- Keep `--arqnet-backend=legacy-arqnet` as the default until one stable release cycle
   after the native backend is production-ready.
 - Allow `--arqnet-backend=arqmq` on testnet/stagenet first.
 - Preserve Arqma naming, ports and Curve25519 SN identity.
@@ -23,7 +23,7 @@ backend without breaking operators.
 
 | Flag | Meaning |
 |------|---------|
-| `--arqnet-backend=legacy` | Current production path (default) |
+| `--arqnet-backend=legacy-arqnet` | Current production path (default) |
 | `--arqnet-backend=arqmq` | Experimental; falls back if unsupported |
 
 ## Exit criteria before default flip

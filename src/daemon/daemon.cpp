@@ -69,6 +69,7 @@ public:
   t_core core;
   t_p2p p2p;
   std::vector<std::unique_ptr<t_rpc>> rpcs;
+  std::unique_ptr<arq_router::RouterService> router_service;
 
   t_internals(
       boost::program_options::variables_map const & vm
@@ -127,16 +128,18 @@ public:
       router_cfg.enabled = true;
       router_cfg.data_dir = (boost::filesystem::path(command_line::get_arg(vm, cryptonote::arg_data_dir)) / "arq-router").string();
       router_cfg.listen = "127.0.0.1:1090";
-      arq_router::RouterService router{router_cfg};
-      const auto router_ec = router.init();
+      router_service = std::make_unique<arq_router::RouterService>(router_cfg);
+      const auto router_ec = router_service->init();
       if (router_ec)
+      {
         MWARNING("Arq router scaffold init failed: " << router_ec.message());
+        router_service.reset();
+      }
       else
       {
-        (void)router.start();
-        MINFO("Arq privacy router experimental lifecycle started (state=" << router.state_name()
+        (void)router_service->start();
+        MINFO("Arq privacy router experimental lifecycle started (state=" << router_service->state_name()
               << ", data_dir=" << router_cfg.data_dir << "; no production onion routing yet)");
-        (void)router.stop();
       }
     }
 
@@ -149,6 +152,15 @@ public:
     {
       auto restricted_rpc_port = command_line::get_arg(vm, restricted_rpc_port_arg);
       rpcs.emplace_back(new t_rpc{vm, core, p2p, true, restricted_rpc_port, "restricted"});
+    }
+  }
+
+  ~t_internals()
+  {
+    if (router_service)
+    {
+      (void)router_service->stop();
+      router_service.reset();
     }
   }
 };

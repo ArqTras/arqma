@@ -1,14 +1,16 @@
 openapi: 3.0.3
 info:
   title: Arqmad RPC
-  version: 0.2.0
+  version: 0.2.1
   description: >
-    Minimal OpenAPI scaffold for selected Arqma daemon endpoints during the
-    upgrade branch modernization work. Privileged wallet-rpc methods are
-    documented under the separate `arqma-wallet-rpc` surface; daemon operator
-    methods require unrestricted RPC (see `rpc_auth.h`). Cleartext storage
-    reachability uses an HTTP GET probe after TCP connect; TLS endpoints
-    remain TCP-only until a TLS client is linked.
+    Minimal OpenAPI scaffold for selected Arqma daemon JSON-RPC methods during
+    the upgrade branch modernization work. Ping/status helpers are JSON-RPC
+    methods (`arqnet_ping`, `storage_server_ping`, `get_arqnet_status`,
+    `get_storage_status`), not REST GET paths. Privileged wallet-rpc methods
+    are documented under the separate `arqma-wallet-rpc` surface; daemon
+    operator methods require unrestricted RPC (see `rpc_auth.h`). Cleartext
+    storage reachability uses an HTTP GET probe after TCP connect; TLS
+    endpoints remain TCP-only until a TLS client is linked.
 servers:
   - url: http://127.0.0.1:19994
     description: arqmad JSON-RPC / status helpers
@@ -47,33 +49,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/JsonRpcResponse'
-  /storage_server/ping:
-    get:
-      summary: Check storage integration reachability
-      description: >
-        Maps to daemon storage client ping. For `http://` URLs the daemon
-        performs TCP connect plus a minimal HTTP/1.1 GET and treats any
-        `HTTP/` response as reachable. `https://` currently uses TCP connect
-        only.
-      operationId: storageServerPing
-      responses:
-        '200':
-          description: Ping status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PingResponse'
-  /arqnet/ping:
-    get:
-      summary: Check Arq-Net reachability
-      operationId: arqnetPing
-      responses:
-        '200':
-          description: Ping status
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PingResponse'
 components:
   schemas:
     JsonRpcRequest:
@@ -97,6 +72,8 @@ components:
             - get_service_nodes
             - get_arqnet_status
             - get_storage_status
+            - arqnet_ping
+            - storage_server_ping
             - get_block_header_by_hash
             - get_block_headers_range
             - start_mining
@@ -125,6 +102,8 @@ components:
             - set_bans
             - flush_txpool
             - prune_blockchain
+            - get_service_node_key
+            - get_service_node_privkey
     WalletRpcBatchLimits:
       type: object
       description: Soft caps from wallet_rpc_validation.h

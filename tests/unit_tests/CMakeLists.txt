@@ -40,7 +40,8 @@ set(unit_tests_sources
   bulletproofs.cpp
   canonical_amounts.cpp
   chacha.cpp
-  # checkpoints.cpp  # TODO(upgrade): crashes under current SN-aware checkpoint API on macOS CI
+  // checkpoints.cpp  # SN-aware empty/pre-init path (null DB safe)
+  checkpoints.cpp
   clsag.cpp
   command_line.cpp
   decompose_amount_into_digits.cpp
