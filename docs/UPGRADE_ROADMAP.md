@@ -2,7 +2,10 @@
 
 Branch: `upgrade`  
 Goal: modernize Arqma to production-grade quality using mature Monero/Oxen
-patterns while preserving Arqma identity.
+patterns while preserving Arqma identity — **fully functional on Linux,
+Windows, and macOS**.
+
+Platform matrix: [`docs/PLATFORM.md`](PLATFORM.md).
 
 ## Phase status
 
@@ -17,9 +20,27 @@ patterns while preserving Arqma identity.
 | 7 RPC modernization | **Foundation done** | Validation, wallet caps/auth, OpenAPI 0.2.0 |
 | 8 P2P improvements | **Foundation done** | Limits + Levin/preauth lock |
 | 9 Performance | **Baseline** | Local measurement doc |
-| 10 Testing | **In progress** | 525 curated unit tests green locally |
-| 11 CI | **Foundation done** | unit + sanitizers + format-check |
-| 12 Final review | **Gate ready** | Checklist + completeness gate |
+| 10 Testing | **Done (curated)** | **529** unit tests green; integration suites opt-in |
+| 11 CI | **Done (3 OS)** | Linux/macOS native unit + Windows/macOS/Linux depends |
+| 12 Final review | **Gate ready** | Checklist + completeness gate + platform doc |
+
+## Cross-platform delivery map
+
+```text
+                    ┌─────────────────────────────────────┐
+                    │         upgrade foundation PR         │
+                    └─────────────────────────────────────┘
+                                      │
+          ┌───────────────────────────┼───────────────────────────┐
+          ▼                           ▼                           ▼
+   ┌─────────────┐            ┌─────────────┐            ┌─────────────┐
+   │   Linux     │            │   macOS     │            │  Windows    │
+   │ unit+ASan   │            │ macos-14    │            │ mingw x64   │
+   │ depends x64 │            │ unit native │            │ depends     │
+   │ depends arm │            │ depends x64 │            │ binaries    │
+   │             │            │ depends arm │            │             │
+   └─────────────┘            └─────────────┘            └─────────────┘
+```
 
 ## Dependency map (summary)
 
@@ -42,6 +63,7 @@ patterns while preserving Arqma identity.
 3. Messaging library patterns (OxenMQ concepts → Arqma naming)
 4. Operator RPC clarity and ping/reachability reporting
 5. clang-format / clang-tidy baselines
+6. Darwin depends via clang + lld (no legacy cctools for CI)
 
 ## Requires SN economics / product decision (Milestone C)
 
@@ -54,7 +76,7 @@ patterns while preserving Arqma identity.
 Do not implement those as drive-by copies; schedule behind an explicit product
 milestone.
 
-## Milestone A — platform
+## Milestone A — platform (**complete**)
 
 - [x] Architectural analysis + docs
 - [x] Fix HF19 burn gate off-by-one
@@ -65,14 +87,15 @@ milestone.
 - [x] Native GitHub Actions CI + sanitizer job
 - [x] `.clang-format` / `.clang-tidy`
 - [x] CMake ≥ 3.16, C++20 (`-fno-char8_t` bridge)
-- [x] Green local unit suite (485 tests)
-- [x] Restore legacy fixtures (base58/uri/parse_amount/sha256/mul_div)
-- [ ] Fix checkpoints unit crash
+- [x] Green curated unit suite (**529** tests)
+- [x] Restore legacy fixtures (base58/uri/parse_amount/sha256/mul_div/fee/…)
+- [x] Hardfork version + serialization basic unit coverage
 - [x] ArqMQ dual-backend facade (transport remains SNNetwork)
-- [x] RPC validation / pagination / DoS caps
+- [x] RPC validation / pagination / DoS caps / restricted SN-key RPCs
 - [x] P2P limit aliases + packet-budget unit coverage
 - [x] Messaging envelope + onion/swarm helpers
-- [x] Non-blocking clang-format CI check
+- [x] Linux + macOS native unit CI; Windows/macOS/Linux depends binaries
+- [x] Platform matrix documentation (`docs/PLATFORM.md`)
 
 ## Milestone B — MQ / SN hygiene
 
@@ -101,3 +124,4 @@ out of scope for the foundation PR (`docs/PR_COMPLETENESS_GATE.md`).
 - SESH / L2 / BLS tokenomics copy
 - Wallet3 wholesale import without API plan
 - Co-authored commit trailers / unnecessary contributor metadata
+- Enabling broken legacy `core_tests` in default CI before API migration

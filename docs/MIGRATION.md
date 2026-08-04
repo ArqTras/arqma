@@ -9,12 +9,14 @@
    git submodule update --init --recursive
    ```
 2. Requires **CMake ≥ 3.16** and a **C++20** compiler.
-3. Recommended local verification:
+3. Recommended local verification (Linux / macOS):
    ```bash
-   make release-test
-   # or
-   make debug-test
+   cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+     -DBUILD_TESTS=ON -DBUILD_INTEGRATION_TESTS=OFF
+   cmake --build build --parallel --target unit_tests
+   ctest --test-dir build -R unit_tests --output-on-failure
    ```
+   Cross binaries (Windows / macOS / Linux targets): see `docs/PLATFORM.md`.
 4. Formatting baseline: `.clang-format` (C++20). Do not mass-reformat unrelated
    files in feature PRs.
 
@@ -39,9 +41,10 @@
 |------|--------|
 | Mainnet consensus rules | Unchanged schedule; burn gate bugfix aligns core with intended HF19 behaviour |
 | P2P wire | No intentional breaking change in this milestone |
-| RPC | Additive: `arqnet_ping`, `last_arqnet_ping` |
+| RPC | Additive: `arqnet_ping`, `last_arqnet_ping`, `get_arqnet_status`, `get_storage_status`; restricted denials for operator/SN-key methods |
 | Wallet cache | No format bump in this milestone |
-| Build | C++20 may require newer toolchains than older Arqma docs listed |
+| Build | C++20; Linux/macOS/Windows via native + depends (see `docs/PLATFORM.md`) |
+| Platforms | Linux x64/arm, macOS x64/arm64, Windows x64 |
 
 ## Rollback
 

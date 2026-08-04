@@ -20,7 +20,8 @@
 - Centralize wallet-rpc `--restricted-rpc` denials (`wallet_rpc_auth.h`) and
   close gaps on `relay_tx`, `get_tx_key`, `export_key_images`, mining controls.
 - Gate additional daemon operator RPCs (`set_bans`, `flush_txpool`, `save_bc`,
-  `relay_tx`, log controls, `pop_blocks`, `prune_blockchain`) via `rpc_auth`
+  `relay_tx`, log controls, `pop_blocks`, `prune_blockchain`,
+  `get_service_node_key`, `get_service_node_privkey`) via `rpc_auth`
   with `CORE_RPC_ERROR_CODE_RESTRICTED`.
 - Cap ArqMQ/Arq-Net request framing (1 MiB / 16 frames / 64-byte command names)
   via `authorize_request` on vote_ob/ping/pong.
@@ -52,12 +53,12 @@
 ### Tests
 
 - Add CLSAG and HF19 unit coverage; curate a green C++20 unit suite for CI
-  while legacy Monero-era fixtures are restored incrementally.
+  while legacy Monero-era fixtures are restored incrementally (**529** tests).
+- Add hardfork version constants and basic serialization roundtrip tests.
 - Add unit coverage for RPC validation helpers, P2P hardening constants,
   ArqMQ facade state and messaging envelope roundtrips.
 - Add unit coverage for daemon `rpc_auth` access-level helpers.
-- Restore `mul_div` and `get_xtype_from_string` legacy unit coverage (216
-  curated tests green locally).
+- Restore `mul_div` and `get_xtype_from_string` legacy unit coverage.
 - Restore `sha256` unit coverage after `tools::sha256sum_str` API migration.
 - Restore `base58` / account-address unit coverage with Arqma mainnet (`ar`) vectors.
 - Restore `uri` wallet URI coverage for `arqma:` scheme with generated testnet addresses.
@@ -68,7 +69,11 @@
 
 - Raise CMake minimum to 3.16; build as C++20 with `-fno-char8_t` compatibility
   for existing `u8""` string usage in epee/protocol code.
-- Add native GitHub Actions workflow (`ci.yml`) with unit tests and ASan/UBSan.
+- Default `BUILD_INTEGRATION_TESTS=OFF` so CI builds curated `unit_tests` only.
+- Add native GitHub Actions workflow (`ci.yml`): Linux Release/Debug unit,
+  macOS-14 unit, ASan/UBSan, format-check, Windows depends gate.
+- Modernize macOS depends cross-compile to clang-19 + lld; keep Windows/Linux/
+  macOS release binaries in `depends.yml`.
 - Fix `make coverage` to enable tests; add `release-test` and `debug-test`.
 - Add `.clang-format` and `.clang-tidy` baselines.
 - Add a non-blocking `clang-format --dry-run` CI job for upgrade modules.
@@ -77,6 +82,7 @@
 
 - Add architecture, security, Arq-Net, migration and upgrade roadmap docs under
   `docs/`.
+- Add `docs/PLATFORM.md` — Linux / Windows / macOS support and CI map.
 - Add phase 3–12 status matrix, RPC/P2P plans, OpenAPI stub and PR completeness gate.
 - Add `SECURITY_REVIEW_CHECKLIST.md` and `ERROR_SEMANTICS.md` for Phase 12 gating.
 - Add `PROCESS_BOUNDARIES.md` and ArqMQ command registry notes.

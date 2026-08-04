@@ -9,12 +9,18 @@
 ## Build / install notes
 
 - Toolchain: **C++20**, CMake ≥ **3.16**
-- Recommended verify:
+- Platforms: **Linux, macOS, Windows** — see [`docs/PLATFORM.md`](PLATFORM.md)
+- Recommended verify (native Linux/macOS):
   ```bash
-  cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
-  cmake --build build --parallel
-  ctest --test-dir build -R unit_tests --output-on-failure
+  cmake -S . -B build -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DBUILD_TESTS=ON \
+    -DBUILD_INTEGRATION_TESTS=OFF
+  cmake --build build --parallel --target unit_tests hash-target-tests
+  ctest --test-dir build -R 'unit_tests|hash-target' --output-on-failure
   ```
+- Windows / cross macOS release binaries: `make depends target=<triplet>`
+  (CI matrix in `.github/workflows/depends.yml`).
 
 ## New / restored operator knobs
 

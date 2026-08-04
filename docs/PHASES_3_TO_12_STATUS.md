@@ -17,12 +17,12 @@ Milestone C decisions.
 | 7 RPC modernization | Foundation done | validation, pagination, DoS caps, auth helpers, OpenAPI | Generated OpenAPI + full auth middleware wiring |
 | 8 P2P improvements | Foundation done | limit aliases, compile-time budget checks, unit coverage | Measured rollout tuning |
 | 9 Performance | Baseline done | `docs/PERFORMANCE.md` local timings | CI hardware baselines / IBD profiles |
-| 10 Testing | Foundation done | curated suite **485** green locally | integration/daemon network tests; remaining API-drift fixtures |
-| 11 CI | Foundation done | unit Release/Debug, ASan/UBSan, format-check | TSan optional; coverage artifacts |
-| 12 Final review | Gate ready | security checklist + completeness gate | soak / signed release / stagenet |
+| 10 Testing | Foundation done | curated suite **529** green (Linux/macOS CI) | `core_tests` under `BUILD_INTEGRATION_TESTS`; remaining API-drift fixtures |
+| 11 CI | Done (3 OS) | Linux/macOS unit, ASan, format; Windows/macOS/Linux depends | Optional TSan; native MSVC unit job |
+| 12 Final review | Gate ready | security checklist + completeness gate + `PLATFORM.md` | soak / signed release / stagenet |
 
 ## Recommended next milestone outputs
 
 1. Choose Milestone C primary value-add (Storage / Blink / Pulse / Router).
 2. Port dedicated ArqMQ transport behind feature flag without breaking SNNetwork.
-3. Restore remaining safe legacy fixtures (`fee` API, `hardfork` mocks, …).
+3. Migrate legacy `core_tests` incrementally under `BUILD_INTEGRATION_TESTS=ON`.

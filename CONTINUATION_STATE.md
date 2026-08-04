@@ -4,23 +4,29 @@ Branch: `upgrade` · Remote: `origin/upgrade` · Authorship: ArqTras only
 Hooks: `git -c core.hooksPath=/tmp/empty-git-hooks`  
 Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
-## Local quality gate (latest)
+## Local quality gate
 
 - `ninja unit_tests` → **529** passed
 - `BUILD_INTEGRATION_TESTS=OFF` (default)
 
-## Cross-platform gates (commit `d44a598a`)
+## Cross-platform gates
 
 | Gate | Status |
 |------|--------|
-| Linux unit Release/Debug + ASan (`ci.yml`) | ✅ |
-| macOS-14 unit Release (`ci.yml`) | ✅ |
-| Format check | ✅ |
-| Windows x64 depends (mingw) | ✅ |
-| Linux x86_64 / armv8 / RPi depends | ✅ |
-| macOS x64 + arm64 depends (clang-19+lld) | ✅ |
+| Linux unit + ASan (`ci.yml`) | ✅ |
+| macOS-14 unit (`ci.yml`) | ✅ |
+| Windows/macOS/Linux depends (`depends.yml`) | ✅ |
+| Docs: `PLATFORM.md` + roadmap + PR description | in flight |
 
-## Next exact implementation
+## Docs map
 
-1. Migrate legacy `core_tests` under `BUILD_INTEGRATION_TESTS=ON` (default OFF)
-2. Prefer local green before every push; strip Co-authored-by
+- `docs/PLATFORM.md` — OS matrix
+- `docs/UPGRADE_ROADMAP.md` — phase / milestone map
+- `docs/PR_COMPLETENESS_GATE.md` — merge claims
+- `docs/RELEASE_NOTES_upgrade_A.md` — release notes
+- `docs/OPERATOR_UPGRADE.md` / `docs/MIGRATION.md`
+
+## Next
+
+1. Milestone C product choice (Storage / Blink / Pulse / Router)
+2. Migrate `core_tests` under `BUILD_INTEGRATION_TESTS=ON`
