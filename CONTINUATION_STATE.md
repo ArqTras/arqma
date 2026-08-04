@@ -9,17 +9,18 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - `ninja unit_tests` → **529** passed
 - `BUILD_INTEGRATION_TESTS=OFF` (default)
 
-## Cross-platform gates
+## Cross-platform gates (commit `d44a598a`)
 
 | Gate | Status |
 |------|--------|
-| Linux/macOS unit + ASan (`ci.yml`) | ✅ on `607abec5` / prior |
+| Linux unit Release/Debug + ASan (`ci.yml`) | ✅ |
+| macOS-14 unit Release (`ci.yml`) | ✅ |
+| Format check | ✅ |
 | Windows x64 depends (mingw) | ✅ |
-| Linux x86_64 / armv8 depends | ✅ |
-| macOS depends cross | 🔧 clang-19+lld darwin host (Monero-style) in flight |
+| Linux x86_64 / armv8 / RPi depends | ✅ |
+| macOS x64 + arm64 depends (clang-19+lld) | ✅ |
 
 ## Next exact implementation
 
-1. Confirm `build-depends-macOS-*` green after darwin.mk/lld port
-2. Migrate legacy `core_tests` under `BUILD_INTEGRATION_TESTS=ON` (default OFF)
-3. Prefer local green before every push; strip Co-authored-by
+1. Migrate legacy `core_tests` under `BUILD_INTEGRATION_TESTS=ON` (default OFF)
+2. Prefer local green before every push; strip Co-authored-by
