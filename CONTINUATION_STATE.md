@@ -6,24 +6,20 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
 ## Local quality gate (latest)
 
-- `ninja unit_tests` → **529** passed (~2.0s)
-- `ctest -R 'unit_tests|hash-target'` → green
+- `ninja unit_tests` → **529** passed
 - `BUILD_INTEGRATION_TESTS=OFF` (default)
 
-## Cross-platform gates (commit `2ef4a62c` + follow-ups)
+## Cross-platform gates
 
 | Gate | Status |
 |------|--------|
-| Linux unit Release/Debug (`ci.yml`) | ✅ |
-| macOS-14 unit Release (`ci.yml`) | ✅ |
-| Linux ASan/UBSan (`ci.yml`) | ✅ |
-| Format check (`ci.yml`) | ✅ |
+| Linux/macOS unit + ASan (`ci.yml`) | ✅ on `607abec5` / prior |
 | Windows x64 depends (mingw) | ✅ |
 | Linux x86_64 / armv8 depends | ✅ |
-| macOS depends cross (zeromq `-std=c++17`) | 🔧 fix in flight |
+| macOS depends cross | 🔧 clang-19+lld darwin host (Monero-style) in flight |
 
 ## Next exact implementation
 
-1. Land zeromq darwin CXXFLAGS fix; confirm `build-depends-macOS-*` green
+1. Confirm `build-depends-macOS-*` green after darwin.mk/lld port
 2. Migrate legacy `core_tests` under `BUILD_INTEGRATION_TESTS=ON` (default OFF)
 3. Prefer local green before every push; strip Co-authored-by

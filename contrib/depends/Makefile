@@ -14,6 +14,9 @@ DOWNLOAD_RETRIES:=3
 HOST_ID_SALT ?= salt
 BUILD_ID_SALT ?= salt
 
+C_STANDARD ?= c11
+CXX_STANDARD ?= c++17
+
 host:=$(BUILD)
 ifneq ($(HOST),)
 host:=$(HOST)
