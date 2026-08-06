@@ -126,8 +126,13 @@ namespace daemon_args
 
   const command_line::arg_descriptor<std::string> arg_arqnet_backend = {
     "arqnet-backend"
-  , "Arq-Net messaging backend: legacy-arqnet (default) or arqmq (experimental)"
+  , "Arq-Net messaging backend: legacy-arqnet (default, required for mainnet) or arqmq (experimental; non-mainnet / explicit override)"
   , "legacy-arqnet"
+  };
+  const command_line::arg_descriptor<bool> arg_arqnet_allow_experimental = {
+    "arqnet-allow-experimental"
+  , "Allow --arqnet-backend=arqmq on mainnet (NOT recommended for production service nodes)"
+  , false
   };
   const command_line::arg_descriptor<bool> arg_arq_router = {
     "arq-router"

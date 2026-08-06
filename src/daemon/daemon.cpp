@@ -38,6 +38,7 @@
 #include "rpc/zmq_server.h"
 #include "cryptonote_protocol/arqnet.h"
 #include "arqmq/arqmq.h"
+#include "arqmq/backend_policy.hpp"
 #include "arq_router/router_service.h"
 #include "arq_storage/storage_client.h"
 
@@ -84,18 +85,32 @@ public:
     arqnet::init_core_callbacks();
 
     {
-      arqmq::Config mq_cfg{};
-      const auto backend = command_line::get_arg(vm, daemon_args::arg_arqnet_backend);
-      if (backend == "arqmq")
-        mq_cfg.backend = arqmq::Backend::ArqMq;
+      const bool testnet = command_line::get_arg(vm, cryptonote::arg_testnet_on);
+      const bool stagenet = command_line::get_arg(vm, cryptonote::arg_stagenet_on);
+      const arqmq::NetworkClass net =
+          testnet ? arqmq::NetworkClass::Testnet
+                  : stagenet ? arqmq::NetworkClass::Stagenet
+                             : arqmq::NetworkClass::Mainnet;
+
+      const auto backend_arg = command_line::get_arg(vm, daemon_args::arg_arqnet_backend);
+      const bool allow_experimental =
+          command_line::get_arg(vm, daemon_args::arg_arqnet_allow_experimental);
+      const auto selection =
+          arqmq::resolve_backend(backend_arg, net, allow_experimental);
+
+      if (selection.overridden)
+        MWARNING("Arq-Net backend selection overridden for mainnet safety: " << selection.reason);
       else
-        mq_cfg.backend = arqmq::Backend::LegacyArqNet;
+        MINFO("Arq-Net backend policy: " << selection.reason);
+
+      arqmq::Config mq_cfg{};
+      mq_cfg.backend = selection.backend;
 
       const auto mq_ec = arqmq::init(mq_cfg);
       if (mq_ec)
       {
-        MWARNING("ArqMQ backend '" << backend << "' unavailable (" << mq_ec.message()
-                                   << "); continuing with legacy Arq-Net path");
+        MWARNING("ArqMQ backend init failed (" << mq_ec.message()
+                                   << "); continuing with legacy Arq-Net path for compatibility");
         arqmq::Config fallback{};
         fallback.backend = arqmq::Backend::LegacyArqNet;
         (void)arqmq::init(fallback);
@@ -110,7 +125,7 @@ public:
         if (arqmq::current_backend() == arqmq::Backend::ArqMq && !arqmq::native_transport_active())
           MWARNING("ArqMQ backend selected but dedicated socket stack is not active");
         if (!arqmq::peer_mesh_is_snnetwork())
-          MWARNING("Peer mesh is not SNNetwork; verify dual-run cutover readiness");
+          MWARNING("Peer mesh is not SNNetwork; verify dual-run cutover readiness before mainnet use");
       }
     }
 

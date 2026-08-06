@@ -4,22 +4,20 @@ Branch: `upgrade` · Remote: `origin/upgrade` · Authorship: ArqTras only
 Hooks: `git -c core.hooksPath=/tmp/empty-git-hooks`  
 Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
+## Mainnet readiness locks
+
+- Default `--arqnet-backend=legacy-arqnet`
+- Peer mesh always `snnetwork` (quorum wire unchanged)
+- Mainnet refuses `--arqnet-backend=arqmq` unless `--arqnet-allow-experimental`
+- Testnet/stagenet may exercise `SocketStack`
+
 ## Local quality gate
 
-- `ninja unit_tests` → **539** passed
-- `ninja daemon` → OK
-- `BUILD_INTEGRATION_TESTS=OFF` (default)
+- `ninja unit_tests` → **543** passed
+- `ninja daemon` OK
 
-## Milestone B + dual-run (compatibility)
+## Next
 
-- [x] Dedicated `arqmq::SocketStack` behind `--arqnet-backend=arqmq`
-- [x] Dual-run coexistence: native `transport=arqmq` + peer `mesh=snnetwork`
-- [x] Default `--arqnet-backend=legacy-arqnet` unchanged (full wire compatibility)
-- [x] RPC `get_arqnet_status` reports `transport` and `mesh` separately
-- Remaining before default flip: stagenet mesh parity on native path
-
-## Compatibility lock
-
-Peer Curve/ZMQ quorum mesh stays on `arqnet::SNNetwork` for **both** backends
-until an explicit cutover. Experimental ArqMQ never replaces the live mesh wire
-protocol in this stage.
+1. Wait for CI green on tip
+2. Stagenet soak before any default/mesh cutover
+3. Milestone C only after product choice

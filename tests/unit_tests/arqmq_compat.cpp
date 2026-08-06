@@ -29,7 +29,7 @@
 #include "gtest/gtest.h"
 
 #include "arqmq/arqmq.h"
-#include "arqmq/mesh_bridge.hpp"
+#include "arqmq/backend_policy.hpp"
 #include "arqmq/socket_stack.hpp"
 #include "arqmq/transport.hpp"
 
@@ -38,6 +38,39 @@ TEST(arqmq_compat, default_config_is_legacy_snnetwork)
   const arqmq::Config defaults{};
   EXPECT_EQ(arqmq::Backend::LegacyArqNet, defaults.backend);
   EXPECT_EQ(arqmq::CategoryAcl::Denied, defaults.default_acl);
+}
+
+TEST(arqmq_compat, mainnet_refuses_arqmq_without_override)
+{
+  const auto sel = arqmq::resolve_backend("arqmq", arqmq::NetworkClass::Mainnet, false);
+  EXPECT_EQ(arqmq::Backend::LegacyArqNet, sel.backend);
+  EXPECT_TRUE(sel.overridden);
+  EXPECT_TRUE(arqmq::peer_mesh_is_snnetwork());
+}
+
+TEST(arqmq_compat, mainnet_allows_arqmq_only_with_explicit_override)
+{
+  const auto sel = arqmq::resolve_backend("arqmq", arqmq::NetworkClass::Mainnet, true);
+  EXPECT_EQ(arqmq::Backend::ArqMq, sel.backend);
+  EXPECT_FALSE(sel.overridden);
+}
+
+TEST(arqmq_compat, testnet_allows_experimental_arqmq)
+{
+  const auto sel = arqmq::resolve_backend("arqmq", arqmq::NetworkClass::Testnet, false);
+  EXPECT_EQ(arqmq::Backend::ArqMq, sel.backend);
+  EXPECT_FALSE(sel.overridden);
+}
+
+TEST(arqmq_compat, mainnet_default_and_unknown_stay_legacy)
+{
+  EXPECT_EQ(arqmq::Backend::LegacyArqNet,
+            arqmq::resolve_backend("legacy-arqnet", arqmq::NetworkClass::Mainnet).backend);
+  EXPECT_EQ(arqmq::Backend::LegacyArqNet,
+            arqmq::resolve_backend("", arqmq::NetworkClass::Mainnet).backend);
+  const auto unknown = arqmq::resolve_backend("nope", arqmq::NetworkClass::Mainnet);
+  EXPECT_EQ(arqmq::Backend::LegacyArqNet, unknown.backend);
+  EXPECT_TRUE(unknown.overridden);
 }
 
 TEST(arqmq_compat, legacy_path_never_starts_native_stack)
@@ -60,7 +93,6 @@ TEST(arqmq_compat, arqmq_keeps_peer_mesh_on_snnetwork)
   EXPECT_EQ(arqmq::Backend::ArqMq, arqmq::current_backend());
   EXPECT_TRUE(arqmq::native_transport_active());
   EXPECT_STREQ(arqmq::k_transport_arqmq, arqmq::transport_name());
-  // Full wire compatibility: peer mesh does not flip with the facade backend.
   EXPECT_STREQ(arqmq::k_transport_snnetwork, arqmq::mesh_transport_name());
   EXPECT_TRUE(arqmq::peer_mesh_is_snnetwork());
 

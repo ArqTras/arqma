@@ -1,10 +1,12 @@
 set(arqmq_sources
   arqmq.cpp
+  backend_policy.cpp
   mesh_bridge.cpp
   socket_stack.cpp)
 
 set(arqmq_headers
   arqmq.h
+  backend_policy.hpp
   transport.hpp
   socket_stack.hpp
   mesh_bridge.hpp

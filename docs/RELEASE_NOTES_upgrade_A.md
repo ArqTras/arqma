@@ -45,5 +45,6 @@ Details: `docs/PLATFORM.md`.
 - Legacy `core_tests` / some Monero-era fixtures remain behind
   `BUILD_INTEGRATION_TESTS=ON` until API migration.
 - ArqMQ dedicated `SocketStack` lands behind `--arqnet-backend=arqmq` (`transport=arqmq`);
-  peer quorum mesh remains SNNetwork until dual-run cutover.
+  peer quorum mesh remains SNNetwork until dual-run cutover. On **mainnet**, `arqmq` is
+  refused unless `--arqnet-allow-experimental` is set.
 - Full Storage Server / Lokinet-class router / Pulse / Blink are Milestone C.

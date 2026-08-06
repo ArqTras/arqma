@@ -25,8 +25,9 @@ backend without breaking operators.
 
 | Flag | Meaning |
 |------|---------|
-| `--arqnet-backend=legacy-arqnet` | Current production path (default) |
-| `--arqnet-backend=arqmq` | Experimental dedicated `SocketStack` (`transport=arqmq`); falls back to legacy if init fails |
+| `--arqnet-backend=legacy-arqnet` | Current production path (default; **required for mainnet**) |
+| `--arqnet-backend=arqmq` | Experimental SocketStack; allowed on testnet/stagenet; mainnet needs `--arqnet-allow-experimental` |
+| `--arqnet-allow-experimental` | Explicit mainnet override for `arqmq` (not for production SNs) |
 
 ## Exit criteria before default flip
 
