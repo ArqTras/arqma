@@ -35,6 +35,7 @@ set(unit_tests_sources
   arq_upgrade_modules.cpp
   arqmq_facade.cpp
   arqmq_transport.cpp
+  arqmq_compat.cpp
   apply_permutation.cpp
   base58.cpp
   burn_hf19.cpp

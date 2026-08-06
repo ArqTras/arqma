@@ -3176,6 +3176,7 @@ namespace cryptonote
     res.backend = arqmq::to_string(arqmq::current_backend());
     res.initialized = arqmq::is_initialized();
     res.transport = arqmq::transport_name();
+    res.mesh = arqmq::mesh_transport_name();
     res.last_arqnet_ping = static_cast<uint64_t>(m_core.m_last_arqnet_ping);
     res.status = CORE_RPC_STATUS_OK;
     return true;

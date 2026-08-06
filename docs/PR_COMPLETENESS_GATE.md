@@ -15,7 +15,7 @@ Those require an explicit Milestone C product choice (see
 - [x] Critical consensus/wallet correctness fix (HF19 burn)
 - [x] Arq-Net auth hardening
 - [x] Toolchain modernization (C++20, CMake, CI, sanitizers job)
-- [x] Automated unit tests green on curated suite (**535** tests)
+- [x] Automated unit tests green on curated suite (**539** tests)
 - [x] Module scaffolding with tests/docs/CI for MQ, storage, messaging, router
 - [x] ArqMQ facade + dedicated `SocketStack` behind `--arqnet-backend=arqmq`
 - [x] In-memory storage/swarm helpers for tests; remote client stays honest

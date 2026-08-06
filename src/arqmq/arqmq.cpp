@@ -28,6 +28,7 @@
 
 #include "arqmq.h"
 
+#include "mesh_bridge.hpp"
 #include "socket_stack.hpp"
 #include "transport.hpp"
 
@@ -126,6 +127,7 @@ std::error_code init(const Config& config) noexcept
         return ec;
       }
       state.socket_stack = std::move(stack);
+      attach_compatible_mesh_mirrors(*state.socket_stack);
       state.initialized = true;
       return {};
     } catch (...) {

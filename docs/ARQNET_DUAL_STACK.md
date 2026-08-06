@@ -16,8 +16,9 @@ backend without breaking operators.
 2. **Command registry (landed)** — map existing quorum/ping commands to ACL categories.
 3. **Native transport (landed)** — `arqmq::SocketStack` ZMQ worker path under Arqma naming;
    selected by `--arqnet-backend=arqmq` (`transport=arqmq`). Peer mesh still SNNetwork.
-4. **Dual-run** — native stack carries mesh parity; integration tests cover deny/auth.
-5. **Cutover** — default flips to `arqmq`; legacy retained one release.
+4. **Dual-run coexistence (landed, compatibility mode)** — native stack + SNNetwork mesh
+   run together; RPC reports `transport` vs `mesh`; peer wire protocol unchanged.
+5. **Cutover** — default flips to `arqmq` mesh only after stagenet parity; legacy retained one release.
 6. **Optional hard gate** — Arq-Net ping for uptime proofs after operator notice.
 
 ## Operator flags
@@ -30,6 +31,7 @@ backend without breaking operators.
 ## Exit criteria before default flip
 
 - [x] Native backend initializes on Linux CI (unit coverage for `SocketStack`)
+- [x] Dual-run coexistence with peer mesh locked on SNNetwork (full wire compatibility)
 - [ ] Quorum vote relay parity verified on stagenet (native mesh path)
 - [ ] Deny path for unknown Curve peers covered by integration test
 - [ ] Release notes + `docs/OPERATOR_UPGRADE.md` updated for default flip

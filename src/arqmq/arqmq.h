@@ -78,6 +78,12 @@ const char* transport_name() noexcept;
 /// Returns true when the dedicated ArqMQ socket stack is running.
 bool native_transport_active() noexcept;
 
+/// Peer Curve/ZMQ mesh transport name (SNNetwork while compatibility mode holds).
+const char* mesh_transport_name() noexcept;
+
+/// True while peer quorum traffic is carried by SNNetwork.
+bool peer_mesh_is_snnetwork() noexcept;
+
 /// Returns the default ACL configured at init (Denied after shutdown).
 CategoryAcl default_acl() noexcept;
 

@@ -23,8 +23,8 @@ quorum vote relay.
 1. ~~Extract stable facade headers from `SNNetwork` usage sites.~~
 2. ~~Add feature flag `--arqnet-backend=legacy-arqnet|arqmq` (daemon arg).~~
 3. ~~Dedicated ArqMQ socket/worker internals under Arqma naming (`SocketStack`).~~
-4. Dual-run on testnet/stagenet (mesh parity for `vote_ob` on native path).
-5. Make dedicated `arqmq` transport the default mesh; keep SNNetwork one release.
+4. ~~Dual-run coexistence with SNNetwork peer mesh (compatibility mode).~~
+5. Make dedicated `arqmq` **mesh** the default after stagenet parity; keep SNNetwork one release.
 6. Optionally require Arq-Net ping for uptime proofs after operator notice.
 
 ## Target architecture

@@ -6,19 +6,20 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
 ## Local quality gate
 
-- `ninja unit_tests` → **535** passed
+- `ninja unit_tests` → **539** passed
 - `ninja daemon` → OK
 - `BUILD_INTEGRATION_TESTS=OFF` (default)
 
-## Milestone B
+## Milestone B + dual-run (compatibility)
 
-- [x] Dedicated `arqmq::SocketStack` (ZMQ workers + ACL) behind `--arqnet-backend=arqmq`
-- [x] `transport_name()` / RPC report `arqmq` when native stack is active
-- [x] Default path remains `legacy-arqnet` / `snnetwork` (no operator cutover)
-- Remaining: dual-run mesh parity (`vote_ob` on SocketStack) before default flip
+- [x] Dedicated `arqmq::SocketStack` behind `--arqnet-backend=arqmq`
+- [x] Dual-run coexistence: native `transport=arqmq` + peer `mesh=snnetwork`
+- [x] Default `--arqnet-backend=legacy-arqnet` unchanged (full wire compatibility)
+- [x] RPC `get_arqnet_status` reports `transport` and `mesh` separately
+- Remaining before default flip: stagenet mesh parity on native path
 
-## Next
+## Compatibility lock
 
-1. Dual-run / stagenet mesh parity on native transport
-2. Milestone C product choice (Storage / Blink / Pulse / Router)
-3. Migrate `core_tests` under `BUILD_INTEGRATION_TESTS=ON`
+Peer Curve/ZMQ quorum mesh stays on `arqnet::SNNetwork` for **both** backends
+until an explicit cutover. Experimental ArqMQ never replaces the live mesh wire
+protocol in this stage.

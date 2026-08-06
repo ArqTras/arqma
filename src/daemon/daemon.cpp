@@ -104,10 +104,13 @@ public:
       {
         MINFO("Arq-Net messaging facade backend: " << arqmq::to_string(arqmq::current_backend())
                                                    << " (transport=" << arqmq::transport_name()
+                                                   << ", mesh=" << arqmq::mesh_transport_name()
                                                    << ", native=" << (arqmq::native_transport_active() ? "yes" : "no")
                                                    << ")");
         if (arqmq::current_backend() == arqmq::Backend::ArqMq && !arqmq::native_transport_active())
           MWARNING("ArqMQ backend selected but dedicated socket stack is not active");
+        if (!arqmq::peer_mesh_is_snnetwork())
+          MWARNING("Peer mesh is not SNNetwork; verify dual-run cutover readiness");
       }
     }
 

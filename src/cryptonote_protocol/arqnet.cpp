@@ -6,6 +6,8 @@
 #include "arqnet/sn_network.h"
 #include "arqnet/conn_matrix.h"
 #include "arqmq/command_registry.hpp"
+#include "arqmq/mesh_bridge.hpp"
+#include "arqmq/arqmq.h"
 
 #undef ARQMA_DEFAULT_LOG_CATEGORY
 #define ARQMA_DEFAULT_LOG_CATEGORY "arqnet"
@@ -156,6 +158,17 @@ void *new_snnwrapper(cryptonote::core &core, const std::string &bind)
   }
 
   obj->snn.data = obj;
+
+  // Dual-run coexistence: dedicated SocketStack (if --arqnet-backend=arqmq) stays
+  // attached for native ACL/framing checks, while peer Curve/ZMQ mesh remains
+  // this SNNetwork instance for full wire compatibility.
+  arqmq::attach_compatible_mesh_mirrors_if_active();
+  if (arqmq::native_transport_active())
+  {
+    MINFO("Arq-Net dual-run active: native transport=" << arqmq::transport_name()
+          << ", peer mesh=" << arqmq::mesh_transport_name()
+          << " (compatibility mode)");
+  }
 
   return obj;
 }

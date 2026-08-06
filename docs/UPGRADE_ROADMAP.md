@@ -20,7 +20,7 @@ Platform matrix: [`docs/PLATFORM.md`](PLATFORM.md).
 | 7 RPC modernization | **Foundation done** | Validation, wallet caps/auth, OpenAPI 0.2.0 |
 | 8 P2P improvements | **Foundation done** | Limits + Levin/preauth lock |
 | 9 Performance | **Baseline** | Local measurement doc |
-| 10 Testing | **Done (curated)** | **535** unit tests green; integration suites opt-in |
+| 10 Testing | **Done (curated)** | **539** unit tests green; integration suites opt-in |
 | 11 CI | **Done (3 OS)** | Linux/macOS native unit + Windows/macOS/Linux depends |
 | 12 Final review | **Gate ready** | Checklist + completeness gate + platform doc |
 
@@ -87,7 +87,7 @@ milestone.
 - [x] Native GitHub Actions CI + sanitizer job
 - [x] `.clang-format` / `.clang-tidy`
 - [x] CMake ≥ 3.16, C++20 (`-fno-char8_t` bridge)
-- [x] Green curated unit suite (**535** tests)
+- [x] Green curated unit suite (**539** tests)
 - [x] Restore legacy fixtures (base58/uri/parse_amount/sha256/mul_div/fee/…)
 - [x] Hardfork version + serialization basic unit coverage
 - [x] ArqMQ dual-backend facade (transport remains SNNetwork)
@@ -106,9 +106,10 @@ milestone.
 - [x] SN hygiene audit notes
 - [x] Operator upgrade path docs
 
-Remaining before default flip (dual-run / cutover, not blocking Milestone B):
+Remaining before default flip (not blocking Milestone B; preserves compatibility):
 
-- [ ] Native mesh path carries `vote_ob` peer relay (today still SNNetwork)
+- [x] Dual-run coexistence: SocketStack + SNNetwork mesh (`mesh=snnetwork` always today)
+- [ ] Native mesh path carries `vote_ob` peer relay (today still SNNetwork by design)
 - [ ] Stagenet dual-run parity + integration deny-path coverage
 
 ## Milestone C — product fork-in-the-road

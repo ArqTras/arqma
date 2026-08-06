@@ -1,11 +1,13 @@
 set(arqmq_sources
   arqmq.cpp
+  mesh_bridge.cpp
   socket_stack.cpp)
 
 set(arqmq_headers
   arqmq.h
   transport.hpp
   socket_stack.hpp
+  mesh_bridge.hpp
   command_registry.hpp
   message_limits.hpp)
 
