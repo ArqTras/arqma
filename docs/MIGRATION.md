@@ -22,9 +22,12 @@
 
 ## For service node operators
 
+- **Mainnet:** keep the default `--arqnet-backend=legacy-arqnet`. Do not enable
+  experimental `arqmq` on production SNs (refused unless
+  `--arqnet-allow-experimental`). Peer quorum mesh stays on SNNetwork.
 - Continue running Storage Server; uptime proofs still require SS pings.
-- `arqnet_ping` may appear in daemon info / RPC. Missing Arq-Net pings do **not**
-  currently block uptime proofs.
+- `arqnet_ping` / `get_arqnet_status` (`transport` + `mesh`) are observability
+  helpers. Missing Arq-Net pings do **not** currently block uptime proofs.
 - Expect stronger Arq-Net peer authentication: only registered SN keys are
   accepted on the mesh port.
 
@@ -41,7 +44,8 @@
 |------|--------|
 | Mainnet consensus rules | Unchanged schedule; burn gate bugfix aligns core with intended HF19 behaviour |
 | P2P wire | No intentional breaking change in this milestone |
-| RPC | Additive: `arqnet_ping`, `last_arqnet_ping`, `get_arqnet_status`, `get_storage_status`; restricted denials for operator/SN-key methods |
+| RPC | Additive: `arqnet_ping`, `get_arqnet_status` (`backend`/`transport`/`mesh`), `get_storage_status`; restricted denials for operator/SN-key methods |
+| Arq-Net mesh | Unchanged wire path on mainnet (`mesh=snnetwork`); experimental SocketStack opt-in only |
 | Wallet cache | No format bump in this milestone |
 | Build | C++20; Linux/macOS/Windows via native + depends (see `docs/PLATFORM.md`) |
 | Platforms | Linux x64/arm, macOS x64/arm64, Windows x64 |

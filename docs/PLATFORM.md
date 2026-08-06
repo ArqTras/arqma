@@ -67,11 +67,14 @@ Working end-to-end on the platforms above:
 
 - Consensus / wallet HF19 (CLSAG, burns, fees)
 - Daemon + wallet RPC with validation, DoS soft-caps, restricted-RPC gates
-- Arq-Net SN-only auth, ping observability, ArqMQ facade over SNNetwork
+- Arq-Net SN-only auth, ping observability; ArqMQ facade + optional SocketStack
+- **Mainnet:** keep `--arqnet-backend=legacy-arqnet` (default). Peer mesh stays
+  `snnetwork`. Experimental `arqmq` is refused on mainnet without
+  `--arqnet-allow-experimental`.
 - Storage client TCP/HTTP GET probe; messaging envelope / onion / swarm helpers
 - Experimental `arq_router` lifecycle (scaffold; not a Lokinet product)
 
-See `docs/UPGRADE_ROADMAP.md` for the phase map and Milestone C product forks.
+See `docs/UPGRADE_ROADMAP.md` and `docs/OPERATOR_UPGRADE.md` for mainnet locks.
 
 ## Documentation index
 
