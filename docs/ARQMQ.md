@@ -7,23 +7,24 @@ by OxenMQ, while preserving Arqma naming, ports and operator UX.
 
 ## Current state
 
-`src/arqnet` provides the live Curve/ZMQ mesh (`SNNetwork`).
+`src/arqnet` provides the live Curve/ZMQ peer mesh (`SNNetwork`) used for
+quorum vote relay.
 
-`src/arqmq` is the Arqma-named facade:
+`src/arqmq` is the Arqma-named facade **and** dedicated socket stack:
 
-- `--arqnet-backend=legacy-arqnet` or `arqmq` both initialize successfully
-- wire transport name reported by RPC/status is always `snnetwork` today
-- command ACL registry documents intended privilege levels
-- a dedicated ArqMQ socket stack remains future work (Milestone C / later)
+- `--arqnet-backend=legacy-arqnet` (default) — facade only; `transport=snnetwork`
+- `--arqnet-backend=arqmq` — starts `arqmq::SocketStack` (ZMQ workers + ACL);
+  RPC/status reports `transport=arqmq`
+- command ACL registry + framing limits shared by both paths
+- peer quorum mesh (`vote_ob`) still rides SNNetwork until dual-run cutover
 
 ## Migration steps
 
 1. ~~Extract stable facade headers from `SNNetwork` usage sites.~~
 2. ~~Add feature flag `--arqnet-backend=legacy-arqnet|arqmq` (daemon arg).~~
-3. Vendor OxenMQ **or** port selected subsystems under Arqma copyright/license
-   notices without Co-Authored-By trailers (remaining).
-4. Dual-run on testnet/stagenet.
-5. Make dedicated `arqmq` transport default; keep SNNetwork until one stable release.
+3. ~~Dedicated ArqMQ socket/worker internals under Arqma naming (`SocketStack`).~~
+4. Dual-run on testnet/stagenet (mesh parity for `vote_ob` on native path).
+5. Make dedicated `arqmq` transport the default mesh; keep SNNetwork one release.
 6. Optionally require Arq-Net ping for uptime proofs after operator notice.
 
 ## Target architecture
@@ -33,13 +34,12 @@ arqmad
   └── arqnet facade (stable C++ API for cryptonote_core / protocol)
         └── transport backend
               ├── legacy SNNetwork (default during migration)
-              └── arqmq backend (feature-flagged)
+              └── arqmq SocketStack (feature-flagged; Milestone B landed)
 ```
 
-Public names remain **Arq-Net** / **arqnet**. Internal library may be called
-`arqmq` in code comments and CMake targets if split out.
+Public names remain **Arq-Net** / **arqnet**. Internal library is `arqmq`.
 
-## ACL categories (planned)
+## ACL categories
 
 | Category | Who | Examples |
 |----------|-----|----------|
@@ -49,9 +49,9 @@ Public names remain **Arq-Net** / **arqnet**. Internal library may be called
 | `Admin` | local control socket | privileged ops |
 
 `arqmq::allows(required, granted)` encodes the privilege order
-`Denied < Basic < ServiceNode < Admin` for future command routing.
+`Denied < Basic < ServiceNode < Admin`.
 
-Unknown remote Curve keys stay denied (already enforced).
+Unknown remote Curve keys stay denied (already enforced on SNNetwork).
 
 ### Framing limits (`message_limits.hpp`)
 
@@ -64,27 +64,18 @@ Aligned with `SN_ZMQ_MAX_MSG_SIZE` (1 MiB):
 | `max_payload_frames` | 16 |
 
 `authorize_request` combines framing checks with ACL authorize; Arq-Net
-`vote_ob` / `ping` / `pong` handlers use it.
-
-## Migration steps
-
-1. Extract stable facade headers from `SNNetwork` usage sites.
-2. Add feature flag `--arqnet-backend=legacy-arqnet|arqmq` (daemon arg).
-3. Vendor OxenMQ **or** port selected subsystems under Arqma copyright/license
-   notices without Co-Authored-By trailers.
-4. Dual-run on testnet/stagenet.
-5. Make `arqmq` default; keep legacy until one stable release cycle.
-6. Optionally require Arq-Net ping for uptime proofs after operator notice.
+`vote_ob` / `ping` / `pong` handlers use it, and so does `SocketStack::dispatch`.
 
 ## Non-goals
 
 - Renaming the product mesh to Lokinet/Oxennet
 - Breaking Levin P2P
 - Shipping Session branding
+- Flipping the operator default before dual-run exit criteria
 
 ## Success criteria
 
-- Existing quorum vote relay works unchanged for operators
-- Unit/integration tests cover auth deny path and ping RPC
-- CI builds both backends when flag is present
-- Docs updated in `docs/ARQNET.md` and release notes
+- Existing quorum vote relay works unchanged for default operators
+- `--arqnet-backend=arqmq` reports `transport=arqmq` with a live worker stack
+- Unit tests cover ACL deny path and native ping dispatch
+- Docs updated in `docs/ARQNET.md` / `docs/ARQNET_DUAL_STACK.md`

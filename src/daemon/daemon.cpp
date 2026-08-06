@@ -102,8 +102,12 @@ public:
       }
       else
       {
-        MINFO("Arq-Net messaging facade backend: " << arqmq::to_string(mq_cfg.backend)
-                                                   << " (transport=" << arqmq::transport_name() << ")");
+        MINFO("Arq-Net messaging facade backend: " << arqmq::to_string(arqmq::current_backend())
+                                                   << " (transport=" << arqmq::transport_name()
+                                                   << ", native=" << (arqmq::native_transport_active() ? "yes" : "no")
+                                                   << ")");
+        if (arqmq::current_backend() == arqmq::Backend::ArqMq && !arqmq::native_transport_active())
+          MWARNING("ArqMQ backend selected but dedicated socket stack is not active");
       }
     }
 
@@ -162,6 +166,7 @@ public:
       (void)router_service->stop();
       router_service.reset();
     }
+    (void)arqmq::shutdown();
   }
 };
 

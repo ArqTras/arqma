@@ -31,10 +31,11 @@
 #include <system_error>
 
 namespace arqmq {
-/// Messaging facade backends. Both currently delegate mesh I/O to the
-/// production `arqnet::SNNetwork` path; `ArqMq` selects the Arqma-named
-/// command/ACL facade while transport remains SNNetwork until a dedicated
-/// socket stack is ported.
+class SocketStack;
+/// Messaging facade backends.
+/// `LegacyArqNet` keeps production mesh I/O on `arqnet::SNNetwork`.
+/// `ArqMq` starts the dedicated ArqMQ socket/worker stack (`transport=arqmq`)
+/// while peer quorum relay continues via SNNetwork until dual-run cutover.
 enum class Backend
 {
   LegacyArqNet,
@@ -62,11 +63,10 @@ const char* to_string(CategoryAcl acl) noexcept;
 /// Ordering: Denied < Basic < ServiceNode < Admin.
 bool allows(CategoryAcl required, CategoryAcl granted) noexcept;
 
-/// Initializes the messaging facade. Both backends mark the facade ready and
-/// document that live Curve/ZMQ transport continues via SNNetwork.
+/// Initializes the messaging facade. `ArqMq` starts dedicated socket internals.
 std::error_code init(const Config& config = {}) noexcept;
 
-/// Shuts down the messaging facade.
+/// Shuts down the messaging facade and stops any dedicated socket stack.
 std::error_code shutdown() noexcept;
 
 /// Returns the currently selected backend, even if initialization failed.
@@ -75,9 +75,15 @@ Backend current_backend() noexcept;
 /// Stable name of the active wire transport under the facade.
 const char* transport_name() noexcept;
 
+/// Returns true when the dedicated ArqMQ socket stack is running.
+bool native_transport_active() noexcept;
+
 /// Returns the default ACL configured at init (Denied after shutdown).
 CategoryAcl default_acl() noexcept;
 
 /// Returns true when the facade is initialized and ready for use.
 bool is_initialized() noexcept;
+
+/// Active dedicated socket stack, or nullptr when using legacy SNNetwork only.
+SocketStack* active_socket_stack() noexcept;
 } // namespace arqmq

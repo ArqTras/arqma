@@ -13,14 +13,14 @@ Platform matrix: [`docs/PLATFORM.md`](PLATFORM.md).
 |-------|--------|-------|
 | 1 Analysis | **Done** | Architecture, deps, risks, Oxen gap analysis |
 | 2 Core modernization | **Done** | C++20, CI, CLSAG tests, HF/Arq-Net fixes |
-| 3 Oxen feature parity (selective) | **Foundation done** | ArqMQ facade + ACL/registry over SNNetwork |
+| 3 Oxen feature parity (selective) | **Foundation + native transport** | ArqMQ facade + `SocketStack` behind `--arqnet-backend=arqmq` |
 | 4 Arq-Net evolution | **Foundation done** | Auth harden, ping, dual-stack plan |
 | 5 Storage Server | **Client foundation** | HTTP GET cleartext probe; TLS TCP-only; separate binary = Milestone C |
 | 6 Session-like modules | **Foundation done** | Envelope, onion peel, swarm bounds + hash, sealed-box |
 | 7 RPC modernization | **Foundation done** | Validation, wallet caps/auth, OpenAPI 0.2.0 |
 | 8 P2P improvements | **Foundation done** | Limits + Levin/preauth lock |
 | 9 Performance | **Baseline** | Local measurement doc |
-| 10 Testing | **Done (curated)** | **529** unit tests green; integration suites opt-in |
+| 10 Testing | **Done (curated)** | **535** unit tests green; integration suites opt-in |
 | 11 CI | **Done (3 OS)** | Linux/macOS native unit + Windows/macOS/Linux depends |
 | 12 Final review | **Gate ready** | Checklist + completeness gate + platform doc |
 
@@ -87,7 +87,7 @@ milestone.
 - [x] Native GitHub Actions CI + sanitizer job
 - [x] `.clang-format` / `.clang-tidy`
 - [x] CMake ≥ 3.16, C++20 (`-fno-char8_t` bridge)
-- [x] Green curated unit suite (**529** tests)
+- [x] Green curated unit suite (**535** tests)
 - [x] Restore legacy fixtures (base58/uri/parse_amount/sha256/mul_div/fee/…)
 - [x] Hardfork version + serialization basic unit coverage
 - [x] ArqMQ dual-backend facade (transport remains SNNetwork)
@@ -101,10 +101,15 @@ milestone.
 
 - [x] `arqmq` facade under Arqma naming
 - [x] Command ACL registry + authorize semantics
-- [ ] Dedicated transport internals under Arqma naming
+- [x] Dedicated transport internals under Arqma naming (`arqmq::SocketStack`)
 - [x] Feature-flag dual-stack (`--arqnet-backend`)
 - [x] SN hygiene audit notes
 - [x] Operator upgrade path docs
+
+Remaining before default flip (dual-run / cutover, not blocking Milestone B):
+
+- [ ] Native mesh path carries `vote_ob` peer relay (today still SNNetwork)
+- [ ] Stagenet dual-run parity + integration deny-path coverage
 
 ## Milestone C — product fork-in-the-road
 

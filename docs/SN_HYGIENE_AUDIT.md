@@ -26,7 +26,7 @@ This is not a claim that Pulse/Blink or full Oxen SN economics are shipped.
 |------|--------|-------|
 | `--arqnet-backend` | Landed | Falls back to LegacyArqNet |
 | ACL privilege ordering helper | Landed | `arqmq::allows` |
-| Native ArqMQ transport | Deferred | `not_supported` until real port |
+| Native ArqMQ transport | Landed (flagged) | `arqmq::SocketStack`; mesh cutover still dual-run |
 
 ## Remaining hygiene work
 

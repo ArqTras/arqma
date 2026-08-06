@@ -28,6 +28,10 @@
 
 #include "arqmq.h"
 
+#include "socket_stack.hpp"
+#include "transport.hpp"
+
+#include <memory>
 #include <mutex>
 #include <system_error>
 
@@ -38,6 +42,7 @@ struct facade_state
   arqmq::Backend backend = arqmq::Backend::LegacyArqNet;
   arqmq::CategoryAcl default_acl = arqmq::CategoryAcl::Denied;
   bool initialized = false;
+  std::unique_ptr<arqmq::SocketStack> socket_stack;
 };
 
 facade_state state;
@@ -55,6 +60,14 @@ int acl_rank(const arqmq::CategoryAcl acl) noexcept
     return 3;
   }
   return 0;
+}
+
+void stop_socket_stack_unlocked() noexcept
+{
+  if (state.socket_stack) {
+    state.socket_stack->stop();
+    state.socket_stack.reset();
+  }
 }
 } // namespace
 
@@ -95,25 +108,40 @@ bool allows(const CategoryAcl required, const CategoryAcl granted) noexcept
 std::error_code init(const Config& config) noexcept
 {
   std::lock_guard<std::mutex> lock{state.mutex};
+  stop_socket_stack_unlocked();
   state.backend = config.backend;
   state.default_acl = config.default_acl;
+  state.initialized = false;
 
   switch (config.backend) {
   case Backend::LegacyArqNet:
-  case Backend::ArqMq:
-    // Wire transport remains arqnet::SNNetwork (started from core::init).
-    // ArqMq enables the Arqma command/ACL facade naming without a second listener.
+    // Production mesh remains arqnet::SNNetwork (started from core::init).
     state.initialized = true;
     return {};
+  case Backend::ArqMq: {
+    try {
+      auto stack = std::make_unique<SocketStack>();
+      if (const auto ec = stack->start()) {
+        state.backend = Backend::LegacyArqNet;
+        return ec;
+      }
+      state.socket_stack = std::move(stack);
+      state.initialized = true;
+      return {};
+    } catch (...) {
+      state.backend = Backend::LegacyArqNet;
+      return std::make_error_code(std::errc::resource_unavailable_try_again);
+    }
+  }
   }
 
-  state.initialized = false;
   return std::make_error_code(std::errc::invalid_argument);
 }
 
 std::error_code shutdown() noexcept
 {
   std::lock_guard<std::mutex> lock{state.mutex};
+  stop_socket_stack_unlocked();
   state.initialized = false;
   state.default_acl = CategoryAcl::Denied;
   return {};
@@ -127,7 +155,16 @@ Backend current_backend() noexcept
 
 const char* transport_name() noexcept
 {
-  return "snnetwork";
+  std::lock_guard<std::mutex> lock{state.mutex};
+  if (state.socket_stack && state.socket_stack->running())
+    return k_transport_arqmq;
+  return k_transport_snnetwork;
+}
+
+bool native_transport_active() noexcept
+{
+  std::lock_guard<std::mutex> lock{state.mutex};
+  return state.socket_stack && state.socket_stack->running();
 }
 
 CategoryAcl default_acl() noexcept
@@ -140,5 +177,12 @@ bool is_initialized() noexcept
 {
   std::lock_guard<std::mutex> lock{state.mutex};
   return state.initialized;
+}
+
+/// Test/helper access to the active SocketStack (nullptr when legacy).
+SocketStack* active_socket_stack() noexcept
+{
+  std::lock_guard<std::mutex> lock{state.mutex};
+  return state.socket_stack.get();
 }
 } // namespace arqmq

@@ -26,7 +26,7 @@
 
 | Flag / RPC | Meaning |
 |------------|---------|
-| `--arqnet-backend=legacy-arqnet\|arqmq` | Messaging facade selection (`arqmq` experimental; default `legacy-arqnet`) |
+| `--arqnet-backend=legacy-arqnet\|arqmq` | Messaging selection (default `legacy-arqnet`; `arqmq` starts dedicated socket stack, `transport=arqmq`) |
 | `--arq-router` | Experimental privacy-router scaffold (lives for daemon lifetime) |
 | `--storage-client-url=<url>` | Outbound Storage Server reachability probe (`http://` GET / `https://` TCP) |
 | `arqnet_ping` | Records Arq-Net reachability (not yet a hard uptime gate) |

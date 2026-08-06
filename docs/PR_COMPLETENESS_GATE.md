@@ -15,9 +15,9 @@ Those require an explicit Milestone C product choice (see
 - [x] Critical consensus/wallet correctness fix (HF19 burn)
 - [x] Arq-Net auth hardening
 - [x] Toolchain modernization (C++20, CMake, CI, sanitizers job)
-- [x] Automated unit tests green on curated suite (**531** tests)
+- [x] Automated unit tests green on curated suite (**535** tests)
 - [x] Module scaffolding with tests/docs/CI for MQ, storage, messaging, router
-- [x] ArqMQ facade backends initialize; transport remains SNNetwork
+- [x] ArqMQ facade + dedicated `SocketStack` behind `--arqnet-backend=arqmq`
 - [x] In-memory storage/swarm helpers for tests; remote client stays honest
 - [x] Experimental router lifecycle held for daemon lifetime (scaffold only)
 - [x] RPC validation, DoS caps, auth level helpers, OpenAPI stub (JSON-RPC aligned)
@@ -29,13 +29,13 @@ Those require an explicit Milestone C product choice (see
 - [x] Cross-platform CI: Linux/macOS unit + Windows/macOS/Linux depends binaries
 - [x] Platform matrix + operator/migration docs
 
-### Explicitly deferred (documented, Milestone C)
+### Explicitly deferred (documented)
 
-- Dedicated ArqMQ socket stack replacing SNNetwork internals
-- Production Storage Server binary + swarm replication
-- Full privacy router binary
-- Messenger clients / Session protocol wire completeness
-- Pulse/Blink/L2 consensus changes (SN economics decisions)
+- Native mesh cutover: `vote_ob` peer relay on `SocketStack` (dual-run / Milestone B cutover)
+- Production Storage Server binary + swarm replication (Milestone C)
+- Full privacy router binary (Milestone C)
+- Messenger clients / Session protocol wire completeness (Milestone C)
+- Pulse/Blink/L2 consensus changes (SN economics / Milestone C)
 - Restoring every legacy Monero-era unit fixture / `core_tests` in default CI
 - Native MSVC unit job on `windows-latest` (Windows covered via mingw depends)
 

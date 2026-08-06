@@ -1,8 +1,13 @@
 set(arqmq_sources
-  arqmq.cpp)
+  arqmq.cpp
+  socket_stack.cpp)
 
 set(arqmq_headers
-  arqmq.h)
+  arqmq.h
+  transport.hpp
+  socket_stack.hpp
+  command_registry.hpp
+  message_limits.hpp)
 
 arqma_find_all_headers(arqmq_private_headers "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -16,3 +21,9 @@ arqma_add_library(arqmq
 target_include_directories(arqmq
   PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/..)
+
+target_link_libraries(arqmq
+  PUBLIC
+    libzmq
+  PRIVATE
+    ${EXTRA_LIBRARIES})

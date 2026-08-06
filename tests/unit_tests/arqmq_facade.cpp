@@ -30,11 +30,13 @@
 
 #include "arqmq/arqmq.h"
 #include "arqmq/command_registry.hpp"
+#include "arqmq/socket_stack.hpp"
 
 TEST(arqmq_facade, backend_names_match_scaffold)
 {
   EXPECT_STREQ("legacy-arqnet", arqmq::to_string(arqmq::Backend::LegacyArqNet));
   EXPECT_STREQ("arqmq", arqmq::to_string(arqmq::Backend::ArqMq));
+  EXPECT_FALSE(arqmq::shutdown());
   EXPECT_STREQ("snnetwork", arqmq::transport_name());
 }
 
@@ -58,7 +60,7 @@ TEST(arqmq_facade, legacy_backend_initializes)
   EXPECT_FALSE(arqmq::is_initialized());
 }
 
-TEST(arqmq_facade, arqmq_backend_initializes_over_snnetwork_transport)
+TEST(arqmq_facade, arqmq_backend_starts_dedicated_socket_stack)
 {
   EXPECT_FALSE(arqmq::shutdown());
 
@@ -66,8 +68,13 @@ TEST(arqmq_facade, arqmq_backend_initializes_over_snnetwork_transport)
   EXPECT_FALSE(arqmq::init(config));
   EXPECT_EQ(arqmq::Backend::ArqMq, arqmq::current_backend());
   EXPECT_TRUE(arqmq::is_initialized());
-  EXPECT_STREQ("snnetwork", arqmq::transport_name());
+  EXPECT_TRUE(arqmq::native_transport_active());
+  EXPECT_STREQ("arqmq", arqmq::transport_name());
+  ASSERT_NE(nullptr, arqmq::active_socket_stack());
+  EXPECT_TRUE(arqmq::active_socket_stack()->running());
   EXPECT_FALSE(arqmq::shutdown());
+  EXPECT_FALSE(arqmq::native_transport_active());
+  EXPECT_STREQ("snnetwork", arqmq::transport_name());
 }
 
 TEST(arqmq_facade, acl_allows_respects_privilege_order)

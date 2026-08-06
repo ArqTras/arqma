@@ -28,51 +28,26 @@
 
 #pragma once
 
-#include "arqmq.h"
-#include "message_limits.hpp"
-
-#include <string_view>
-
 namespace arqmq {
-/// Static command → ACL map for the dedicated ArqMQ socket stack and
-/// SNNetwork handlers. LegacyArqNet still dispatches mesh I/O through
-/// SNNetwork; `--arqnet-backend=arqmq` also runs `arqmq::SocketStack`.
-struct CommandAcl
+/// Stable name of the live Curve/ZMQ mesh owned by `arqnet::SNNetwork`.
+inline constexpr const char* k_transport_snnetwork = "snnetwork";
+
+/// Stable name of the dedicated ArqMQ socket/worker stack.
+inline constexpr const char* k_transport_arqmq = "arqmq";
+
+/// Abstract transport owned by the messaging facade.
+class Transport
 {
-  std::string_view name;
-  CategoryAcl required;
+public:
+  virtual ~Transport() = default;
+
+  /// Wire / status name reported by `transport_name()` and RPC.
+  virtual const char* name() const noexcept = 0;
+
+  /// True while workers/listeners are active.
+  virtual bool running() const noexcept = 0;
+
+  /// Stops workers and releases sockets. Idempotent.
+  virtual void stop() noexcept = 0;
 };
-
-inline constexpr CommandAcl k_builtin_commands[] = {
-    {"ping", CategoryAcl::Basic},           {"pong", CategoryAcl::Basic},
-    {"vote_ob", CategoryAcl::ServiceNode},  {"arqnet_status", CategoryAcl::Basic},
-    {"admin_shutdown", CategoryAcl::Admin},
-};
-
-inline CategoryAcl required_acl_for(std::string_view command) noexcept
-{
-  for (const auto& entry : k_builtin_commands) {
-    if (entry.name == command)
-      return entry.required;
-  }
-  return CategoryAcl::Denied;
-}
-
-inline bool authorize(std::string_view command, CategoryAcl granted) noexcept
-{
-  const CategoryAcl required = required_acl_for(command);
-  // Unknown / explicitly denied commands never authorize, even for Admin.
-  if (required == CategoryAcl::Denied)
-    return false;
-  return allows(required, granted);
-}
-
-/// Framing + ACL gate for inbound ArqMQ/Arq-Net commands.
-inline bool authorize_request(std::string_view command, CategoryAcl granted, size_t payload_bytes,
-                              size_t payload_frames = 1) noexcept
-{
-  if (!accept_request(command, payload_bytes, payload_frames))
-    return false;
-  return authorize(command, granted);
-}
 } // namespace arqmq
