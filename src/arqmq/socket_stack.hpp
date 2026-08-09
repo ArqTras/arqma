@@ -112,6 +112,8 @@ private:
   std::error_code handle_job(const InboundRequest& request, std::string* reply);
 
   zmq::context_t context_;
+  std::string jobs_endpoint_;
+  std::string ctrl_endpoint_;
   std::thread worker_;
   std::atomic<bool> running_{false};
   std::atomic<bool> stop_requested_{false};

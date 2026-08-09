@@ -30,17 +30,19 @@
 
 #include "command_registry.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <cstring>
 #include <memory>
+#include <string>
 #include <utility>
 
 namespace arqmq {
 namespace {
-constexpr const char* k_jobs_endpoint = "inproc://arqmq.jobs";
-constexpr const char* k_ctrl_endpoint = "inproc://arqmq.ctrl";
 constexpr const char* k_quit = "QUIT";
 constexpr const char* k_bind = "BIND";
+
+std::atomic<uint64_t> g_stack_id{1};
 
 void send_pointer(zmq::socket_t& sock, void* ptr)
 {
@@ -69,6 +71,9 @@ std::string default_ping_handler(const InboundRequest&)
 
 SocketStack::SocketStack() : context_(1)
 {
+  const auto id = g_stack_id.fetch_add(1, std::memory_order_relaxed);
+  jobs_endpoint_ = "inproc://arqmq.jobs." + std::to_string(id);
+  ctrl_endpoint_ = "inproc://arqmq.ctrl." + std::to_string(id);
   register_handler("ping", CategoryAcl::Basic, default_ping_handler);
   register_handler("pong", CategoryAcl::Basic, [](const InboundRequest&) { return std::string{}; });
 }
@@ -90,8 +95,8 @@ std::error_code SocketStack::start()
     return std::make_error_code(std::errc::resource_unavailable_try_again);
   }
 
-  // Wait briefly for the worker to bind inproc endpoints.
-  for (int i = 0; i < 50 && !running_.load(); ++i)
+  // Wait for the worker to bind inproc endpoints (allow headroom on Debug CI).
+  for (int i = 0; i < 500 && !running_.load(); ++i)
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
   if (!running_.load()) {
@@ -108,7 +113,7 @@ std::error_code SocketStack::bind(const std::string& endpoint)
 
   try {
     zmq::socket_t push{context_, zmq::socket_type::push};
-    push.connect(k_ctrl_endpoint);
+    push.connect(ctrl_endpoint_);
     zmq::message_t cmd{k_bind, std::strlen(k_bind)};
     push.send(cmd, zmq::send_flags::sndmore);
     zmq::message_t ep{endpoint.data(), endpoint.size()};
@@ -117,8 +122,7 @@ std::error_code SocketStack::bind(const std::string& endpoint)
     return std::make_error_code(std::errc::io_error);
   }
 
-  // Confirm bind recorded (best-effort; failures surface as missing endpoint).
-  for (int i = 0; i < 50; ++i) {
+  for (int i = 0; i < 500; ++i) {
     {
       std::lock_guard<std::mutex> lock{bind_mu_};
       for (const auto& bound : bind_endpoints_) {
@@ -152,7 +156,7 @@ std::error_code SocketStack::dispatch(const InboundRequest& request, std::string
 
   try {
     zmq::socket_t push{context_, zmq::socket_type::push};
-    push.connect(k_jobs_endpoint);
+    push.connect(jobs_endpoint_);
     send_pointer(push, &job);
   } catch (...) {
     return std::make_error_code(std::errc::io_error);
@@ -196,7 +200,7 @@ void SocketStack::stop() noexcept
   stop_requested_.store(true);
   try {
     zmq::socket_t push{context_, zmq::socket_type::push};
-    push.connect(k_ctrl_endpoint);
+    push.connect(ctrl_endpoint_);
     zmq::message_t quit{k_quit, std::strlen(k_quit)};
     push.send(quit, zmq::send_flags::none);
   } catch (...) {
@@ -243,8 +247,8 @@ void SocketStack::worker_main()
   std::vector<std::unique_ptr<zmq::socket_t>> listeners;
 
   try {
-    jobs.bind(k_jobs_endpoint);
-    ctrl.bind(k_ctrl_endpoint);
+    jobs.bind(jobs_endpoint_);
+    ctrl.bind(ctrl_endpoint_);
   } catch (...) {
     running_.store(false);
     return;

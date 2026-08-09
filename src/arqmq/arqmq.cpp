@@ -62,14 +62,6 @@ int acl_rank(const arqmq::CategoryAcl acl) noexcept
   }
   return 0;
 }
-
-void stop_socket_stack_unlocked() noexcept
-{
-  if (state.socket_stack) {
-    state.socket_stack->stop();
-    state.socket_stack.reset();
-  }
-}
 } // namespace
 
 namespace arqmq {
@@ -108,29 +100,43 @@ bool allows(const CategoryAcl required, const CategoryAcl granted) noexcept
 
 std::error_code init(const Config& config) noexcept
 {
-  std::lock_guard<std::mutex> lock{state.mutex};
-  stop_socket_stack_unlocked();
-  state.backend = config.backend;
-  state.default_acl = config.default_acl;
-  state.initialized = false;
+  // Stop any previous stack outside the facade mutex so ZMQ worker join cannot
+  // contend with other facade accessors during startup.
+  std::unique_ptr<SocketStack> previous;
+  {
+    std::lock_guard<std::mutex> lock{state.mutex};
+    previous = std::move(state.socket_stack);
+    state.backend = config.backend;
+    state.default_acl = config.default_acl;
+    state.initialized = false;
+  }
+  if (previous) {
+    previous->stop();
+    previous.reset();
+  }
 
   switch (config.backend) {
-  case Backend::LegacyArqNet:
-    // Production mesh remains arqnet::SNNetwork (started from core::init).
+  case Backend::LegacyArqNet: {
+    std::lock_guard<std::mutex> lock{state.mutex};
     state.initialized = true;
     return {};
+  }
   case Backend::ArqMq: {
     try {
       auto stack = std::make_unique<SocketStack>();
       if (const auto ec = stack->start()) {
+        std::lock_guard<std::mutex> lock{state.mutex};
         state.backend = Backend::LegacyArqNet;
         return ec;
       }
+      attach_compatible_mesh_mirrors(*stack);
+      std::lock_guard<std::mutex> lock{state.mutex};
       state.socket_stack = std::move(stack);
-      attach_compatible_mesh_mirrors(*state.socket_stack);
+      state.backend = Backend::ArqMq;
       state.initialized = true;
       return {};
     } catch (...) {
+      std::lock_guard<std::mutex> lock{state.mutex};
       state.backend = Backend::LegacyArqNet;
       return std::make_error_code(std::errc::resource_unavailable_try_again);
     }
@@ -142,10 +148,17 @@ std::error_code init(const Config& config) noexcept
 
 std::error_code shutdown() noexcept
 {
-  std::lock_guard<std::mutex> lock{state.mutex};
-  stop_socket_stack_unlocked();
-  state.initialized = false;
-  state.default_acl = CategoryAcl::Denied;
+  std::unique_ptr<SocketStack> previous;
+  {
+    std::lock_guard<std::mutex> lock{state.mutex};
+    previous = std::move(state.socket_stack);
+    state.initialized = false;
+    state.default_acl = CategoryAcl::Denied;
+  }
+  if (previous) {
+    previous->stop();
+    previous.reset();
+  }
   return {};
 }
 
@@ -181,7 +194,6 @@ bool is_initialized() noexcept
   return state.initialized;
 }
 
-/// Test/helper access to the active SocketStack (nullptr when legacy).
 SocketStack* active_socket_stack() noexcept
 {
   std::lock_guard<std::mutex> lock{state.mutex};
