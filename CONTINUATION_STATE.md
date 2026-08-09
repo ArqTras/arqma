@@ -3,7 +3,7 @@
 Branch: `upgrade` · Remote: `origin/upgrade` · Authorship: ArqTras only  
 Hooks: `git -c core.hooksPath=/tmp/empty-git-hooks`  
 Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`  
-Tip: `b267c27f`
+Tip: `55fc5c89`
 
 ## Mainnet readiness locks
 
@@ -11,21 +11,15 @@ Tip: `b267c27f`
 - Peer mesh always `snnetwork` (quorum wire unchanged)
 - Mainnet refuses `--arqnet-backend=arqmq` unless `--arqnet-allow-experimental`
 - Testnet/stagenet may exercise `SocketStack`
-- `ci.yml` published on `master` (`de971bd3`) so Actions can discover unit CI
 
-## Local quality gate
+## Quality gates
 
-- `ninja unit_tests` → **543** passed (reconfirmed)
-- `ninja daemon` OK
-
-## CI note
-
-Fresh `workflow_dispatch` runs for `b267c27f` were stuck in **queued** (no
-runner assigned). Re-dispatch when GitHub hosted runners accept jobs again:
-`gh workflow run ci.yml --ref upgrade` and `gh workflow run depends.yml --ref upgrade`.
+- Local `unit_tests` → **543** passed
+- CI unit (Linux/macOS + ASan + format) → ✅
+- CI depends (Windows/macOS/Linux + arm) → ✅
+- PR [#3](https://github.com/ArqTras/arqma/pull/3) MERGEABLE / CLEAN
 
 ## Next
 
-1. CI green on tip once runners drain
-2. Stagenet soak before any default/mesh cutover
-3. Milestone C only after product choice
+1. Stagenet soak before any default/mesh cutover
+2. Milestone C only after product choice
