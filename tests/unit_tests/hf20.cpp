@@ -29,40 +29,32 @@
 #include "gtest/gtest.h"
 
 #include "arqmq/arqmq.h"
-#include "arqmq/command_registry.hpp"
-#include "cryptonote_protocol/arqnet_auth.h"
+#include "cryptonote_basic/hardfork.h"
+#include "cryptonote_config.h"
 
-TEST(arqnet_auth, unknown_curve_peer_is_denied)
+TEST(hf20, feature_gate_aligns_with_arqmq_constant)
 {
-  EXPECT_EQ(arqnet::IncomingCurveDecision::Denied, arqnet::decide_incoming_curve_peer(false));
-  EXPECT_EQ(arqnet::IncomingCurveDecision::Denied, arqnet::decide_incoming_curve_peer_from_pubkey_size(false, 32));
+  ASSERT_EQ(HF_VERSION_NATIVE_ARQNET_MESH, cryptonote::network_version_20);
+  ASSERT_EQ(arqmq::k_hf_native_arqnet_mesh, static_cast<uint8_t>(cryptonote::network_version_20));
 }
 
-TEST(arqnet_auth, registered_sn_curve_peer_is_accepted)
+TEST(hf20, schedules_stagenet_and_testnet_only)
 {
-  EXPECT_EQ(arqnet::IncomingCurveDecision::ServiceNode, arqnet::decide_incoming_curve_peer(true));
-  EXPECT_EQ(arqnet::IncomingCurveDecision::ServiceNode, arqnet::decide_incoming_curve_peer_from_pubkey_size(true, 32));
+  ASSERT_EQ(240u,
+            cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::STAGENET, cryptonote::network_version_20));
+  ASSERT_EQ(1300u,
+            cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::TESTNET, cryptonote::network_version_20));
+  // Mainnet height deliberately unscheduled until stagenet mesh parity.
+  ASSERT_EQ(cryptonote::HardFork::INVALID_HF_VERSION_HEIGHT,
+            cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::MAINNET, cryptonote::network_version_20));
 }
 
-TEST(arqnet_auth, wrong_pubkey_size_is_denied_even_if_mapped)
+TEST(hf20, mesh_cutover_requires_hf_and_implementation)
 {
-  EXPECT_EQ(arqnet::IncomingCurveDecision::Denied, arqnet::decide_incoming_curve_peer_from_pubkey_size(true, 0));
-  EXPECT_EQ(arqnet::IncomingCurveDecision::Denied, arqnet::decide_incoming_curve_peer_from_pubkey_size(true, 31));
-  EXPECT_EQ(arqnet::IncomingCurveDecision::Denied, arqnet::decide_incoming_curve_peer_from_pubkey_size(true, 33));
-}
-
-TEST(arqnet_auth, vote_ob_requires_service_node_acl)
-{
-  EXPECT_FALSE(arqmq::authorize_request("vote_ob", arqmq::CategoryAcl::Denied, 16));
-  EXPECT_FALSE(arqmq::authorize_request("vote_ob", arqmq::CategoryAcl::Basic, 16));
-  EXPECT_TRUE(arqmq::authorize_request("vote_ob", arqmq::CategoryAcl::ServiceNode, 16));
-}
-
-TEST(arqnet_auth, native_mesh_not_ready_keeps_snnetwork_carrier)
-{
-  EXPECT_TRUE(arqmq::peer_mesh_is_snnetwork());
+  EXPECT_FALSE(arqmq::hf_permits_native_mesh(static_cast<uint8_t>(cryptonote::network_version_19)));
+  EXPECT_TRUE(arqmq::hf_permits_native_mesh(static_cast<uint8_t>(cryptonote::network_version_20)));
   EXPECT_FALSE(arqmq::native_mesh_implementation_ready());
-  EXPECT_FALSE(arqmq::native_mesh_ready_at(arqmq::k_hf_native_arqnet_mesh));
+  EXPECT_FALSE(arqmq::native_mesh_ready_at(static_cast<uint8_t>(cryptonote::network_version_20)));
   EXPECT_FALSE(arqmq::native_mesh_ready());
   EXPECT_STREQ("curve-zap-peer-relay-not-ported", arqmq::native_mesh_blocker());
 }

@@ -72,6 +72,8 @@ static constexpr HardFork::Params mainnet_hard_forks[] =
   { network_version_17, 1760751, 0, 1754410575 },
   { network_version_18, 1863160, 0, 1768160647 },
   { network_version_19, 1886030, 0, 1771099200 }
+  // network_version_20: mainnet height intentionally omitted until stagenet
+  // native-mesh parity is proven (see HF_VERSION_NATIVE_ARQNET_MESH).
 };
 
 static constexpr HardFork::Params testnet_hard_forks[] =
@@ -89,7 +91,9 @@ static constexpr HardFork::Params testnet_hard_forks[] =
   { network_version_16,    900, 0, 1566598280 },
   { network_version_17,   1000, 0, 1566598281 },
   { network_version_18,   1100, 0, 1566598282 },
-  { network_version_19,   1200, 0, 1566598283 }
+  { network_version_19,   1200, 0, 1566598283 },
+  // HF20 schedule for testnet (stagenet-first policy; mainnet unscheduled).
+  { network_version_20,   1300, 0, 1566598284 }
 };
 
 static constexpr HardFork::Params stagenet_hard_forks[] =
@@ -107,7 +111,9 @@ static constexpr HardFork::Params stagenet_hard_forks[] =
   { network_version_16,    160, 0, 1570414510 },
   { network_version_17,    180, 0, 1570414511 },
   { network_version_18,    200, 0, 1570414512 },
-  { network_version_19,    220, 0, 1570414513 }
+  { network_version_19,    220, 0, 1570414513 },
+  // HF20 earlier on stagenet for native Arq-Net mesh soak (mainnet TBD).
+  { network_version_20,    240, 0, 1570414514 }
 };
 
 uint64_t HardFork::get_hardcoded_hard_fork_height(network_type nettype, cryptonote::network_version version)

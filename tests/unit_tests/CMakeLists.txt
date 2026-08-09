@@ -52,6 +52,7 @@ set(unit_tests_sources
   get_xtype_from_string.cpp
   hashchain.cpp
   hf19.cpp
+  hf20.cpp
   main.cpp
   memwipe.cpp
   mul_div.cpp

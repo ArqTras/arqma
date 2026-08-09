@@ -29,12 +29,32 @@ backend without breaking operators.
 | `--arqnet-backend=arqmq` | Experimental SocketStack; allowed on testnet/stagenet; mainnet needs `--arqnet-allow-experimental` |
 | `--arqnet-allow-experimental` | Explicit mainnet override for `arqmq` (not for production SNs) |
 
+## Hard fork gate (HF20)
+
+Following Monero/Oxen practice, native mesh cutover is tied to a **network
+version**, not only an operator flag:
+
+| Net | HF20 height | Notes |
+|-----|-------------|-------|
+| Stagenet | **240** | Soak / parity first |
+| Testnet | **1300** | Intermediate |
+| Mainnet | **unscheduled** | Add only after stagenet mesh parity |
+
+Runtime helpers (`arqmq`):
+
+- `hf_permits_native_mesh(hf)` — true at `network_version_20+`
+- `native_mesh_implementation_ready()` — false until Curve/ZAP peer relay ported
+- `native_mesh_ready_at(hf)` — both conditions (daemon should use this)
+
+Alias: `HF_VERSION_NATIVE_ARQNET_MESH` → `network_version_20`.
+
 ## Exit criteria before default flip
 
 - [x] Native backend initializes on Linux CI (unit coverage for `SocketStack`)
 - [x] Dual-run coexistence with peer mesh locked on SNNetwork (full wire compatibility)
 - [x] Deny path for unknown Curve peers covered by unit tests (`arqnet_auth` /
       `decide_incoming_curve_peer*`; full ZAP two-process integration still later)
+- [x] HF20 scaffold (stagenet/testnet heights; mainnet height deferred)
 - [ ] Quorum vote relay parity verified on stagenet (native mesh path;
-      `native_mesh_ready()` remains false until Curve/ZAP peer relay is ported)
-- [ ] Release notes + `docs/OPERATOR_UPGRADE.md` updated for default flip
+      `native_mesh_implementation_ready()` remains false until Curve/ZAP ported)
+- [ ] Schedule mainnet HF20 height + release notes / `OPERATOR_UPGRADE.md` for cutover

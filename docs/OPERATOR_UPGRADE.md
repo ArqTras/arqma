@@ -5,11 +5,23 @@
 This branch is prepared for **mainnet** operators. Compatibility locks:
 
 1. **Default** `--arqnet-backend=legacy-arqnet` — do not change on mainnet SNs.
-2. **Peer mesh** (`vote_ob` / quorum Curve+ZMQ) always stays on `arqnet::SNNetwork`
-   until an explicit cutover after stagenet parity.
+2. **Peer mesh** (`vote_ob` / quorum Curve+ZMQ) stays on `arqnet::SNNetwork` until
+   HF20 cutover conditions are met (see below).
 3. `--arqnet-backend=arqmq` is **refused on mainnet** unless you also pass
    `--arqnet-allow-experimental` (not recommended for production service nodes).
 4. On testnet/stagenet, `arqmq` may be used to exercise the dedicated `SocketStack`.
+
+### HF20 (native mesh — scheduled, not yet active)
+
+| Network | Height | Role |
+|---------|--------|------|
+| Stagenet | 240 | First soak |
+| Testnet | 1300 | Intermediate |
+| Mainnet | *not set* | Will be announced after stagenet parity |
+
+Even after HF20 activates on a net, native mesh stays off until
+`native_mesh_implementation_ready()` (Curve/ZAP peer relay port). Operator
+default backend flip is a later release step.
 
 `get_arqnet_status` reports both:
 

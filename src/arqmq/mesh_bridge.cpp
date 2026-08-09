@@ -42,18 +42,37 @@ const char* mesh_transport_name() noexcept
 
 bool peer_mesh_is_snnetwork() noexcept
 {
+  // Live peer carrier stays SNNetwork until native_mesh_ready_at(hf) is true.
   return true;
 }
 
-bool native_mesh_ready() noexcept
+bool hf_permits_native_mesh(const uint8_t hard_fork_version) noexcept
+{
+  return hard_fork_version >= k_hf_native_arqnet_mesh;
+}
+
+bool native_mesh_implementation_ready() noexcept
 {
   // Cutover gate: peer Curve/ZAP + vote_ob relay still owned by SNNetwork.
   return false;
 }
 
+bool native_mesh_ready_at(const uint8_t hard_fork_version) noexcept
+{
+  return hf_permits_native_mesh(hard_fork_version) && native_mesh_implementation_ready();
+}
+
+bool native_mesh_ready() noexcept
+{
+  // Without a chain height, only the implementation gate applies.
+  return native_mesh_implementation_ready();
+}
+
 const char* native_mesh_blocker() noexcept
 {
-  return "curve-zap-peer-relay-not-ported";
+  if (!native_mesh_implementation_ready())
+    return "curve-zap-peer-relay-not-ported";
+  return "hf-below-native-mesh";
 }
 
 void attach_compatible_mesh_mirrors(SocketStack& stack)

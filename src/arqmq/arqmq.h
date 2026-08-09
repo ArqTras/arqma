@@ -28,10 +28,14 @@
 
 #pragma once
 
+#include <cstdint>
 #include <system_error>
 
 namespace arqmq {
 class SocketStack;
+
+/// Must match `cryptonote::network_version_20` / `HF_VERSION_NATIVE_ARQNET_MESH`.
+inline constexpr uint8_t k_hf_native_arqnet_mesh = 20;
 /// Messaging facade backends.
 /// `LegacyArqNet` keeps production mesh I/O on `arqnet::SNNetwork`.
 /// `ArqMq` starts the dedicated ArqMQ socket/worker stack (`transport=arqmq`)
@@ -84,10 +88,19 @@ const char* mesh_transport_name() noexcept;
 /// True while peer quorum traffic is carried by SNNetwork.
 bool peer_mesh_is_snnetwork() noexcept;
 
-/// False until native SocketStack carries Curve/ZAP peer relay (cutover gate).
+/// True when the active hard-fork version permits native mesh cutover (HF20+).
+bool hf_permits_native_mesh(uint8_t hard_fork_version) noexcept;
+
+/// False until Curve/ZAP peer relay is ported onto SocketStack.
+bool native_mesh_implementation_ready() noexcept;
+
+/// HF permit AND implementation ready (use from daemon/core with chain HF).
+bool native_mesh_ready_at(uint8_t hard_fork_version) noexcept;
+
+/// Convenience without chain context: false until implementation is ready.
 bool native_mesh_ready() noexcept;
 
-/// Stable reason code while `native_mesh_ready()` is false.
+/// Stable reason code while native mesh cannot cut over.
 const char* native_mesh_blocker() noexcept;
 
 /// Returns the default ACL configured at init (Denied after shutdown).
