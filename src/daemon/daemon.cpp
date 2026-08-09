@@ -39,6 +39,7 @@
 #include "cryptonote_protocol/arqnet.h"
 #include "arqmq/arqmq.h"
 #include "arqmq/backend_policy.hpp"
+#include "arqmq/mesh_bridge.hpp"
 #include "arq_router/router_service.h"
 #include "arq_storage/storage_client.h"
 
@@ -127,6 +128,19 @@ public:
         if (!arqmq::peer_mesh_is_snnetwork())
           MWARNING("Peer mesh is not SNNetwork; verify dual-run cutover readiness before mainnet use");
       }
+
+      const bool mesh_shadow_requested =
+          command_line::get_arg(vm, daemon_args::arg_arqnet_mesh_shadow);
+      const auto shadow_sel =
+          arqmq::resolve_mesh_shadow(mesh_shadow_requested, net, allow_experimental,
+                                     arqmq::native_transport_active());
+      arqmq::set_native_mesh_shadow_relay_enabled(shadow_sel.enabled);
+      if (shadow_sel.overridden)
+        MWARNING("Arq-Net mesh shadow selection overridden: " << shadow_sel.reason);
+      else if (shadow_sel.enabled)
+        MINFO("Arq-Net mesh shadow: " << shadow_sel.reason);
+      else if (mesh_shadow_requested)
+        MINFO("Arq-Net mesh shadow: " << shadow_sel.reason);
     }
 
     {

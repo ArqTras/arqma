@@ -134,6 +134,11 @@ namespace daemon_args
   , "Allow --arqnet-backend=arqmq on mainnet (NOT recommended for production service nodes)"
   , false
   };
+  const command_line::arg_descriptor<bool> arg_arqnet_mesh_shadow = {
+    "arqnet-mesh-shadow"
+  , "Opt-in SocketStack dual-write of peer mesh commands (requires --arqnet-backend=arqmq; stagenet/testnet soak; mainnet needs --arqnet-allow-experimental). Live mesh stays SNNetwork."
+  , false
+  };
   const command_line::arg_descriptor<bool> arg_arq_router = {
     "arq-router"
   , "Enable experimental Arq privacy router scaffold (disabled by default)"

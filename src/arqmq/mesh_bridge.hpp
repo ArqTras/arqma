@@ -30,6 +30,7 @@
 
 #include "curve_zap.hpp"
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -50,6 +51,16 @@ void configure_mesh_shadow(SocketStack& stack, std::string public_key, std::stri
 /// Opt-in dual-write of peer commands onto SocketStack (default off).
 bool native_mesh_shadow_relay_enabled() noexcept;
 void set_native_mesh_shadow_relay_enabled(bool enabled) noexcept;
+
+struct MeshShadowStats
+{
+  uint64_t attempts = 0;
+  uint64_t ok = 0;
+  uint64_t fail = 0;
+};
+
+/// Cumulative shadow-send counters (reset when shadow is toggled on).
+MeshShadowStats native_mesh_shadow_stats() noexcept;
 
 /// Best-effort shadow send; never throws. No-op unless shadow relay is enabled
 /// and the active stack has CURVE identity configured.

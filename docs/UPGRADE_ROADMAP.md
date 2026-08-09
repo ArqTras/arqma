@@ -113,7 +113,8 @@ Remaining before default flip (not blocking Milestone B; preserves compatibility
 - [x] HF20 scaffold (`HF_VERSION_NATIVE_ARQNET_MESH`; stagenet/testnet heights; mainnet TBD)
 - [x] Native mesh Stage A/B (Curve/ZAP allow + `PeerTable` on SocketStack)
 - [x] Native mesh Stage C send path (CURVE `send_to_peer` unit-tested)
-- [ ] Native mesh Stage C live wiring + stagenet `vote_ob` parity
+- [x] Native mesh Stage C daemon flag + RPC shadow counters (`--arqnet-mesh-shadow`)
+- [ ] Stagenet shadow soak + `vote_ob` parity → cutover gate
 - [ ] Stagenet HF20 parity + schedule mainnet height + default flip docs
 
 ## Milestone C — product fork-in-the-road

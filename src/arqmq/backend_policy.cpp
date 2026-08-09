@@ -60,4 +60,31 @@ BackendSelection resolve_backend(const std::string_view requested, const Network
   out.reason = "unknown --arqnet-backend value; falling back to legacy-arqnet";
   return out;
 }
+
+MeshShadowSelection resolve_mesh_shadow(const bool requested, const NetworkClass network,
+                                        const bool allow_experimental_on_mainnet, const bool native_transport_active)
+{
+  MeshShadowSelection out{};
+  if (!requested) {
+    out.reason = "mesh shadow off (default)";
+    return out;
+  }
+  if (!native_transport_active) {
+    out.overridden = true;
+    out.reason = "mesh shadow requires --arqnet-backend=arqmq with an active SocketStack";
+    return out;
+  }
+  if (network == NetworkClass::Mainnet && !allow_experimental_on_mainnet) {
+    out.overridden = true;
+    out.reason = "mesh shadow refused on mainnet: use stagenet/testnet soak first, or pass "
+                 "--arqnet-allow-experimental (peer mesh still SNNetwork)";
+    return out;
+  }
+  out.enabled = true;
+  out.reason = (network == NetworkClass::Mainnet)
+                   ? "mesh shadow dual-write enabled on mainnet via explicit experimental override "
+                     "(live mesh still SNNetwork)"
+                   : "mesh shadow dual-write enabled on non-mainnet (live mesh still SNNetwork)";
+  return out;
+}
 } // namespace arqmq

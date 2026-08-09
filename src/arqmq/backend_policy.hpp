@@ -57,4 +57,19 @@ struct BackendSelection
 /// SNNetwork regardless of selection until cutover.
 BackendSelection resolve_backend(std::string_view requested, NetworkClass network,
                                  bool allow_experimental_on_mainnet = false);
+
+struct MeshShadowSelection
+{
+  bool enabled = false;
+  /// True when the operator request was overridden for safety/compatibility.
+  bool overridden = false;
+  std::string reason;
+};
+
+/// Resolve `--arqnet-mesh-shadow` for the active network.
+///
+/// Requires an active ArqMQ SocketStack. Mainnet refuses shadow dual-write
+/// unless `allow_experimental_on_mainnet` is set. Live peer mesh stays SNNetwork.
+MeshShadowSelection resolve_mesh_shadow(bool requested, NetworkClass network, bool allow_experimental_on_mainnet,
+                                        bool native_transport_active);
 } // namespace arqmq

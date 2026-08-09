@@ -33,10 +33,21 @@
 #include "transport.hpp"
 
 #include <atomic>
+#include <cstdint>
 
 namespace arqmq {
 namespace {
 std::atomic<bool> g_shadow_relay_enabled{false};
+std::atomic<uint64_t> g_shadow_attempts{0};
+std::atomic<uint64_t> g_shadow_ok{0};
+std::atomic<uint64_t> g_shadow_fail{0};
+
+void reset_shadow_stats() noexcept
+{
+  g_shadow_attempts.store(0, std::memory_order_relaxed);
+  g_shadow_ok.store(0, std::memory_order_relaxed);
+  g_shadow_fail.store(0, std::memory_order_relaxed);
+}
 } // namespace
 const char* mesh_transport_name() noexcept
 {
@@ -128,7 +139,15 @@ bool native_mesh_shadow_relay_enabled() noexcept
 
 void set_native_mesh_shadow_relay_enabled(const bool enabled) noexcept
 {
+  if (enabled)
+    reset_shadow_stats();
   g_shadow_relay_enabled.store(enabled, std::memory_order_relaxed);
+}
+
+MeshShadowStats native_mesh_shadow_stats() noexcept
+{
+  return MeshShadowStats{g_shadow_attempts.load(std::memory_order_relaxed), g_shadow_ok.load(std::memory_order_relaxed),
+                         g_shadow_fail.load(std::memory_order_relaxed)};
 }
 
 void shadow_send_to_peer(const std::string_view pubkey, const std::string_view command, const std::string_view payload,
@@ -137,10 +156,17 @@ void shadow_send_to_peer(const std::string_view pubkey, const std::string_view c
   if (!native_mesh_shadow_relay_enabled())
     return;
   auto* stack = active_socket_stack();
-  if (!stack || !stack->curve_zap_configured() || pubkey.size() != 32 || command.empty())
+  if (!stack || !stack->curve_zap_configured() || pubkey.size() != 32 || command.empty()) {
+    g_shadow_attempts.fetch_add(1, std::memory_order_relaxed);
+    g_shadow_fail.fetch_add(1, std::memory_order_relaxed);
     return;
+  }
+  g_shadow_attempts.fetch_add(1, std::memory_order_relaxed);
   if (!hint.empty())
     stack->peers().note_peer(std::string{pubkey}, std::string{hint}, true);
-  (void)stack->send_to_peer(pubkey, command, payload, hint);
+  if (stack->send_to_peer(pubkey, command, payload, hint))
+    g_shadow_fail.fetch_add(1, std::memory_order_relaxed);
+  else
+    g_shadow_ok.fetch_add(1, std::memory_order_relaxed);
 }
 } // namespace arqmq

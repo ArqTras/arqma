@@ -10,6 +10,14 @@ This branch is prepared for **mainnet** operators. Compatibility locks:
 3. `--arqnet-backend=arqmq` is **refused on mainnet** unless you also pass
    `--arqnet-allow-experimental` (not recommended for production service nodes).
 4. On testnet/stagenet, `arqmq` may be used to exercise the dedicated `SocketStack`.
+5. Stagenet soak (shadow dual-write, live mesh still SNNetwork):
+
+```text
+arqmad --stagenet --arqnet-backend=arqmq --arqnet-mesh-shadow
+```
+
+   Watch `get_arqnet_status` → `mesh_shadow`, `mesh_shadow_ok` / `mesh_shadow_fail`.
+   Do **not** enable shadow on mainnet production SNs.
 
 ### HF20 (native mesh — scheduled, not yet active)
 
@@ -58,11 +66,12 @@ default backend flip is a later release step.
 | Flag / RPC | Meaning |
 |------------|---------|
 | `--arqnet-backend=legacy-arqnet\|arqmq` | Messaging selection (default `legacy-arqnet`; mainnet refuses `arqmq` without override) |
-| `--arqnet-allow-experimental` | Permit `arqmq` on mainnet (dev/soak only; peer mesh still SNNetwork) |
+| `--arqnet-allow-experimental` | Permit `arqmq` / mesh-shadow on mainnet (dev/soak only; peer mesh still SNNetwork) |
+| `--arqnet-mesh-shadow` | Dual-write peer commands onto SocketStack (needs `arqmq`; default off) |
 | `--arq-router` | Experimental privacy-router scaffold (lives for daemon lifetime) |
 | `--storage-client-url=<url>` | Outbound Storage Server reachability probe (`http://` GET / `https://` TCP) |
 | `arqnet_ping` | Records Arq-Net reachability (not yet a hard uptime gate) |
-| `get_arqnet_status` | `backend`, `transport`, `mesh`, initialized, last ping |
+| `get_arqnet_status` | `backend`, `transport`, `mesh`, `mesh_shadow` + counters, initialized, last ping |
 | `get_storage_status` | Storage client scaffold status + last SS ping |
 | `get_service_nodes` `offset`/`limit` | Optional pagination |
 

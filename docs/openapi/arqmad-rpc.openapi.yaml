@@ -6,9 +6,11 @@ info:
     Minimal OpenAPI scaffold for selected Arqma daemon JSON-RPC methods during
     the upgrade branch modernization work. Ping/status helpers are JSON-RPC
     methods (`arqnet_ping`, `storage_server_ping`, `get_arqnet_status`,
-    `get_storage_status`), not REST GET paths. `get_arqnet_status` returns
-    `backend`, `transport`, and `mesh` (peer quorum wire; `snnetwork` while
-    the mainnet compatibility lock holds). Privileged wallet-rpc methods
+    `get_storage_status`), not REST GET paths.     `get_arqnet_status` returns
+    `backend`, `transport`, `mesh` (peer quorum wire; `snnetwork` while
+    the mainnet compatibility lock holds), plus optional `mesh_shadow` /
+    `mesh_shadow_*` counters when `--arqnet-mesh-shadow` is enabled.
+    Privileged wallet-rpc methods
     are documented under the separate `arqma-wallet-rpc` surface; daemon
     operator methods require unrestricted RPC (see `rpc_auth.h`). Cleartext
     storage reachability uses an HTTP GET probe after TCP connect; TLS

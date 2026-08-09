@@ -30,6 +30,7 @@
 
 #include "arqmq/arqmq.h"
 #include "arqmq/backend_policy.hpp"
+#include "arqmq/mesh_bridge.hpp"
 #include "arqmq/socket_stack.hpp"
 #include "arqmq/transport.hpp"
 
@@ -66,8 +67,7 @@ TEST(arqmq_compat, mainnet_default_and_unknown_stay_legacy)
 {
   EXPECT_EQ(arqmq::Backend::LegacyArqNet,
             arqmq::resolve_backend("legacy-arqnet", arqmq::NetworkClass::Mainnet).backend);
-  EXPECT_EQ(arqmq::Backend::LegacyArqNet,
-            arqmq::resolve_backend("", arqmq::NetworkClass::Mainnet).backend);
+  EXPECT_EQ(arqmq::Backend::LegacyArqNet, arqmq::resolve_backend("", arqmq::NetworkClass::Mainnet).backend);
   const auto unknown = arqmq::resolve_backend("nope", arqmq::NetworkClass::Mainnet);
   EXPECT_EQ(arqmq::Backend::LegacyArqNet, unknown.backend);
   EXPECT_TRUE(unknown.overridden);
@@ -130,5 +130,54 @@ TEST(arqmq_compat, backend_switch_restores_legacy_without_native_stack)
   EXPECT_FALSE(arqmq::native_transport_active());
   EXPECT_STREQ(arqmq::k_transport_snnetwork, arqmq::transport_name());
   EXPECT_TRUE(arqmq::peer_mesh_is_snnetwork());
+  EXPECT_FALSE(arqmq::shutdown());
+}
+
+TEST(arqmq_compat, mesh_shadow_policy_requires_native_stack)
+{
+  const auto off = arqmq::resolve_mesh_shadow(false, arqmq::NetworkClass::Stagenet, false, true);
+  EXPECT_FALSE(off.enabled);
+  EXPECT_FALSE(off.overridden);
+
+  const auto no_stack = arqmq::resolve_mesh_shadow(true, arqmq::NetworkClass::Stagenet, false, false);
+  EXPECT_FALSE(no_stack.enabled);
+  EXPECT_TRUE(no_stack.overridden);
+
+  const auto mainnet_block = arqmq::resolve_mesh_shadow(true, arqmq::NetworkClass::Mainnet, false, true);
+  EXPECT_FALSE(mainnet_block.enabled);
+  EXPECT_TRUE(mainnet_block.overridden);
+
+  const auto stagenet = arqmq::resolve_mesh_shadow(true, arqmq::NetworkClass::Stagenet, false, true);
+  EXPECT_TRUE(stagenet.enabled);
+  EXPECT_FALSE(stagenet.overridden);
+
+  const auto mainnet_exp = arqmq::resolve_mesh_shadow(true, arqmq::NetworkClass::Mainnet, true, true);
+  EXPECT_TRUE(mainnet_exp.enabled);
+  EXPECT_FALSE(mainnet_exp.overridden);
+}
+
+TEST(arqmq_compat, mesh_shadow_stats_count_unconfigured_sends)
+{
+  arqmq::set_native_mesh_shadow_relay_enabled(false);
+  EXPECT_FALSE(arqmq::native_mesh_shadow_relay_enabled());
+
+  EXPECT_FALSE(arqmq::shutdown());
+  EXPECT_FALSE(arqmq::init(arqmq::Config{arqmq::Backend::ArqMq, arqmq::CategoryAcl::ServiceNode}));
+  ASSERT_TRUE(arqmq::native_transport_active());
+
+  arqmq::set_native_mesh_shadow_relay_enabled(true);
+  EXPECT_TRUE(arqmq::native_mesh_shadow_relay_enabled());
+  auto stats = arqmq::native_mesh_shadow_stats();
+  EXPECT_EQ(0u, stats.attempts);
+
+  // Active stack without CURVE identity → counted failure (best-effort no-op path).
+  std::string pk(32, 'P');
+  arqmq::shadow_send_to_peer(pk, "vote_ob", "x", "tcp://127.0.0.1:1");
+  stats = arqmq::native_mesh_shadow_stats();
+  EXPECT_EQ(1u, stats.attempts);
+  EXPECT_EQ(0u, stats.ok);
+  EXPECT_EQ(1u, stats.fail);
+
+  arqmq::set_native_mesh_shadow_relay_enabled(false);
   EXPECT_FALSE(arqmq::shutdown());
 }

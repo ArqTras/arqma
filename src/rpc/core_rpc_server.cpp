@@ -46,6 +46,7 @@ using namespace epee;
 #include "common/perf_timer.h"
 #include "common/random.h"
 #include "arqmq/arqmq.h"
+#include "arqmq/mesh_bridge.hpp"
 #include "arq_storage/storage_client.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "cryptonote_basic/account.h"
@@ -3177,6 +3178,11 @@ namespace cryptonote
     res.initialized = arqmq::is_initialized();
     res.transport = arqmq::transport_name();
     res.mesh = arqmq::mesh_transport_name();
+    res.mesh_shadow = arqmq::native_mesh_shadow_relay_enabled();
+    const auto shadow = arqmq::native_mesh_shadow_stats();
+    res.mesh_shadow_attempts = shadow.attempts;
+    res.mesh_shadow_ok = shadow.ok;
+    res.mesh_shadow_fail = shadow.fail;
     res.last_arqnet_ping = static_cast<uint64_t>(m_core.m_last_arqnet_ping);
     res.status = CORE_RPC_STATUS_OK;
     return true;
