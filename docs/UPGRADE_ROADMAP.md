@@ -20,7 +20,7 @@ Platform matrix: [`docs/PLATFORM.md`](PLATFORM.md).
 | 7 RPC modernization | **Foundation done** | Validation, wallet caps/auth, OpenAPI 0.2.0 |
 | 8 P2P improvements | **Foundation done** | Limits + Levin/preauth lock |
 | 9 Performance | **Baseline** | Local measurement doc |
-| 10 Testing | **Done (curated)** | **543** unit tests green; integration suites opt-in |
+| 10 Testing | **Done (curated)** | **548** unit tests green; integration suites opt-in |
 | 11 CI | **Done (3 OS)** | Linux/macOS native unit + Windows/macOS/Linux depends |
 | 12 Final review | **Gate ready** | Checklist + completeness gate + platform doc |
 
@@ -87,7 +87,7 @@ milestone.
 - [x] Native GitHub Actions CI + sanitizer job
 - [x] `.clang-format` / `.clang-tidy`
 - [x] CMake ≥ 3.16, C++20 (`-fno-char8_t` bridge)
-- [x] Green curated unit suite (**543** tests)
+- [x] Green curated unit suite (**548** tests)
 - [x] Restore legacy fixtures (base58/uri/parse_amount/sha256/mul_div/fee/…)
 - [x] Hardfork version + serialization basic unit coverage
 - [x] ArqMQ dual-backend facade (transport remains SNNetwork)
@@ -109,8 +109,9 @@ milestone.
 Remaining before default flip (not blocking Milestone B; preserves compatibility):
 
 - [x] Dual-run coexistence: SocketStack + SNNetwork mesh (`mesh=snnetwork` always today)
-- [ ] Native mesh path carries `vote_ob` peer relay (today still SNNetwork by design)
-- [ ] Stagenet dual-run parity + integration deny-path coverage
+- [x] Deny-path unit coverage for unknown Curve peers (`arqnet_auth`)
+- [ ] Native mesh path carries `vote_ob` peer relay (`native_mesh_ready()` still false)
+- [ ] Stagenet dual-run parity + full ZAP integration deny-path
 
 ## Milestone C — product fork-in-the-road
 

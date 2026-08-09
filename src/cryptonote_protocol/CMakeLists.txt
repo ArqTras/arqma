@@ -32,6 +32,7 @@ set(cryptonote_protocol_sources
   cryptonote_protocol_handler.inl
   levin_notify.cpp
   arqnet.cpp
+  arqnet_auth.cpp
   p2p_net_node_instantiation.cpp)
 
 set(cryptonote_protocol_headers)

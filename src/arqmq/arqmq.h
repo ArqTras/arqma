@@ -84,6 +84,12 @@ const char* mesh_transport_name() noexcept;
 /// True while peer quorum traffic is carried by SNNetwork.
 bool peer_mesh_is_snnetwork() noexcept;
 
+/// False until native SocketStack carries Curve/ZAP peer relay (cutover gate).
+bool native_mesh_ready() noexcept;
+
+/// Stable reason code while `native_mesh_ready()` is false.
+const char* native_mesh_blocker() noexcept;
+
 /// Returns the default ACL configured at init (Denied after shutdown).
 CategoryAcl default_acl() noexcept;
 

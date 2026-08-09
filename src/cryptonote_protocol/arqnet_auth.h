@@ -26,53 +26,23 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "mesh_bridge.hpp"
+#pragma once
 
-#include "arqmq.h"
-#include "socket_stack.hpp"
-#include "transport.hpp"
+#include <cstddef>
 
-namespace arqmq {
-const char* mesh_transport_name() noexcept
+namespace arqnet {
+/// Pure auth decision for inbound Curve peers on the Arq-Net quorum mesh.
+/// Quorum traffic is SN-only: unknown Curve identities are denied.
+enum class IncomingCurveDecision
 {
-  // Compatibility lock: peer wire stays on SNNetwork for both backends until
-  // dual-run cutover flips this deliberately.
-  return k_transport_snnetwork;
-}
+  Denied,
+  ServiceNode
+};
 
-bool peer_mesh_is_snnetwork() noexcept
-{
-  return true;
-}
+/// `registered_service_node` is true when the verified x25519 maps to an active SN.
+IncomingCurveDecision decide_incoming_curve_peer(bool registered_service_node) noexcept;
 
-bool native_mesh_ready() noexcept
-{
-  // Cutover gate: peer Curve/ZAP + vote_ob relay still owned by SNNetwork.
-  return false;
-}
-
-const char* native_mesh_blocker() noexcept
-{
-  return "curve-zap-peer-relay-not-ported";
-}
-
-void attach_compatible_mesh_mirrors(SocketStack& stack)
-{
-  // Mirror the production command set for dual-run ACL/framing checks.
-  // Replies make ownership of the live peer mesh explicit: SNNetwork.
-  stack.register_handler("vote_ob", CategoryAcl::ServiceNode,
-                         [](const InboundRequest&) { return std::string{k_transport_snnetwork}; });
-  stack.register_handler("ping", CategoryAcl::Basic, [](const InboundRequest&) { return std::string{"pong"}; });
-  stack.register_handler("pong", CategoryAcl::Basic, [](const InboundRequest&) { return std::string{}; });
-  stack.register_handler("arqnet_status", CategoryAcl::Basic, [](const InboundRequest&) {
-    return std::string{"backend="} + to_string(current_backend()) + ";transport=" + transport_name() +
-           ";mesh=" + mesh_transport_name();
-  });
-}
-
-void attach_compatible_mesh_mirrors_if_active()
-{
-  if (auto* stack = active_socket_stack())
-    attach_compatible_mesh_mirrors(*stack);
-}
-} // namespace arqmq
+/// Empty / missing Curve identity is never accepted on the quorum listener.
+IncomingCurveDecision decide_incoming_curve_peer_from_pubkey_size(bool registered_service_node,
+                                                                  size_t pubkey_bytes) noexcept;
+} // namespace arqnet

@@ -2,24 +2,21 @@
 
 Branch: `upgrade` · Remote: `origin/upgrade` · Authorship: ArqTras only  
 Hooks: `git -c core.hooksPath=/tmp/empty-git-hooks`  
-Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`  
-Tip: `55fc5c89`
+Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
 ## Mainnet readiness locks
 
 - Default `--arqnet-backend=legacy-arqnet`
-- Peer mesh always `snnetwork` (quorum wire unchanged)
+- Peer mesh always `snnetwork` (`native_mesh_ready() == false`)
 - Mainnet refuses `--arqnet-backend=arqmq` unless `--arqnet-allow-experimental`
-- Testnet/stagenet may exercise `SocketStack`
+
+## Post-B cutover progress
+
+- [x] Deny-path unit coverage (`arqnet_auth` / `decide_incoming_curve_peer*`)
+- [x] Explicit `native_mesh_blocker()` until Curve/ZAP peer relay is ported
+- [ ] Port Curve/ZAP + `vote_ob` relay onto SocketStack
+- [ ] Stagenet parity before default flip
 
 ## Quality gates
 
-- Local `unit_tests` → **543** passed
-- CI unit (Linux/macOS + ASan + format) → ✅
-- CI depends (Windows/macOS/Linux + arm) → ✅
-- PR [#3](https://github.com/ArqTras/arqma/pull/3) MERGEABLE / CLEAN
-
-## Next
-
-1. Stagenet soak before any default/mesh cutover
-2. Milestone C only after product choice
+- Local `unit_tests` → **548** passed

@@ -17,12 +17,12 @@ Milestone C decisions.
 | 7 RPC modernization | Foundation done | validation, pagination, DoS caps, auth helpers, OpenAPI | Generated OpenAPI + full auth middleware wiring |
 | 8 P2P improvements | Foundation done | limit aliases, compile-time budget checks, unit coverage | Measured rollout tuning |
 | 9 Performance | Baseline done | `docs/PERFORMANCE.md` local timings | CI hardware baselines / IBD profiles |
-| 10 Testing | Foundation done | curated suite **543** green (Linux/macOS CI) | `core_tests` under `BUILD_INTEGRATION_TESTS`; remaining API-drift fixtures |
+| 10 Testing | Foundation done | curated suite **548** green (Linux/macOS CI) | `core_tests` under `BUILD_INTEGRATION_TESTS`; remaining API-drift fixtures |
 | 11 CI | Done (3 OS) | Linux/macOS unit, ASan, format; Windows/macOS/Linux depends | Optional TSan; native MSVC unit job |
 | 12 Final review | Gate ready | security checklist + completeness gate + `PLATFORM.md` | soak / signed release / stagenet |
 
 ## Recommended next milestone outputs
 
-1. Choose Milestone C primary value-add (Storage / Blink / Pulse / Router).
-2. Dual-run: carry quorum mesh on `SocketStack` behind the flag; verify stagenet parity.
+1. Port Curve/ZAP peer relay so `native_mesh_ready()` can flip; verify stagenet `vote_ob` parity.
+2. Choose Milestone C primary value-add (Storage / Blink / Pulse / Router).
 3. Migrate legacy `core_tests` incrementally under `BUILD_INTEGRATION_TESTS=ON`.

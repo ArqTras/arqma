@@ -26,53 +26,20 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "mesh_bridge.hpp"
+#include "arqnet_auth.h"
 
-#include "arqmq.h"
-#include "socket_stack.hpp"
-#include "transport.hpp"
-
-namespace arqmq {
-const char* mesh_transport_name() noexcept
+namespace arqnet {
+IncomingCurveDecision decide_incoming_curve_peer(const bool registered_service_node) noexcept
 {
-  // Compatibility lock: peer wire stays on SNNetwork for both backends until
-  // dual-run cutover flips this deliberately.
-  return k_transport_snnetwork;
+  return registered_service_node ? IncomingCurveDecision::ServiceNode : IncomingCurveDecision::Denied;
 }
 
-bool peer_mesh_is_snnetwork() noexcept
+IncomingCurveDecision decide_incoming_curve_peer_from_pubkey_size(const bool registered_service_node,
+                                                                  const size_t pubkey_bytes) noexcept
 {
-  return true;
+  // ZAP/SNNetwork expect a 32-byte Curve pubkey for SN auth; anything else is denied.
+  if (pubkey_bytes != 32)
+    return IncomingCurveDecision::Denied;
+  return decide_incoming_curve_peer(registered_service_node);
 }
-
-bool native_mesh_ready() noexcept
-{
-  // Cutover gate: peer Curve/ZAP + vote_ob relay still owned by SNNetwork.
-  return false;
-}
-
-const char* native_mesh_blocker() noexcept
-{
-  return "curve-zap-peer-relay-not-ported";
-}
-
-void attach_compatible_mesh_mirrors(SocketStack& stack)
-{
-  // Mirror the production command set for dual-run ACL/framing checks.
-  // Replies make ownership of the live peer mesh explicit: SNNetwork.
-  stack.register_handler("vote_ob", CategoryAcl::ServiceNode,
-                         [](const InboundRequest&) { return std::string{k_transport_snnetwork}; });
-  stack.register_handler("ping", CategoryAcl::Basic, [](const InboundRequest&) { return std::string{"pong"}; });
-  stack.register_handler("pong", CategoryAcl::Basic, [](const InboundRequest&) { return std::string{}; });
-  stack.register_handler("arqnet_status", CategoryAcl::Basic, [](const InboundRequest&) {
-    return std::string{"backend="} + to_string(current_backend()) + ";transport=" + transport_name() +
-           ";mesh=" + mesh_transport_name();
-  });
-}
-
-void attach_compatible_mesh_mirrors_if_active()
-{
-  if (auto* stack = active_socket_stack())
-    attach_compatible_mesh_mirrors(*stack);
-}
-} // namespace arqmq
+} // namespace arqnet

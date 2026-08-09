@@ -33,6 +33,8 @@ backend without breaking operators.
 
 - [x] Native backend initializes on Linux CI (unit coverage for `SocketStack`)
 - [x] Dual-run coexistence with peer mesh locked on SNNetwork (full wire compatibility)
-- [ ] Quorum vote relay parity verified on stagenet (native mesh path)
-- [ ] Deny path for unknown Curve peers covered by integration test
+- [x] Deny path for unknown Curve peers covered by unit tests (`arqnet_auth` /
+      `decide_incoming_curve_peer*`; full ZAP two-process integration still later)
+- [ ] Quorum vote relay parity verified on stagenet (native mesh path;
+      `native_mesh_ready()` remains false until Curve/ZAP peer relay is ported)
 - [ ] Release notes + `docs/OPERATOR_UPGRADE.md` updated for default flip
