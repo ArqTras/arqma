@@ -67,8 +67,7 @@ std::string default_ping_handler(const InboundRequest&)
 }
 } // namespace
 
-SocketStack::SocketStack()
-    : context_(1)
+SocketStack::SocketStack() : context_(1)
 {
   register_handler("ping", CategoryAcl::Basic, default_ping_handler);
   register_handler("pong", CategoryAcl::Basic, [](const InboundRequest&) { return std::string{}; });

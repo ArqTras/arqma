@@ -44,16 +44,14 @@ BackendSelection resolve_backend(const std::string_view requested, const Network
     if (network == NetworkClass::Mainnet && !allow_experimental_on_mainnet) {
       out.backend = Backend::LegacyArqNet;
       out.overridden = true;
-      out.reason =
-          "arqmq refused on mainnet: keep legacy-arqnet until dual-run cutover; "
-          "peer mesh stays on SNNetwork for compatibility";
+      out.reason = "arqmq refused on mainnet: keep legacy-arqnet until dual-run cutover; "
+                   "peer mesh stays on SNNetwork for compatibility";
       return out;
     }
     out.backend = Backend::ArqMq;
-    out.reason = (network == NetworkClass::Mainnet)
-                     ? "arqmq allowed on mainnet via explicit experimental override "
-                       "(peer mesh still SNNetwork)"
-                     : "arqmq experimental on non-mainnet (peer mesh still SNNetwork)";
+    out.reason = (network == NetworkClass::Mainnet) ? "arqmq allowed on mainnet via explicit experimental override "
+                                                      "(peer mesh still SNNetwork)"
+                                                    : "arqmq experimental on non-mainnet (peer mesh still SNNetwork)";
     return out;
   }
 

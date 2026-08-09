@@ -49,22 +49,14 @@ void attach_compatible_mesh_mirrors(SocketStack& stack)
 {
   // Mirror the production command set for dual-run ACL/framing checks.
   // Replies make ownership of the live peer mesh explicit: SNNetwork.
-  stack.register_handler(
-      "vote_ob", CategoryAcl::ServiceNode,
-      [](const InboundRequest&) { return std::string{k_transport_snnetwork}; });
-  stack.register_handler(
-      "ping", CategoryAcl::Basic,
-      [](const InboundRequest&) { return std::string{"pong"}; });
-  stack.register_handler(
-      "pong", CategoryAcl::Basic,
-      [](const InboundRequest&) { return std::string{}; });
-  stack.register_handler(
-      "arqnet_status", CategoryAcl::Basic,
-      [](const InboundRequest&) {
-        return std::string{"backend="} + to_string(current_backend()) +
-               ";transport=" + transport_name() +
-               ";mesh=" + mesh_transport_name();
-      });
+  stack.register_handler("vote_ob", CategoryAcl::ServiceNode,
+                         [](const InboundRequest&) { return std::string{k_transport_snnetwork}; });
+  stack.register_handler("ping", CategoryAcl::Basic, [](const InboundRequest&) { return std::string{"pong"}; });
+  stack.register_handler("pong", CategoryAcl::Basic, [](const InboundRequest&) { return std::string{}; });
+  stack.register_handler("arqnet_status", CategoryAcl::Basic, [](const InboundRequest&) {
+    return std::string{"backend="} + to_string(current_backend()) + ";transport=" + transport_name() +
+           ";mesh=" + mesh_transport_name();
+  });
 }
 
 void attach_compatible_mesh_mirrors_if_active()
