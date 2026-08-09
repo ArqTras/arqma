@@ -31,5 +31,5 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
 ## Quality gates
 
-- Local `unit_tests` → rebuild after shadow wiring
-- Tip: `1702443c` (+ follow-up shadow wiring commit)
+- Local `unit_tests` → **558** passed
+- Tip: `c48fa389` (Stages A–C send + opt-in shadow dual-write; cutover still off)
