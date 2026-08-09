@@ -6,8 +6,8 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
 ## Tip
 
-- Branch tip CI green on `a7707a1b` (unit Debug/Release, ASan, format, depends, macOS, Windows gate)
-- Follow-up: native mesh Stages A–B (Curve/ZAP + peer table) — see Post-B
+- Tip `a190fc90` — CI **green** (unit Debug/Release, ASan, format, depends, macOS, Windows gate)
+- Native mesh Stages A–C send + opt-in shadow dual-write landed; cutover still off
 
 ## Mainnet readiness locks
 
@@ -32,4 +32,4 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 ## Quality gates
 
 - Local `unit_tests` → **558** passed
-- Tip: `c48fa389` (Stages A–C send + opt-in shadow dual-write; cutover still off)
+- Tip CI (`a190fc90`): **green**
