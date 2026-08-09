@@ -30,6 +30,7 @@
 
 #include "arqmq/arqmq.h"
 #include "arqmq/curve_zap.hpp"
+#include "arqmq/mesh_bridge.hpp"
 #include "arqmq/peer_table.hpp"
 #include "arqmq/socket_stack.hpp"
 
@@ -206,4 +207,15 @@ TEST(arqmq_curve_zap, native_mesh_blocker_awaits_vote_ob_parity)
   EXPECT_FALSE(arqmq::native_mesh_implementation_ready());
   EXPECT_STREQ("vote-ob-parity-unverified", arqmq::native_mesh_blocker());
   EXPECT_TRUE(arqmq::peer_mesh_is_snnetwork());
+}
+
+TEST(arqmq_curve_zap, shadow_relay_opt_in_default_off)
+{
+  EXPECT_FALSE(arqmq::native_mesh_shadow_relay_enabled());
+  arqmq::set_native_mesh_shadow_relay_enabled(true);
+  EXPECT_TRUE(arqmq::native_mesh_shadow_relay_enabled());
+  arqmq::set_native_mesh_shadow_relay_enabled(false);
+  EXPECT_FALSE(arqmq::native_mesh_shadow_relay_enabled());
+  // No active stack / not configured → no-op.
+  arqmq::shadow_send_to_peer(make_pubkey('S'), "vote_ob", "x", "tcp://127.0.0.1:1");
 }

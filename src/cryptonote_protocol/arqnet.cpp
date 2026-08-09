@@ -166,6 +166,21 @@ void *new_snnwrapper(cryptonote::core &core, const std::string &bind)
   // attached for native ACL/framing checks, while peer Curve/ZMQ mesh remains
   // this SNNetwork instance for full wire compatibility.
   arqmq::attach_compatible_mesh_mirrors_if_active();
+  if (auto *stack = arqmq::active_socket_stack(); stack && keys)
+  {
+    // Shadow CURVE identity for opt-in dual-write; do not bind_curve (SNNetwork
+    // owns the live arqnet listener port).
+    arqmq::configure_mesh_shadow(
+        *stack, get_data_as_string(keys->pub_x25519), get_data_as_string(keys->key_x25519.data),
+        [&sn_list = core.get_service_node_list()](const std::string & /*ip*/, const std::string &x25519_pubkey_str) {
+          auto x25519_pubkey = x25519_from_string(x25519_pubkey_str);
+          auto pubkey = sn_list.get_pubkey_from_x25519(x25519_pubkey);
+          const auto decision =
+              decide_incoming_curve_peer_from_pubkey_size(static_cast<bool>(pubkey), x25519_pubkey_str.size());
+          return decision == IncomingCurveDecision::ServiceNode ? arqmq::CurvePeerAllow::ServiceNode
+                                                                : arqmq::CurvePeerAllow::Denied;
+        });
+  }
   if (arqmq::native_transport_active())
   {
     MINFO("Arq-Net dual-run active: native transport=" << arqmq::transport_name()
@@ -347,6 +362,10 @@ private:
         snn.send(peer.first, cmd, relay_data[I]..., send_option::optional{});
       else
         snn.send(peer.first, cmd, relay_data[I]..., send_option::hint{peer.second});
+
+      // Opt-in SocketStack dual-write (default off). Live path remains SNNetwork.
+      if constexpr (N >= 1)
+        arqmq::shadow_send_to_peer(peer.first, cmd, relay_data[0].data, peer.second);
     }
   }
 

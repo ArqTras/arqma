@@ -25,10 +25,11 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - [x] Stage A: Curve/ZAP allow on SocketStack (`curve_zap`, `bind_curve`)
 - [x] Stage B: peer endpoint table (`PeerTable`)
 - [x] Stage C send path: CURVE `send_to_peer` + inbound handler (unit-tested)
-- [ ] Stage C live: daemon dual-write / SNNetwork cutover wiring (blocker: `vote-ob-parity-unverified`)
+- [x] Stage C shadow wiring: CURVE identity on active stack + opt-in `shadow_send_to_peer` (default off)
+- [ ] Stage C live: enable shadow on stagenet, verify parity, then cutover (blocker: `vote-ob-parity-unverified`)
 - [ ] Stagenet HF20 parity → schedule mainnet height → default flip
 
 ## Quality gates
 
-- Local `unit_tests` → **557** passed (after Stage C send path)
-- Prior tip CI (`a7707a1b`): **green**; `cb9fe889` = Stages A–B
+- Local `unit_tests` → rebuild after shadow wiring
+- Tip: `1702443c` (+ follow-up shadow wiring commit)

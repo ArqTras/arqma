@@ -28,6 +28,11 @@
 
 #pragma once
 
+#include "curve_zap.hpp"
+
+#include <string>
+#include <string_view>
+
 namespace arqmq {
 class SocketStack;
 
@@ -37,4 +42,17 @@ void attach_compatible_mesh_mirrors(SocketStack& stack);
 
 /// Convenience: attach mirrors when `active_socket_stack()` is running.
 void attach_compatible_mesh_mirrors_if_active();
+
+/// Loads CURVE identity + ZAP allow onto the active SocketStack for shadow mesh
+/// work. Does not bind a listener (SNNetwork keeps the live arqnet port).
+void configure_mesh_shadow(SocketStack& stack, std::string public_key, std::string secret_key, AllowConnection allow);
+
+/// Opt-in dual-write of peer commands onto SocketStack (default off).
+bool native_mesh_shadow_relay_enabled() noexcept;
+void set_native_mesh_shadow_relay_enabled(bool enabled) noexcept;
+
+/// Best-effort shadow send; never throws. No-op unless shadow relay is enabled
+/// and the active stack has CURVE identity configured.
+void shadow_send_to_peer(std::string_view pubkey, std::string_view command, std::string_view payload,
+                         std::string_view hint = {});
 } // namespace arqmq

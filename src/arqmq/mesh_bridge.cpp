@@ -32,7 +32,12 @@
 #include "socket_stack.hpp"
 #include "transport.hpp"
 
+#include <atomic>
+
 namespace arqmq {
+namespace {
+std::atomic<bool> g_shadow_relay_enabled{false};
+} // namespace
 const char* mesh_transport_name() noexcept
 {
   // Compatibility lock: peer wire stays on SNNetwork for both backends until
@@ -108,5 +113,34 @@ void attach_compatible_mesh_mirrors_if_active()
 {
   if (auto* stack = active_socket_stack())
     attach_compatible_mesh_mirrors(*stack);
+}
+
+void configure_mesh_shadow(SocketStack& stack, std::string public_key, std::string secret_key, AllowConnection allow)
+{
+  stack.set_curve_identity(std::move(public_key), std::move(secret_key));
+  stack.set_allow_connection(std::move(allow));
+}
+
+bool native_mesh_shadow_relay_enabled() noexcept
+{
+  return g_shadow_relay_enabled.load(std::memory_order_relaxed);
+}
+
+void set_native_mesh_shadow_relay_enabled(const bool enabled) noexcept
+{
+  g_shadow_relay_enabled.store(enabled, std::memory_order_relaxed);
+}
+
+void shadow_send_to_peer(const std::string_view pubkey, const std::string_view command, const std::string_view payload,
+                         const std::string_view hint)
+{
+  if (!native_mesh_shadow_relay_enabled())
+    return;
+  auto* stack = active_socket_stack();
+  if (!stack || !stack->curve_zap_configured() || pubkey.size() != 32 || command.empty())
+    return;
+  if (!hint.empty())
+    stack->peers().note_peer(std::string{pubkey}, std::string{hint}, true);
+  (void)stack->send_to_peer(pubkey, command, payload, hint);
 }
 } // namespace arqmq
