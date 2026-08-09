@@ -112,7 +112,8 @@ Remaining before default flip (not blocking Milestone B; preserves compatibility
 - [x] Deny-path unit coverage for unknown Curve peers (`arqnet_auth`)
 - [x] HF20 scaffold (`HF_VERSION_NATIVE_ARQNET_MESH`; stagenet/testnet heights; mainnet TBD)
 - [x] Native mesh Stage A/B (Curve/ZAP allow + `PeerTable` on SocketStack)
-- [ ] Native mesh Stage C (`vote_ob` peer send/relay + stagenet parity)
+- [x] Native mesh Stage C send path (CURVE `send_to_peer` unit-tested)
+- [ ] Native mesh Stage C live wiring + stagenet `vote_ob` parity
 - [ ] Stagenet HF20 parity + schedule mainnet height + default flip docs
 
 ## Milestone C — product fork-in-the-road

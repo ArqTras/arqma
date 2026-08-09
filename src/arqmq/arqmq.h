@@ -102,7 +102,7 @@ bool native_mesh_ready() noexcept;
 
 /// Stable reason code while native mesh cannot cut over.
 /// Stages: curve-zap-peer-relay-not-ported → peer-endpoints-missing →
-/// peer-send-path-missing → (ready / hf-below-native-mesh).
+/// peer-send-path-missing → vote-ob-parity-unverified → (ready / hf-below-native-mesh).
 const char* native_mesh_blocker() noexcept;
 
 /// Returns the default ACL configured at init (Denied after shutdown).

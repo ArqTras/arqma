@@ -46,8 +46,8 @@ Runtime helpers (`arqmq`):
 - `native_mesh_implementation_ready()` — false until peer send + `vote_ob` parity
 - `native_mesh_ready_at(hf)` — both conditions (daemon should use this)
 - `native_mesh_blocker()` stages:
-  - `peer-send-path-missing` (current: Curve/ZAP + peer table landed)
-  - then `vote-ob-parity-unverified` / ready after Stage C
+  - `vote-ob-parity-unverified` (current: CURVE send path unit-tested; live mesh still SNNetwork)
+  - then ready after daemon wiring + stagenet parity
 
 Alias: `HF_VERSION_NATIVE_ARQNET_MESH` → `network_version_20`.
 
@@ -60,6 +60,6 @@ Alias: `HF_VERSION_NATIVE_ARQNET_MESH` → `network_version_20`.
 - [x] HF20 scaffold (stagenet/testnet heights; mainnet height deferred)
 - [x] Curve/ZAP allow + CURVE bind on SocketStack (shadow; SNNetwork still live mesh)
 - [x] Peer endpoint bookkeeping (`PeerTable`)
-- [ ] Outbound peer send + quorum `vote_ob` relay on SocketStack
-- [ ] Quorum vote relay parity verified on stagenet
+- [x] Outbound CURVE peer send + inbound `vote_ob` handler path (unit-tested; not live-wired)
+- [ ] Daemon dual-write / cutover wiring + quorum vote relay parity on stagenet
 - [ ] Schedule mainnet HF20 height + release notes / `OPERATOR_UPGRADE.md` for cutover

@@ -61,8 +61,8 @@ using CommandHandler = std::function<std::string(const InboundRequest&)>;
 ///
 /// Owns an independent `zmq::context_t`, inproc job sockets, and a worker
 /// thread that enforces framing limits + ACL before invoking handlers.
-/// Curve/ZAP listener + peer table are available for shadow/native mesh work;
-/// live `vote_ob` relay stays on `arqnet::SNNetwork` until cutover.
+/// Curve/ZAP + peer send are available for shadow/native mesh; live quorum
+/// relay remains on `arqnet::SNNetwork` until cutover / stagenet parity.
 class SocketStack final : public Transport
 {
 public:
@@ -78,7 +78,7 @@ public:
   /// Optional external bind (tcp/ipc). Must be called after `start()`.
   std::error_code bind(const std::string& endpoint);
 
-  /// Sets local CURVE identity (32-byte binary keys). Required before `bind_curve`.
+  /// Sets local CURVE identity (32-byte binary keys). Required before `bind_curve` / send.
   void set_curve_identity(std::string public_key, std::string secret_key);
 
   /// Allow callback for inbound CURVE ZAP (domain `arqma.sn`).
@@ -90,15 +90,17 @@ public:
   /// CURVE+ZAP ROUTER bind. Must be called after `start()` and configuration.
   std::error_code bind_curve(const std::string& endpoint);
 
-  /// Peer bookkeeping for native mesh (no outbound send yet).
+  /// Actual last CURVE bind endpoint (resolves `tcp://…:0`), or empty.
+  std::string last_curve_endpoint() const;
+
+  /// Peer bookkeeping for native mesh.
   PeerTable& peers() noexcept { return peers_; }
   const PeerTable& peers() const noexcept { return peers_; }
 
-  /// Outbound peer send — not implemented until vote_ob relay port (Stage C).
-  std::error_code send_to_peer(std::string_view /*pubkey*/, std::string_view /*command*/, std::string_view /*payload*/)
-  {
-    return std::make_error_code(std::errc::operation_not_supported);
-  }
+  /// Outbound CURVE DEALER send: frames `[command][payload]` (SNNetwork-compatible).
+  /// Uses `hint` or `peers().find(pubkey)->hint` as connect address.
+  std::error_code send_to_peer(std::string_view pubkey, std::string_view command, std::string_view payload,
+                               std::string_view hint = {});
 
   /// Registers or replaces a command handler. `required` is documented ACL;
   /// runtime authorize still uses `authorize_request` against `peer_acl`.
@@ -131,9 +133,23 @@ private:
     bool* done = nullptr;
   };
 
+  struct SendJob
+  {
+    std::string pubkey;
+    std::string command;
+    std::string payload;
+    std::string hint;
+    std::error_code* ec = nullptr;
+    std::mutex* mu = nullptr;
+    std::condition_variable* cv = nullptr;
+    bool* done = nullptr;
+  };
+
   void worker_main();
   std::error_code handle_job(const InboundRequest& request, std::string* reply);
   void process_zap_requests(zmq::socket_t& zap_auth);
+  void process_listener_messages(zmq::socket_t& listener);
+  std::error_code worker_send_to_peer(SendJob& job, std::unordered_map<std::string, zmq::socket_t>& outgoing);
 
   zmq::context_t context_;
   std::string jobs_endpoint_;
@@ -145,7 +161,7 @@ private:
   mutable std::mutex handlers_mu_;
   std::unordered_map<std::string, HandlerEntry> handlers_;
 
-  std::mutex bind_mu_;
+  mutable std::mutex bind_mu_;
   std::vector<std::string> bind_endpoints_;
   std::vector<std::string> curve_bind_endpoints_;
 

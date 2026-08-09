@@ -24,10 +24,11 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
   - Gates: `hf_permits_native_mesh` + `native_mesh_ready_at(hf)`
 - [x] Stage A: Curve/ZAP allow on SocketStack (`curve_zap`, `bind_curve`)
 - [x] Stage B: peer endpoint table (`PeerTable`)
-- [ ] Stage C: outbound peer send + `vote_ob` relay (blocker: `peer-send-path-missing`)
+- [x] Stage C send path: CURVE `send_to_peer` + inbound handler (unit-tested)
+- [ ] Stage C live: daemon dual-write / SNNetwork cutover wiring (blocker: `vote-ob-parity-unverified`)
 - [ ] Stagenet HF20 parity → schedule mainnet height → default flip
 
 ## Quality gates
 
-- Local `unit_tests` → **556** passed
-- Prior tip CI (`a7707a1b`): **green**; next tip includes Curve/ZAP Stages A–B
+- Local `unit_tests` → **557** passed (after Stage C send path)
+- Prior tip CI (`a7707a1b`): **green**; `cb9fe889` = Stages A–B

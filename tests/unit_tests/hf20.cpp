@@ -56,5 +56,5 @@ TEST(hf20, mesh_cutover_requires_hf_and_implementation)
   EXPECT_FALSE(arqmq::native_mesh_implementation_ready());
   EXPECT_FALSE(arqmq::native_mesh_ready_at(static_cast<uint8_t>(cryptonote::network_version_20)));
   EXPECT_FALSE(arqmq::native_mesh_ready());
-  EXPECT_STREQ("peer-send-path-missing", arqmq::native_mesh_blocker());
+  EXPECT_STREQ("vote-ob-parity-unverified", arqmq::native_mesh_blocker());
 }

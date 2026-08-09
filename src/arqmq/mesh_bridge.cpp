@@ -54,15 +54,16 @@ bool hf_permits_native_mesh(const uint8_t hard_fork_version) noexcept
 namespace {
 // Incremental native-mesh port stages (compile-time progress; cutover stays off).
 // 0 = missing Curve/ZAP allow path
-// 1 = Curve/ZAP on SocketStack landed; peer table missing
-// 2 = peer table landed; outbound send / vote_ob relay missing
-// 3 = vote_ob relay + stagenet parity verified → implementation ready
-constexpr int k_native_mesh_port_stage = 2;
+// 1 = Curve/ZAP landed; peer table missing
+// 2 = peer table landed; outbound send missing
+// 3 = peer send landed; stagenet vote_ob parity / daemon wiring unverified
+// 4 = implementation ready (cutover still needs HF20+)
+constexpr int k_native_mesh_port_stage = 3;
 } // namespace
 
 bool native_mesh_implementation_ready() noexcept
 {
-  return k_native_mesh_port_stage >= 3;
+  return k_native_mesh_port_stage >= 4;
 }
 
 bool native_mesh_ready_at(const uint8_t hard_fork_version) noexcept
@@ -84,6 +85,8 @@ const char* native_mesh_blocker() noexcept
     return "peer-endpoints-missing";
   if (k_native_mesh_port_stage < 3)
     return "peer-send-path-missing";
+  if (k_native_mesh_port_stage < 4)
+    return "vote-ob-parity-unverified";
   return "hf-below-native-mesh";
 }
 

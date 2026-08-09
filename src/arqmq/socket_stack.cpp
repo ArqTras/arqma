@@ -43,6 +43,7 @@ namespace {
 constexpr const char* k_quit = "QUIT";
 constexpr const char* k_bind = "BIND";
 constexpr const char* k_bind_curve = "BIND_CURVE";
+constexpr const char* k_send = "SEND";
 
 std::atomic<uint64_t> g_stack_id{1};
 
@@ -91,6 +92,17 @@ std::string default_ping_handler(const InboundRequest&)
 {
   return "pong";
 }
+
+CategoryAcl acl_from_user_id(const char* user_id)
+{
+  if (!user_id || !user_id[0])
+    return CategoryAcl::Denied;
+  if (user_id[0] == 'S' && user_id[1] == ':')
+    return CategoryAcl::ServiceNode;
+  if (user_id[0] == 'C' && user_id[1] == ':')
+    return CategoryAcl::Basic;
+  return CategoryAcl::Denied;
+}
 } // namespace
 
 SocketStack::SocketStack() : context_(1)
@@ -119,7 +131,6 @@ std::error_code SocketStack::start()
     return std::make_error_code(std::errc::resource_unavailable_try_again);
   }
 
-  // Wait for the worker to bind inproc endpoints (allow headroom on Debug CI).
   for (int i = 0; i < 500 && !running_.load(); ++i)
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
@@ -183,6 +194,11 @@ std::error_code SocketStack::bind_curve(const std::string& endpoint)
   if (!running_.load() || endpoint.empty() || !curve_zap_configured())
     return std::make_error_code(std::errc::invalid_argument);
 
+  const size_t before = [&] {
+    std::lock_guard<std::mutex> lock{bind_mu_};
+    return curve_bind_endpoints_.size();
+  }();
+
   try {
     zmq::socket_t push{context_, zmq::socket_type::push};
     push.connect(ctrl_endpoint_);
@@ -197,14 +213,63 @@ std::error_code SocketStack::bind_curve(const std::string& endpoint)
   for (int i = 0; i < 500; ++i) {
     {
       std::lock_guard<std::mutex> lock{bind_mu_};
-      for (const auto& bound : curve_bind_endpoints_) {
-        if (bound == endpoint)
-          return {};
-      }
+      if (curve_bind_endpoints_.size() > before)
+        return {};
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
   return std::make_error_code(std::errc::io_error);
+}
+
+std::string SocketStack::last_curve_endpoint() const
+{
+  std::lock_guard<std::mutex> lock{bind_mu_};
+  if (curve_bind_endpoints_.empty())
+    return {};
+  return curve_bind_endpoints_.back();
+}
+
+std::error_code SocketStack::send_to_peer(const std::string_view pubkey, const std::string_view command,
+                                          const std::string_view payload, const std::string_view hint)
+{
+  if (!running_.load() || pubkey.size() != 32 || command.empty())
+    return std::make_error_code(std::errc::invalid_argument);
+
+  std::string resolved_hint{hint};
+  if (resolved_hint.empty()) {
+    if (const auto peer = peers_.find(pubkey))
+      resolved_hint = peer->hint;
+  }
+  if (resolved_hint.empty())
+    return std::make_error_code(std::errc::no_such_file_or_directory);
+
+  {
+    std::lock_guard<std::mutex> lock{curve_mu_};
+    if (curve_public_key_.size() != 32 || curve_secret_key_.size() != 32)
+      return std::make_error_code(std::errc::invalid_argument);
+  }
+
+  std::error_code ec;
+  std::mutex mu;
+  std::condition_variable cv;
+  bool done = false;
+  SendJob job{
+      std::string{pubkey}, std::string{command}, std::string{payload}, std::move(resolved_hint), &ec, &mu, &cv, &done};
+
+  try {
+    zmq::socket_t push{context_, zmq::socket_type::push};
+    push.connect(ctrl_endpoint_);
+    zmq::message_t cmd{k_send, std::strlen(k_send)};
+    push.send(cmd, zmq::send_flags::sndmore);
+    send_pointer(push, &job);
+  } catch (...) {
+    return std::make_error_code(std::errc::io_error);
+  }
+
+  std::unique_lock<std::mutex> lock{mu};
+  if (!cv.wait_for(lock, std::chrono::seconds(5), [&] { return done; }))
+    return std::make_error_code(std::errc::timed_out);
+  return ec;
 }
 
 void SocketStack::register_handler(std::string command, CategoryAcl required, CommandHandler handler)
@@ -276,7 +341,6 @@ void SocketStack::stop() noexcept
     zmq::message_t quit{k_quit, std::strlen(k_quit)};
     push.send(quit, zmq::send_flags::none);
   } catch (...) {
-    // Fall through to join; worker may already be exiting.
   }
 
   if (worker_.joinable())
@@ -327,6 +391,75 @@ void SocketStack::process_zap_requests(zmq::socket_t& zap_auth)
   }
 }
 
+void SocketStack::process_listener_messages(zmq::socket_t& listener)
+{
+  std::vector<zmq::message_t> parts;
+  while (recv_all_parts(listener, parts, zmq::recv_flags::dontwait)) {
+    // ROUTER: [routing-id][command][payload…]
+    if (parts.size() < 2)
+      continue;
+
+    CategoryAcl acl = CategoryAcl::Denied;
+    try {
+      acl = acl_from_user_id(parts.back().gets("User-Id"));
+    } catch (...) {
+      acl = CategoryAcl::Denied;
+    }
+
+    InboundRequest request;
+    request.command.assign(static_cast<const char*>(parts[1].data()), parts[1].size());
+    request.peer_acl = acl;
+    if (parts.size() >= 3)
+      request.payload.assign(static_cast<const char*>(parts[2].data()), parts[2].size());
+
+    // Fire-and-forget into the command handler (no wire reply yet).
+    (void)handle_job(request, nullptr);
+  }
+}
+
+std::error_code SocketStack::worker_send_to_peer(SendJob& job, std::unordered_map<std::string, zmq::socket_t>& outgoing)
+{
+  std::string pub;
+  std::string sec;
+  {
+    std::lock_guard<std::mutex> lock{curve_mu_};
+    pub = curve_public_key_;
+    sec = curve_secret_key_;
+  }
+  if (pub.size() != 32 || sec.size() != 32)
+    return std::make_error_code(std::errc::invalid_argument);
+
+  try {
+    auto it = outgoing.find(job.pubkey);
+    if (it == outgoing.end()) {
+      zmq::socket_t dealer{context_, zmq::socket_type::dealer};
+      dealer.set(zmq::sockopt::linger, 0);
+      dealer.set(zmq::sockopt::curve_serverkey, zmq::buffer(job.pubkey));
+      dealer.set(zmq::sockopt::curve_publickey, zmq::buffer(pub));
+      dealer.set(zmq::sockopt::curve_secretkey, zmq::buffer(sec));
+      dealer.set(zmq::sockopt::routing_id, zmq::buffer(pub));
+      dealer.connect(job.hint);
+      it = outgoing.emplace(job.pubkey, std::move(dealer)).first;
+      // Give CURVE handshake a moment on localhost CI.
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    }
+
+    zmq::message_t cmd{job.command.data(), job.command.size()};
+    if (job.payload.empty()) {
+      it->second.send(cmd, zmq::send_flags::none);
+    } else {
+      it->second.send(cmd, zmq::send_flags::sndmore);
+      zmq::message_t body{job.payload.data(), job.payload.size()};
+      it->second.send(body, zmq::send_flags::none);
+    }
+    peers_.note_peer(job.pubkey, job.hint, true);
+    return {};
+  } catch (...) {
+    outgoing.erase(job.pubkey);
+    return std::make_error_code(std::errc::io_error);
+  }
+}
+
 std::error_code SocketStack::handle_job(const InboundRequest& request, std::string* reply)
 {
   if (!authorize_request(request.command, request.peer_acl, request.payload.size(), 1))
@@ -357,6 +490,7 @@ void SocketStack::worker_main()
   zmq::socket_t ctrl{context_, zmq::socket_type::pull};
   zmq::socket_t zap_auth{context_, zmq::socket_type::rep};
   std::vector<std::unique_ptr<zmq::socket_t>> listeners;
+  std::unordered_map<std::string, zmq::socket_t> outgoing;
 
   try {
     jobs.bind(jobs_endpoint_);
@@ -371,15 +505,23 @@ void SocketStack::worker_main()
   running_.store(true);
 
   while (!stop_requested_.load()) {
-    zmq::pollitem_t items[] = {
-        {jobs.handle(), 0, ZMQ_POLLIN, 0},
-        {ctrl.handle(), 0, ZMQ_POLLIN, 0},
-        {zap_auth.handle(), 0, ZMQ_POLLIN, 0},
-    };
-    zmq::poll(items, 3, std::chrono::milliseconds{100});
+    std::vector<zmq::pollitem_t> items;
+    items.push_back({jobs.handle(), 0, ZMQ_POLLIN, 0});
+    items.push_back({ctrl.handle(), 0, ZMQ_POLLIN, 0});
+    items.push_back({zap_auth.handle(), 0, ZMQ_POLLIN, 0});
+    const size_t listener_offset = items.size();
+    for (auto& listener : listeners)
+      items.push_back({listener->handle(), 0, ZMQ_POLLIN, 0});
+
+    zmq::poll(items.data(), items.size(), std::chrono::milliseconds{100});
 
     if (items[2].revents & ZMQ_POLLIN)
       process_zap_requests(zap_auth);
+
+    for (size_t i = 0; i < listeners.size(); ++i) {
+      if (items[listener_offset + i].revents & ZMQ_POLLIN)
+        process_listener_messages(*listeners[i]);
+    }
 
     if (items[1].revents & ZMQ_POLLIN) {
       zmq::message_t cmd;
@@ -388,6 +530,20 @@ void SocketStack::worker_main()
       const std::string command{static_cast<char*>(cmd.data()), cmd.size()};
       if (command == k_quit)
         break;
+      if (command == k_send) {
+        auto* send_job = static_cast<SendJob*>(recv_pointer(ctrl));
+        if (!send_job)
+          continue;
+        std::error_code ec = worker_send_to_peer(*send_job, outgoing);
+        if (send_job->ec)
+          *send_job->ec = ec;
+        if (send_job->mu && send_job->cv && send_job->done) {
+          std::lock_guard<std::mutex> lock{*send_job->mu};
+          *send_job->done = true;
+          send_job->cv->notify_one();
+        }
+        continue;
+      }
       if (command == k_bind || command == k_bind_curve) {
         zmq::message_t ep_msg;
         if (!ctrl.recv(ep_msg, zmq::recv_flags::none))
@@ -413,14 +569,18 @@ void SocketStack::worker_main()
             sock->set(zmq::sockopt::router_mandatory, true);
           }
           sock->bind(endpoint);
+          std::string recorded = endpoint;
+          try {
+            recorded = sock->get(zmq::sockopt::last_endpoint);
+          } catch (...) {
+          }
           listeners.push_back(std::move(sock));
           std::lock_guard<std::mutex> lock{bind_mu_};
           if (curve)
-            curve_bind_endpoints_.push_back(endpoint);
+            curve_bind_endpoints_.push_back(std::move(recorded));
           else
-            bind_endpoints_.push_back(endpoint);
+            bind_endpoints_.push_back(std::move(recorded));
         } catch (...) {
-          // Leave endpoint unrecorded; bind() / bind_curve() times out.
         }
       }
     }
@@ -441,6 +601,7 @@ void SocketStack::worker_main()
     }
   }
 
+  outgoing.clear();
   listeners.clear();
   running_.store(false);
 }
