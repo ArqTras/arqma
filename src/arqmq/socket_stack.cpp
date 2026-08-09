@@ -36,13 +36,37 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace arqmq {
 namespace {
 constexpr const char* k_quit = "QUIT";
 constexpr const char* k_bind = "BIND";
+constexpr const char* k_bind_curve = "BIND_CURVE";
 
 std::atomic<uint64_t> g_stack_id{1};
+
+bool recv_all_parts(zmq::socket_t& sock, std::vector<zmq::message_t>& parts, const zmq::recv_flags flags)
+{
+  parts.clear();
+  zmq::message_t msg;
+  const auto first = sock.recv(msg, flags);
+  if (!first)
+    return false;
+  parts.push_back(std::move(msg));
+  while (parts.back().more()) {
+    zmq::message_t next;
+    if (!sock.recv(next, zmq::recv_flags::none))
+      break;
+    parts.push_back(std::move(next));
+  }
+  return true;
+}
+
+std::string_view as_view(const zmq::message_t& msg)
+{
+  return {static_cast<const char*>(msg.data()), msg.size()};
+}
 
 void send_pointer(zmq::socket_t& sock, void* ptr)
 {
@@ -135,6 +159,54 @@ std::error_code SocketStack::bind(const std::string& endpoint)
   return std::make_error_code(std::errc::io_error);
 }
 
+void SocketStack::set_curve_identity(std::string public_key, std::string secret_key)
+{
+  std::lock_guard<std::mutex> lock{curve_mu_};
+  curve_public_key_ = std::move(public_key);
+  curve_secret_key_ = std::move(secret_key);
+}
+
+void SocketStack::set_allow_connection(AllowConnection allow)
+{
+  std::lock_guard<std::mutex> lock{curve_mu_};
+  allow_connection_ = std::move(allow);
+}
+
+bool SocketStack::curve_zap_configured() const noexcept
+{
+  std::lock_guard<std::mutex> lock{curve_mu_};
+  return curve_public_key_.size() == 32 && curve_secret_key_.size() == 32 && static_cast<bool>(allow_connection_);
+}
+
+std::error_code SocketStack::bind_curve(const std::string& endpoint)
+{
+  if (!running_.load() || endpoint.empty() || !curve_zap_configured())
+    return std::make_error_code(std::errc::invalid_argument);
+
+  try {
+    zmq::socket_t push{context_, zmq::socket_type::push};
+    push.connect(ctrl_endpoint_);
+    zmq::message_t cmd{k_bind_curve, std::strlen(k_bind_curve)};
+    push.send(cmd, zmq::send_flags::sndmore);
+    zmq::message_t ep{endpoint.data(), endpoint.size()};
+    push.send(ep, zmq::send_flags::none);
+  } catch (...) {
+    return std::make_error_code(std::errc::io_error);
+  }
+
+  for (int i = 0; i < 500; ++i) {
+    {
+      std::lock_guard<std::mutex> lock{bind_mu_};
+      for (const auto& bound : curve_bind_endpoints_) {
+        if (bound == endpoint)
+          return {};
+      }
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  }
+  return std::make_error_code(std::errc::io_error);
+}
+
 void SocketStack::register_handler(std::string command, CategoryAcl required, CommandHandler handler)
 {
   std::lock_guard<std::mutex> lock{handlers_mu_};
@@ -212,8 +284,47 @@ void SocketStack::stop() noexcept
   running_.store(false);
   stop_requested_.store(false);
 
-  std::lock_guard<std::mutex> lock{bind_mu_};
-  bind_endpoints_.clear();
+  {
+    std::lock_guard<std::mutex> lock{bind_mu_};
+    bind_endpoints_.clear();
+    curve_bind_endpoints_.clear();
+  }
+  peers_.clear();
+}
+
+void SocketStack::process_zap_requests(zmq::socket_t& zap_auth)
+{
+  AllowConnection allow;
+  {
+    std::lock_guard<std::mutex> lock{curve_mu_};
+    allow = allow_connection_;
+  }
+
+  std::vector<zmq::message_t> frames;
+  while (recv_all_parts(zap_auth, frames, zmq::recv_flags::dontwait)) {
+    std::vector<std::string_view> views;
+    views.reserve(frames.size());
+    for (const auto& frame : frames)
+      views.push_back(as_view(frame));
+    const ZapReply reply = evaluate_curve_zap_frames(views, allow);
+
+    try {
+      zmq::message_t version{reply.version.data(), reply.version.size()};
+      zap_auth.send(version, zmq::send_flags::sndmore);
+      zmq::message_t req_id{reply.request_id.data(), reply.request_id.size()};
+      zap_auth.send(req_id, zmq::send_flags::sndmore);
+      zmq::message_t code{reply.status_code.data(), reply.status_code.size()};
+      zap_auth.send(code, zmq::send_flags::sndmore);
+      zmq::message_t text{reply.status_text.data(), reply.status_text.size()};
+      zap_auth.send(text, zmq::send_flags::sndmore);
+      zmq::message_t user{reply.user_id.data(), reply.user_id.size()};
+      zap_auth.send(user, zmq::send_flags::sndmore);
+      zmq::message_t meta{reply.metadata.data(), reply.metadata.size()};
+      zap_auth.send(meta, zmq::send_flags::none);
+    } catch (...) {
+      break;
+    }
+  }
 }
 
 std::error_code SocketStack::handle_job(const InboundRequest& request, std::string* reply)
@@ -244,11 +355,14 @@ void SocketStack::worker_main()
 {
   zmq::socket_t jobs{context_, zmq::socket_type::pull};
   zmq::socket_t ctrl{context_, zmq::socket_type::pull};
+  zmq::socket_t zap_auth{context_, zmq::socket_type::rep};
   std::vector<std::unique_ptr<zmq::socket_t>> listeners;
 
   try {
     jobs.bind(jobs_endpoint_);
     ctrl.bind(ctrl_endpoint_);
+    zap_auth.set(zmq::sockopt::linger, 0);
+    zap_auth.bind(k_zap_endpoint);
   } catch (...) {
     running_.store(false);
     return;
@@ -260,8 +374,12 @@ void SocketStack::worker_main()
     zmq::pollitem_t items[] = {
         {jobs.handle(), 0, ZMQ_POLLIN, 0},
         {ctrl.handle(), 0, ZMQ_POLLIN, 0},
+        {zap_auth.handle(), 0, ZMQ_POLLIN, 0},
     };
-    zmq::poll(items, 2, std::chrono::milliseconds{100});
+    zmq::poll(items, 3, std::chrono::milliseconds{100});
+
+    if (items[2].revents & ZMQ_POLLIN)
+      process_zap_requests(zap_auth);
 
     if (items[1].revents & ZMQ_POLLIN) {
       zmq::message_t cmd;
@@ -270,20 +388,39 @@ void SocketStack::worker_main()
       const std::string command{static_cast<char*>(cmd.data()), cmd.size()};
       if (command == k_quit)
         break;
-      if (command == k_bind) {
+      if (command == k_bind || command == k_bind_curve) {
         zmq::message_t ep_msg;
         if (!ctrl.recv(ep_msg, zmq::recv_flags::none))
           continue;
         const std::string endpoint{static_cast<char*>(ep_msg.data()), ep_msg.size()};
+        const bool curve = command == k_bind_curve;
         try {
           auto sock = std::make_unique<zmq::socket_t>(context_, zmq::socket_type::router);
           sock->set(zmq::sockopt::linger, 0);
+          if (curve) {
+            std::string pub;
+            std::string sec;
+            {
+              std::lock_guard<std::mutex> lock{curve_mu_};
+              pub = curve_public_key_;
+              sec = curve_secret_key_;
+            }
+            sock->set(zmq::sockopt::zap_domain, k_zap_auth_domain_sn);
+            sock->set(zmq::sockopt::curve_server, true);
+            sock->set(zmq::sockopt::curve_publickey, zmq::buffer(pub));
+            sock->set(zmq::sockopt::curve_secretkey, zmq::buffer(sec));
+            sock->set(zmq::sockopt::router_handover, true);
+            sock->set(zmq::sockopt::router_mandatory, true);
+          }
           sock->bind(endpoint);
           listeners.push_back(std::move(sock));
           std::lock_guard<std::mutex> lock{bind_mu_};
-          bind_endpoints_.push_back(endpoint);
+          if (curve)
+            curve_bind_endpoints_.push_back(endpoint);
+          else
+            bind_endpoints_.push_back(endpoint);
         } catch (...) {
-          // Leave endpoint unrecorded; bind() times out.
+          // Leave endpoint unrecorded; bind() / bind_curve() times out.
         }
       }
     }

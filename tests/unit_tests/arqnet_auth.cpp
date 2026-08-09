@@ -64,5 +64,5 @@ TEST(arqnet_auth, native_mesh_not_ready_keeps_snnetwork_carrier)
   EXPECT_FALSE(arqmq::native_mesh_implementation_ready());
   EXPECT_FALSE(arqmq::native_mesh_ready_at(arqmq::k_hf_native_arqnet_mesh));
   EXPECT_FALSE(arqmq::native_mesh_ready());
-  EXPECT_STREQ("curve-zap-peer-relay-not-ported", arqmq::native_mesh_blocker());
+  EXPECT_STREQ("peer-send-path-missing", arqmq::native_mesh_blocker());
 }

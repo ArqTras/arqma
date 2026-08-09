@@ -36,6 +36,7 @@ set(unit_tests_sources
   arqmq_facade.cpp
   arqmq_transport.cpp
   arqmq_compat.cpp
+  arqmq_curve_zap.cpp
   arqnet_auth.cpp
   apply_permutation.cpp
   base58.cpp

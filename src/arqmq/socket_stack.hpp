@@ -29,6 +29,8 @@
 #pragma once
 
 #include "arqmq.h"
+#include "curve_zap.hpp"
+#include "peer_table.hpp"
 #include "transport.hpp"
 
 #include <atomic>
@@ -59,9 +61,8 @@ using CommandHandler = std::function<std::string(const InboundRequest&)>;
 ///
 /// Owns an independent `zmq::context_t`, inproc job sockets, and a worker
 /// thread that enforces framing limits + ACL before invoking handlers.
-/// Peer quorum mesh (`vote_ob` relay) continues via `arqnet::SNNetwork` until
-/// dual-run cutover; this stack is the native ArqMQ transport path selected by
-/// `--arqnet-backend=arqmq`.
+/// Curve/ZAP listener + peer table are available for shadow/native mesh work;
+/// live `vote_ob` relay stays on `arqnet::SNNetwork` until cutover.
 class SocketStack final : public Transport
 {
 public:
@@ -76,6 +77,28 @@ public:
 
   /// Optional external bind (tcp/ipc). Must be called after `start()`.
   std::error_code bind(const std::string& endpoint);
+
+  /// Sets local CURVE identity (32-byte binary keys). Required before `bind_curve`.
+  void set_curve_identity(std::string public_key, std::string secret_key);
+
+  /// Allow callback for inbound CURVE ZAP (domain `arqma.sn`).
+  void set_allow_connection(AllowConnection allow);
+
+  /// True when identity keys are 32 bytes each and an allow callback is set.
+  bool curve_zap_configured() const noexcept;
+
+  /// CURVE+ZAP ROUTER bind. Must be called after `start()` and configuration.
+  std::error_code bind_curve(const std::string& endpoint);
+
+  /// Peer bookkeeping for native mesh (no outbound send yet).
+  PeerTable& peers() noexcept { return peers_; }
+  const PeerTable& peers() const noexcept { return peers_; }
+
+  /// Outbound peer send — not implemented until vote_ob relay port (Stage C).
+  std::error_code send_to_peer(std::string_view /*pubkey*/, std::string_view /*command*/, std::string_view /*payload*/)
+  {
+    return std::make_error_code(std::errc::operation_not_supported);
+  }
 
   /// Registers or replaces a command handler. `required` is documented ACL;
   /// runtime authorize still uses `authorize_request` against `peer_acl`.
@@ -110,6 +133,7 @@ private:
 
   void worker_main();
   std::error_code handle_job(const InboundRequest& request, std::string* reply);
+  void process_zap_requests(zmq::socket_t& zap_auth);
 
   zmq::context_t context_;
   std::string jobs_endpoint_;
@@ -123,5 +147,13 @@ private:
 
   std::mutex bind_mu_;
   std::vector<std::string> bind_endpoints_;
+  std::vector<std::string> curve_bind_endpoints_;
+
+  mutable std::mutex curve_mu_;
+  std::string curve_public_key_;
+  std::string curve_secret_key_;
+  AllowConnection allow_connection_;
+
+  PeerTable peers_;
 };
 } // namespace arqmq

@@ -26,35 +26,57 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "gtest/gtest.h"
+#pragma once
 
-#include "arqmq/arqmq.h"
-#include "cryptonote_basic/hardfork.h"
-#include "cryptonote_config.h"
+#include <functional>
+#include <string>
+#include <string_view>
+#include <vector>
 
-TEST(hf20, feature_gate_aligns_with_arqmq_constant)
+namespace arqmq {
+/// ZAP domain used by Arq-Net SN listeners (must match SNNetwork).
+inline constexpr const char k_zap_auth_domain_sn[] = "arqma.sn";
+
+/// Well-known per-context ZAP endpoint required by libzmq.
+inline constexpr const char k_zap_endpoint[] = "inproc://zeromq.zap.01";
+
+enum class CurvePeerAllow
 {
-  ASSERT_EQ(HF_VERSION_NATIVE_ARQNET_MESH, cryptonote::network_version_20);
-  ASSERT_EQ(arqmq::k_hf_native_arqnet_mesh, static_cast<uint8_t>(cryptonote::network_version_20));
-}
+  Denied = 0,
+  Client,
+  ServiceNode,
+};
 
-TEST(hf20, schedules_stagenet_and_testnet_only)
-{
-  ASSERT_EQ(240u,
-            cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::STAGENET, cryptonote::network_version_20));
-  ASSERT_EQ(1300u,
-            cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::TESTNET, cryptonote::network_version_20));
-  // Mainnet height deliberately unscheduled until stagenet mesh parity.
-  ASSERT_EQ(cryptonote::HardFork::INVALID_HF_VERSION_HEIGHT,
-            cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::MAINNET, cryptonote::network_version_20));
-}
+using AllowConnection = std::function<CurvePeerAllow(const std::string& ip, const std::string& pubkey)>;
 
-TEST(hf20, mesh_cutover_requires_hf_and_implementation)
+/// Parsed ZAP request frames (RFC 27), after REP delimiter stripping.
+struct ZapRequestView
 {
-  EXPECT_FALSE(arqmq::hf_permits_native_mesh(static_cast<uint8_t>(cryptonote::network_version_19)));
-  EXPECT_TRUE(arqmq::hf_permits_native_mesh(static_cast<uint8_t>(cryptonote::network_version_20)));
-  EXPECT_FALSE(arqmq::native_mesh_implementation_ready());
-  EXPECT_FALSE(arqmq::native_mesh_ready_at(static_cast<uint8_t>(cryptonote::network_version_20)));
-  EXPECT_FALSE(arqmq::native_mesh_ready());
-  EXPECT_STREQ("peer-send-path-missing", arqmq::native_mesh_blocker());
-}
+  std::string_view version;
+  std::string_view request_id;
+  std::string_view domain;
+  std::string_view address;
+  std::string_view identity;
+  std::string_view mechanism;
+  std::string_view credentials; ///< 32-byte CURVE pubkey when mechanism is CURVE
+};
+
+struct ZapReply
+{
+  std::string version = "1.0";
+  std::string request_id;
+  std::string status_code;
+  std::string status_text;
+  std::string user_id;
+  std::string metadata;
+};
+
+/// Lower-hex encode of opaque bytes (matches SNNetwork user-id formatting).
+std::string to_hex_lower(std::string_view bytes);
+
+/// Pure ZAP CURVE evaluator shared by SocketStack and unit tests.
+ZapReply evaluate_curve_zap_request(const ZapRequestView& request, const AllowConnection& allow);
+
+/// Convenience over a contiguous frame list (version … credentials).
+ZapReply evaluate_curve_zap_frames(const std::vector<std::string_view>& frames, const AllowConnection& allow);
+} // namespace arqmq

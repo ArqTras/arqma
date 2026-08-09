@@ -111,7 +111,8 @@ Remaining before default flip (not blocking Milestone B; preserves compatibility
 - [x] Dual-run coexistence: SocketStack + SNNetwork mesh (`mesh=snnetwork` always today)
 - [x] Deny-path unit coverage for unknown Curve peers (`arqnet_auth`)
 - [x] HF20 scaffold (`HF_VERSION_NATIVE_ARQNET_MESH`; stagenet/testnet heights; mainnet TBD)
-- [ ] Native mesh implementation (Curve/ZAP + `vote_ob` on SocketStack)
+- [x] Native mesh Stage A/B (Curve/ZAP allow + `PeerTable` on SocketStack)
+- [ ] Native mesh Stage C (`vote_ob` peer send/relay + stagenet parity)
 - [ ] Stagenet HF20 parity + schedule mainnet height + default flip docs
 
 ## Milestone C — product fork-in-the-road

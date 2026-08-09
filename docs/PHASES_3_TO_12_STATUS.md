@@ -23,6 +23,6 @@ Milestone C decisions.
 
 ## Recommended next milestone outputs
 
-1. Port Curve/ZAP peer relay so `native_mesh_ready()` can flip; verify stagenet `vote_ob` parity.
+1. Finish Stage C (peer send + `vote_ob` relay); then verify stagenet parity before `native_mesh_ready()` can flip.
 2. Choose Milestone C primary value-add (Storage / Blink / Pulse / Router).
 3. Migrate legacy `core_tests` incrementally under `BUILD_INTEGRATION_TESTS=ON`.

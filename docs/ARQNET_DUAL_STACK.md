@@ -43,8 +43,11 @@ version**, not only an operator flag:
 Runtime helpers (`arqmq`):
 
 - `hf_permits_native_mesh(hf)` — true at `network_version_20+`
-- `native_mesh_implementation_ready()` — false until Curve/ZAP peer relay ported
+- `native_mesh_implementation_ready()` — false until peer send + `vote_ob` parity
 - `native_mesh_ready_at(hf)` — both conditions (daemon should use this)
+- `native_mesh_blocker()` stages:
+  - `peer-send-path-missing` (current: Curve/ZAP + peer table landed)
+  - then `vote-ob-parity-unverified` / ready after Stage C
 
 Alias: `HF_VERSION_NATIVE_ARQNET_MESH` → `network_version_20`.
 
@@ -55,6 +58,8 @@ Alias: `HF_VERSION_NATIVE_ARQNET_MESH` → `network_version_20`.
 - [x] Deny path for unknown Curve peers covered by unit tests (`arqnet_auth` /
       `decide_incoming_curve_peer*`; full ZAP two-process integration still later)
 - [x] HF20 scaffold (stagenet/testnet heights; mainnet height deferred)
-- [ ] Quorum vote relay parity verified on stagenet (native mesh path;
-      `native_mesh_implementation_ready()` remains false until Curve/ZAP ported)
+- [x] Curve/ZAP allow + CURVE bind on SocketStack (shadow; SNNetwork still live mesh)
+- [x] Peer endpoint bookkeeping (`PeerTable`)
+- [ ] Outbound peer send + quorum `vote_ob` relay on SocketStack
+- [ ] Quorum vote relay parity verified on stagenet
 - [ ] Schedule mainnet HF20 height + release notes / `OPERATOR_UPGRADE.md` for cutover

@@ -1,14 +1,18 @@
 set(arqmq_sources
   arqmq.cpp
   backend_policy.cpp
+  curve_zap.cpp
   mesh_bridge.cpp
+  peer_table.cpp
   socket_stack.cpp)
 
 set(arqmq_headers
   arqmq.h
   backend_policy.hpp
+  curve_zap.hpp
   transport.hpp
   socket_stack.hpp
+  peer_table.hpp
   mesh_bridge.hpp
   command_registry.hpp
   message_limits.hpp)

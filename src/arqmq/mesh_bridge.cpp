@@ -51,10 +51,18 @@ bool hf_permits_native_mesh(const uint8_t hard_fork_version) noexcept
   return hard_fork_version >= k_hf_native_arqnet_mesh;
 }
 
+namespace {
+// Incremental native-mesh port stages (compile-time progress; cutover stays off).
+// 0 = missing Curve/ZAP allow path
+// 1 = Curve/ZAP on SocketStack landed; peer table missing
+// 2 = peer table landed; outbound send / vote_ob relay missing
+// 3 = vote_ob relay + stagenet parity verified → implementation ready
+constexpr int k_native_mesh_port_stage = 2;
+} // namespace
+
 bool native_mesh_implementation_ready() noexcept
 {
-  // Cutover gate: peer Curve/ZAP + vote_ob relay still owned by SNNetwork.
-  return false;
+  return k_native_mesh_port_stage >= 3;
 }
 
 bool native_mesh_ready_at(const uint8_t hard_fork_version) noexcept
@@ -70,8 +78,12 @@ bool native_mesh_ready() noexcept
 
 const char* native_mesh_blocker() noexcept
 {
-  if (!native_mesh_implementation_ready())
+  if (k_native_mesh_port_stage < 1)
     return "curve-zap-peer-relay-not-ported";
+  if (k_native_mesh_port_stage < 2)
+    return "peer-endpoints-missing";
+  if (k_native_mesh_port_stage < 3)
+    return "peer-send-path-missing";
   return "hf-below-native-mesh";
 }
 

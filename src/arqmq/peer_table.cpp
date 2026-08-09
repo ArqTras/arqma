@@ -26,35 +26,49 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "gtest/gtest.h"
+#include "peer_table.hpp"
 
-#include "arqmq/arqmq.h"
-#include "cryptonote_basic/hardfork.h"
-#include "cryptonote_config.h"
-
-TEST(hf20, feature_gate_aligns_with_arqmq_constant)
+namespace arqmq {
+void PeerTable::note_peer(std::string pubkey, std::string hint, const bool service_node)
 {
-  ASSERT_EQ(HF_VERSION_NATIVE_ARQNET_MESH, cryptonote::network_version_20);
-  ASSERT_EQ(arqmq::k_hf_native_arqnet_mesh, static_cast<uint8_t>(cryptonote::network_version_20));
+  if (pubkey.size() != 32)
+    return;
+  std::lock_guard<std::mutex> lock{mu_};
+  auto& entry = peers_[pubkey];
+  entry.pubkey = std::move(pubkey);
+  if (!hint.empty())
+    entry.hint = std::move(hint);
+  entry.service_node = service_node;
 }
 
-TEST(hf20, schedules_stagenet_and_testnet_only)
+std::optional<PeerEndpoint> PeerTable::find(const std::string_view pubkey) const
 {
-  ASSERT_EQ(240u,
-            cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::STAGENET, cryptonote::network_version_20));
-  ASSERT_EQ(1300u,
-            cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::TESTNET, cryptonote::network_version_20));
-  // Mainnet height deliberately unscheduled until stagenet mesh parity.
-  ASSERT_EQ(cryptonote::HardFork::INVALID_HF_VERSION_HEIGHT,
-            cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::MAINNET, cryptonote::network_version_20));
+  if (pubkey.size() != 32)
+    return std::nullopt;
+  std::lock_guard<std::mutex> lock{mu_};
+  const auto it = peers_.find(std::string{pubkey});
+  if (it == peers_.end())
+    return std::nullopt;
+  return it->second;
 }
 
-TEST(hf20, mesh_cutover_requires_hf_and_implementation)
+bool PeerTable::erase(const std::string_view pubkey)
 {
-  EXPECT_FALSE(arqmq::hf_permits_native_mesh(static_cast<uint8_t>(cryptonote::network_version_19)));
-  EXPECT_TRUE(arqmq::hf_permits_native_mesh(static_cast<uint8_t>(cryptonote::network_version_20)));
-  EXPECT_FALSE(arqmq::native_mesh_implementation_ready());
-  EXPECT_FALSE(arqmq::native_mesh_ready_at(static_cast<uint8_t>(cryptonote::network_version_20)));
-  EXPECT_FALSE(arqmq::native_mesh_ready());
-  EXPECT_STREQ("peer-send-path-missing", arqmq::native_mesh_blocker());
+  if (pubkey.size() != 32)
+    return false;
+  std::lock_guard<std::mutex> lock{mu_};
+  return peers_.erase(std::string{pubkey}) > 0;
 }
+
+void PeerTable::clear()
+{
+  std::lock_guard<std::mutex> lock{mu_};
+  peers_.clear();
+}
+
+size_t PeerTable::size() const
+{
+  std::lock_guard<std::mutex> lock{mu_};
+  return peers_.size();
+}
+} // namespace arqmq

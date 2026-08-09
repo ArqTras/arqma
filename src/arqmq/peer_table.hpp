@@ -26,35 +26,35 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "gtest/gtest.h"
+#pragma once
 
-#include "arqmq/arqmq.h"
-#include "cryptonote_basic/hardfork.h"
-#include "cryptonote_config.h"
+#include <cstddef>
+#include <mutex>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <unordered_map>
 
-TEST(hf20, feature_gate_aligns_with_arqmq_constant)
+namespace arqmq {
+struct PeerEndpoint
 {
-  ASSERT_EQ(HF_VERSION_NATIVE_ARQNET_MESH, cryptonote::network_version_20);
-  ASSERT_EQ(arqmq::k_hf_native_arqnet_mesh, static_cast<uint8_t>(cryptonote::network_version_20));
-}
+  std::string pubkey; ///< 32-byte x25519
+  std::string hint;   ///< tcp://… connect hint (may be empty)
+  bool service_node = false;
+};
 
-TEST(hf20, schedules_stagenet_and_testnet_only)
+/// Bookkeeping for native mesh peers (Stage B). No live send path yet.
+class PeerTable
 {
-  ASSERT_EQ(240u,
-            cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::STAGENET, cryptonote::network_version_20));
-  ASSERT_EQ(1300u,
-            cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::TESTNET, cryptonote::network_version_20));
-  // Mainnet height deliberately unscheduled until stagenet mesh parity.
-  ASSERT_EQ(cryptonote::HardFork::INVALID_HF_VERSION_HEIGHT,
-            cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::MAINNET, cryptonote::network_version_20));
-}
+public:
+  void note_peer(std::string pubkey, std::string hint, bool service_node);
+  std::optional<PeerEndpoint> find(std::string_view pubkey) const;
+  bool erase(std::string_view pubkey);
+  void clear();
+  size_t size() const;
 
-TEST(hf20, mesh_cutover_requires_hf_and_implementation)
-{
-  EXPECT_FALSE(arqmq::hf_permits_native_mesh(static_cast<uint8_t>(cryptonote::network_version_19)));
-  EXPECT_TRUE(arqmq::hf_permits_native_mesh(static_cast<uint8_t>(cryptonote::network_version_20)));
-  EXPECT_FALSE(arqmq::native_mesh_implementation_ready());
-  EXPECT_FALSE(arqmq::native_mesh_ready_at(static_cast<uint8_t>(cryptonote::network_version_20)));
-  EXPECT_FALSE(arqmq::native_mesh_ready());
-  EXPECT_STREQ("peer-send-path-missing", arqmq::native_mesh_blocker());
-}
+private:
+  mutable std::mutex mu_;
+  std::unordered_map<std::string, PeerEndpoint> peers_;
+};
+} // namespace arqmq

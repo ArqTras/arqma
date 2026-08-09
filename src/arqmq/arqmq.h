@@ -91,7 +91,7 @@ bool peer_mesh_is_snnetwork() noexcept;
 /// True when the active hard-fork version permits native mesh cutover (HF20+).
 bool hf_permits_native_mesh(uint8_t hard_fork_version) noexcept;
 
-/// False until Curve/ZAP peer relay is ported onto SocketStack.
+/// False until Curve/ZAP + peer send + vote_ob relay are ported and verified.
 bool native_mesh_implementation_ready() noexcept;
 
 /// HF permit AND implementation ready (use from daemon/core with chain HF).
@@ -101,6 +101,8 @@ bool native_mesh_ready_at(uint8_t hard_fork_version) noexcept;
 bool native_mesh_ready() noexcept;
 
 /// Stable reason code while native mesh cannot cut over.
+/// Stages: curve-zap-peer-relay-not-ported → peer-endpoints-missing →
+/// peer-send-path-missing → (ready / hf-below-native-mesh).
 const char* native_mesh_blocker() noexcept;
 
 /// Returns the default ACL configured at init (Denied after shutdown).
