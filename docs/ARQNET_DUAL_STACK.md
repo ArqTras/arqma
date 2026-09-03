@@ -65,5 +65,6 @@ Alias: `HF_VERSION_NATIVE_ARQNET_MESH` → `network_version_20`.
 - [x] Daemon `--arqnet-mesh-shadow` + RPC counters (`mesh_shadow_*` on `get_arqnet_status`)
 - [x] Live vs shadow parity telemetry + local dual-write `vote_ob` unit coverage
 - [x] Shadow CURVE listener on ANET+10000 + outbound hint rewrite
+- [x] Soak monitor script (`utils/arqnet-mesh-soak-monitor.py`)
 - [ ] Stagenet soak: enable shadow + verify `vote_ob` parity → flip `native_mesh_implementation_ready()`
 - [ ] Schedule mainnet HF20 height + release notes / `OPERATOR_UPGRADE.md` for cutover

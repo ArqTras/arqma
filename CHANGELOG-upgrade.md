@@ -43,6 +43,7 @@
   `mesh_shadow_parity_sample_ok`) for stagenet soak decisions.
 - Bind opt-in mesh-shadow CURVE listener on ANET+10000 and rewrite dual-write
   peer hints to that port (`mesh_shadow_endpoint`, `mesh_vote_ob_shadow_in`).
+- Add `utils/arqnet-mesh-soak-monitor.py` to poll soak parity via `get_arqnet_status`.
 - Restore `arqnet_ping` RPC and `last_arqnet_ping` daemon info fields.
 - Add testnet hard fork 19 at height 1200.
 - Add `--storage-client-url` for outbound Storage Server TCP reachability probes.

@@ -35,6 +35,13 @@ arqmad --stagenet --arqnet-backend=arqmq --arqnet-mesh-shadow
 
    Do **not** enable shadow on mainnet production SNs.
 
+   Monitor soak progress (stdlib Python):
+
+```text
+utils/arqnet-mesh-soak-monitor.py 127.0.0.1:39994
+utils/arqnet-mesh-soak-monitor.py 127.0.0.1:39994 --once   # exit 0 when sample_ok
+```
+
 ### HF20 (native mesh — scheduled, not yet active)
 
 | Network | Height | Role |
