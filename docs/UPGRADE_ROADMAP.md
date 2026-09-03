@@ -114,6 +114,7 @@ Remaining before default flip (not blocking Milestone B; preserves compatibility
 - [x] Native mesh Stage A/B (Curve/ZAP allow + `PeerTable` on SocketStack)
 - [x] Native mesh Stage C send path (CURVE `send_to_peer` unit-tested)
 - [x] Native mesh Stage C daemon flag + RPC shadow counters (`--arqnet-mesh-shadow`)
+- [x] Live/shadow parity telemetry + dual-write unit coverage
 - [ ] Stagenet shadow soak + `vote_ob` parity → cutover gate
 - [ ] Stagenet HF20 parity + schedule mainnet height + default flip docs
 

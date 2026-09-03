@@ -41,14 +41,28 @@ std::atomic<bool> g_shadow_relay_enabled{false};
 std::atomic<uint64_t> g_shadow_attempts{0};
 std::atomic<uint64_t> g_shadow_ok{0};
 std::atomic<uint64_t> g_shadow_fail{0};
+std::atomic<uint64_t> g_live_relays{0};
+std::atomic<uint64_t> g_vote_ob_live{0};
+std::atomic<uint64_t> g_vote_ob_shadow_ok{0};
+std::atomic<uint64_t> g_vote_ob_shadow_fail{0};
 
 void reset_shadow_stats() noexcept
 {
   g_shadow_attempts.store(0, std::memory_order_relaxed);
   g_shadow_ok.store(0, std::memory_order_relaxed);
   g_shadow_fail.store(0, std::memory_order_relaxed);
+  g_live_relays.store(0, std::memory_order_relaxed);
+  g_vote_ob_live.store(0, std::memory_order_relaxed);
+  g_vote_ob_shadow_ok.store(0, std::memory_order_relaxed);
+  g_vote_ob_shadow_fail.store(0, std::memory_order_relaxed);
+}
+
+bool is_vote_ob(const std::string_view command) noexcept
+{
+  return command == "vote_ob";
 }
 } // namespace
+
 const char* mesh_transport_name() noexcept
 {
   // Compatibility lock: peer wire stays on SNNetwork for both backends until
@@ -146,8 +160,43 @@ void set_native_mesh_shadow_relay_enabled(const bool enabled) noexcept
 
 MeshShadowStats native_mesh_shadow_stats() noexcept
 {
-  return MeshShadowStats{g_shadow_attempts.load(std::memory_order_relaxed), g_shadow_ok.load(std::memory_order_relaxed),
-                         g_shadow_fail.load(std::memory_order_relaxed)};
+  return MeshShadowStats{
+      g_shadow_attempts.load(std::memory_order_relaxed),    g_shadow_ok.load(std::memory_order_relaxed),
+      g_shadow_fail.load(std::memory_order_relaxed),        g_live_relays.load(std::memory_order_relaxed),
+      g_vote_ob_live.load(std::memory_order_relaxed),       g_vote_ob_shadow_ok.load(std::memory_order_relaxed),
+      g_vote_ob_shadow_fail.load(std::memory_order_relaxed)};
+}
+
+void note_live_mesh_relay(const std::string_view command) noexcept
+{
+  if (!native_mesh_shadow_relay_enabled())
+    return;
+  g_live_relays.fetch_add(1, std::memory_order_relaxed);
+  if (is_vote_ob(command))
+    g_vote_ob_live.fetch_add(1, std::memory_order_relaxed);
+}
+
+uint32_t native_mesh_shadow_ok_rate_bps() noexcept
+{
+  const uint64_t attempts = g_shadow_attempts.load(std::memory_order_relaxed);
+  if (attempts == 0)
+    return 0;
+  const uint64_t ok = g_shadow_ok.load(std::memory_order_relaxed);
+  return static_cast<uint32_t>((ok * 10000ull) / attempts);
+}
+
+bool native_mesh_shadow_parity_sample_ok(const uint64_t min_vote_ob_live, const uint32_t min_ok_rate_bps) noexcept
+{
+  const uint64_t vote_live = g_vote_ob_live.load(std::memory_order_relaxed);
+  if (vote_live < min_vote_ob_live)
+    return false;
+  const uint64_t vote_ok = g_vote_ob_shadow_ok.load(std::memory_order_relaxed);
+  const uint64_t vote_fail = g_vote_ob_shadow_fail.load(std::memory_order_relaxed);
+  const uint64_t vote_attempts = vote_ok + vote_fail;
+  if (vote_attempts == 0)
+    return false;
+  const uint32_t rate = static_cast<uint32_t>((vote_ok * 10000ull) / vote_attempts);
+  return rate >= min_ok_rate_bps;
 }
 
 void shadow_send_to_peer(const std::string_view pubkey, const std::string_view command, const std::string_view payload,
@@ -156,17 +205,25 @@ void shadow_send_to_peer(const std::string_view pubkey, const std::string_view c
   if (!native_mesh_shadow_relay_enabled())
     return;
   auto* stack = active_socket_stack();
+  const bool vote = is_vote_ob(command);
   if (!stack || !stack->curve_zap_configured() || pubkey.size() != 32 || command.empty()) {
     g_shadow_attempts.fetch_add(1, std::memory_order_relaxed);
     g_shadow_fail.fetch_add(1, std::memory_order_relaxed);
+    if (vote)
+      g_vote_ob_shadow_fail.fetch_add(1, std::memory_order_relaxed);
     return;
   }
   g_shadow_attempts.fetch_add(1, std::memory_order_relaxed);
   if (!hint.empty())
     stack->peers().note_peer(std::string{pubkey}, std::string{hint}, true);
-  if (stack->send_to_peer(pubkey, command, payload, hint))
+  if (stack->send_to_peer(pubkey, command, payload, hint)) {
     g_shadow_fail.fetch_add(1, std::memory_order_relaxed);
-  else
+    if (vote)
+      g_vote_ob_shadow_fail.fetch_add(1, std::memory_order_relaxed);
+  } else {
     g_shadow_ok.fetch_add(1, std::memory_order_relaxed);
+    if (vote)
+      g_vote_ob_shadow_ok.fetch_add(1, std::memory_order_relaxed);
+  }
 }
 } // namespace arqmq

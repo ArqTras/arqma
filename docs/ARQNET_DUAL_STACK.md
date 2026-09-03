@@ -63,5 +63,6 @@ Alias: `HF_VERSION_NATIVE_ARQNET_MESH` → `network_version_20`.
 - [x] Peer endpoint bookkeeping (`PeerTable`)
 - [x] Outbound CURVE peer send + inbound `vote_ob` handler path (unit-tested; not live-wired)
 - [x] Daemon `--arqnet-mesh-shadow` + RPC counters (`mesh_shadow_*` on `get_arqnet_status`)
+- [x] Live vs shadow parity telemetry + local dual-write `vote_ob` unit coverage
 - [ ] Stagenet soak: enable shadow + verify `vote_ob` parity → flip `native_mesh_implementation_ready()`
 - [ ] Schedule mainnet HF20 height + release notes / `OPERATOR_UPGRADE.md` for cutover

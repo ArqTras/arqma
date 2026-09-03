@@ -363,7 +363,8 @@ private:
       else
         snn.send(peer.first, cmd, relay_data[I]..., send_option::hint{peer.second});
 
-      // Opt-in SocketStack dual-write (default off). Live path remains SNNetwork.
+      // Live SNNetwork relay accounted for soak parity vs opt-in SocketStack dual-write.
+      arqmq::note_live_mesh_relay(cmd);
       if constexpr (N >= 1)
         arqmq::shadow_send_to_peer(peer.first, cmd, relay_data[0].data, peer.second);
     }

@@ -219,3 +219,76 @@ TEST(arqmq_curve_zap, shadow_relay_opt_in_default_off)
   // No active stack / not configured → no-op.
   arqmq::shadow_send_to_peer(make_pubkey('S'), "vote_ob", "x", "tcp://127.0.0.1:1");
 }
+
+TEST(arqmq_curve_zap, shadow_dual_write_delivers_vote_ob_via_facade)
+{
+  std::string server_pub;
+  std::string server_sec;
+  std::string client_pub;
+  std::string client_sec;
+  ASSERT_TRUE(make_curve_keypair(server_pub, server_sec));
+  ASSERT_TRUE(make_curve_keypair(client_pub, client_sec));
+
+  std::mutex mu;
+  std::condition_variable cv;
+  bool got = false;
+  std::string got_payload;
+
+  arqmq::SocketStack server;
+  ASSERT_FALSE(server.start());
+  server.set_curve_identity(server_pub, server_sec);
+  server.set_allow_connection([&](const std::string&, const std::string& pk) {
+    return pk == client_pub ? arqmq::CurvePeerAllow::ServiceNode : arqmq::CurvePeerAllow::Denied;
+  });
+  server.register_handler("vote_ob", arqmq::CategoryAcl::ServiceNode, [&](const arqmq::InboundRequest& req) {
+    {
+      std::lock_guard<std::mutex> lock{mu};
+      got_payload = req.payload;
+      got = true;
+    }
+    cv.notify_one();
+    return std::string{"ok"};
+  });
+  ASSERT_FALSE(server.bind_curve("tcp://127.0.0.1:0"));
+  const std::string endpoint = server.last_curve_endpoint();
+  ASSERT_FALSE(endpoint.empty());
+
+  EXPECT_FALSE(arqmq::shutdown());
+  EXPECT_FALSE(arqmq::init(arqmq::Config{arqmq::Backend::ArqMq, arqmq::CategoryAcl::ServiceNode}));
+  auto* client = arqmq::active_socket_stack();
+  ASSERT_NE(nullptr, client);
+  arqmq::configure_mesh_shadow(*client, client_pub, client_sec,
+                               [](const std::string&, const std::string&) { return arqmq::CurvePeerAllow::Denied; });
+
+  arqmq::set_native_mesh_shadow_relay_enabled(true);
+  arqmq::note_live_mesh_relay("vote_ob");
+  arqmq::shadow_send_to_peer(server_pub, "vote_ob", "dual-write-payload", endpoint);
+
+  {
+    std::unique_lock<std::mutex> lock{mu};
+    ASSERT_TRUE(cv.wait_for(lock, std::chrono::seconds(3), [&] { return got; }));
+  }
+  EXPECT_EQ("dual-write-payload", got_payload);
+
+  const auto stats = arqmq::native_mesh_shadow_stats();
+  EXPECT_EQ(1u, stats.live_relays);
+  EXPECT_EQ(1u, stats.vote_ob_live);
+  EXPECT_GE(stats.ok, 1u);
+  EXPECT_GE(stats.vote_ob_shadow_ok, 1u);
+  EXPECT_GE(arqmq::native_mesh_shadow_ok_rate_bps(), 1u);
+  EXPECT_FALSE(arqmq::native_mesh_shadow_parity_sample_ok(32, 9500)); // sample too small
+  EXPECT_TRUE(arqmq::native_mesh_shadow_parity_sample_ok(1, 9000));
+
+  arqmq::set_native_mesh_shadow_relay_enabled(false);
+  EXPECT_FALSE(arqmq::shutdown());
+  server.stop();
+}
+
+TEST(arqmq_curve_zap, parity_sample_requires_vote_ob_volume)
+{
+  arqmq::set_native_mesh_shadow_relay_enabled(true); // resets counters
+  EXPECT_FALSE(arqmq::native_mesh_shadow_parity_sample_ok(1, 1));
+  arqmq::note_live_mesh_relay("ping");
+  EXPECT_FALSE(arqmq::native_mesh_shadow_parity_sample_ok(1, 1)); // not vote_ob
+  arqmq::set_native_mesh_shadow_relay_enabled(false);
+}

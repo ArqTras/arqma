@@ -6,7 +6,7 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
 ## Tip
 
-- Stage C live: `--arqnet-mesh-shadow` + RPC counters (push after commit)
+- Tip pending: parity telemetry + dual-write vote_ob coverage
 - Native mesh Stages A–C + daemon shadow opt-in landed; cutover still off
 
 ## Mainnet readiness locks
@@ -27,9 +27,10 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - [x] Stage C send path: CURVE `send_to_peer` + inbound handler (unit-tested)
 - [x] Stage C shadow wiring: CURVE identity on active stack + opt-in `shadow_send_to_peer` (default off)
 - [x] Stage C daemon: `--arqnet-mesh-shadow` + `get_arqnet_status` counters
+- [x] Stage C parity telemetry: live vs shadow + `mesh_shadow_parity_sample_ok`
 - [ ] Stage C soak: enable shadow on stagenet, verify parity, then cutover (blocker: `vote-ob-parity-unverified`)
 - [ ] Stagenet HF20 parity → schedule mainnet height → default flip
 
 ## Quality gates
 
-- Local `unit_tests` → **560** passed
+- Local `unit_tests` → **562** passed

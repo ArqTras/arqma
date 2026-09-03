@@ -39,6 +39,8 @@
 - Add `--arqnet-mesh-shadow` opt-in SocketStack dual-write (stagenet/testnet soak;
   mainnet needs `--arqnet-allow-experimental`) and expose `mesh_shadow*` counters
   on `get_arqnet_status`. Live peer mesh remains SNNetwork.
+- Add live-vs-shadow parity telemetry (`mesh_live_relays`, `mesh_vote_ob_*`,
+  `mesh_shadow_parity_sample_ok`) for stagenet soak decisions.
 - Restore `arqnet_ping` RPC and `last_arqnet_ping` daemon info fields.
 - Add testnet hard fork 19 at height 1200.
 - Add `--storage-client-url` for outbound Storage Server TCP reachability probes.

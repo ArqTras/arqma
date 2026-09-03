@@ -57,10 +57,25 @@ struct MeshShadowStats
   uint64_t attempts = 0;
   uint64_t ok = 0;
   uint64_t fail = 0;
+  /// SNNetwork live peer relays observed while dual-run is active.
+  uint64_t live_relays = 0;
+  uint64_t vote_ob_live = 0;
+  uint64_t vote_ob_shadow_ok = 0;
+  uint64_t vote_ob_shadow_fail = 0;
 };
 
-/// Cumulative shadow-send counters (reset when shadow is toggled on).
+/// Cumulative shadow/live counters (reset when shadow is toggled on).
 MeshShadowStats native_mesh_shadow_stats() noexcept;
+
+/// Record one live SNNetwork peer relay (call alongside snn.send).
+void note_live_mesh_relay(std::string_view command) noexcept;
+
+/// Shadow ok-rate in basis points (0..10000). Returns 0 when attempts==0.
+uint32_t native_mesh_shadow_ok_rate_bps() noexcept;
+
+/// True when soak sample is large enough and vote_ob shadow ok-rate meets floor.
+/// Does not flip cutover by itself — operators / release notes decide.
+bool native_mesh_shadow_parity_sample_ok(uint64_t min_vote_ob_live = 32, uint32_t min_ok_rate_bps = 9500) noexcept;
 
 /// Best-effort shadow send; never throws. No-op unless shadow relay is enabled
 /// and the active stack has CURVE identity configured.

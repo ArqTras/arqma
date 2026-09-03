@@ -16,7 +16,21 @@ This branch is prepared for **mainnet** operators. Compatibility locks:
 arqmad --stagenet --arqnet-backend=arqmq --arqnet-mesh-shadow
 ```
 
-   Watch `get_arqnet_status` → `mesh_shadow`, `mesh_shadow_ok` / `mesh_shadow_fail`.
+   Watch `get_arqnet_status`:
+
+   | Field | Meaning |
+   |-------|---------|
+   | `mesh_live_relays` / `mesh_vote_ob_live` | SNNetwork relays observed |
+   | `mesh_vote_ob_shadow_ok` / `*_fail` | SocketStack dual-write results |
+   | `mesh_shadow_ok_rate_bps` | overall shadow success (0–10000) |
+   | `mesh_shadow_parity_sample_ok` | heuristic: ≥32 `vote_ob` live + ≥95% shadow ok |
+
+   Soak exit criteria (before flipping `native_mesh_implementation_ready()`):
+
+   1. ≥2 stagenet SNs run `arqmq` + mesh-shadow (legacy-only peers inflate fails).
+   2. `mesh_shadow_parity_sample_ok == true` across a multi-hour quorum window.
+   3. No consensus / uptime regressions vs SNNetwork-only control nodes.
+
    Do **not** enable shadow on mainnet production SNs.
 
 ### HF20 (native mesh — scheduled, not yet active)
