@@ -79,15 +79,14 @@ void clear_shadow_endpoint()
 
 const char* mesh_transport_name() noexcept
 {
-  // Compatibility lock: peer wire stays on SNNetwork for both backends until
-  // dual-run cutover flips this deliberately.
-  return k_transport_snnetwork;
+  // After implementation cutover (stage ≥4), RPC/mesh report arqmq. HF gating
+  // for live sends uses native_mesh_ready_at(hf) at the relay site.
+  return native_mesh_ready() ? k_transport_arqmq : k_transport_snnetwork;
 }
 
 bool peer_mesh_is_snnetwork() noexcept
 {
-  // Live peer carrier stays SNNetwork until native_mesh_ready_at(hf) is true.
-  return true;
+  return !native_mesh_ready();
 }
 
 bool hf_permits_native_mesh(const uint8_t hard_fork_version) noexcept
@@ -307,5 +306,26 @@ void shadow_send_to_peer(const std::string_view pubkey, const std::string_view c
     if (vote)
       g_vote_ob_shadow_ok.fetch_add(1, std::memory_order_relaxed);
   }
+}
+
+void primary_mesh_send_to_peer(const std::string_view pubkey, const std::string_view command,
+                               const std::string_view payload, const std::string_view hint)
+{
+  // Dead until k_native_mesh_port_stage >= 4 (stagenet vote_ob parity verified).
+  if (!native_mesh_ready())
+    return;
+  auto* stack = active_socket_stack();
+  if (!stack || !stack->curve_zap_configured() || pubkey.size() != 32 || command.empty())
+    return;
+
+  std::string send_hint{hint};
+  if (!send_hint.empty()) {
+    const std::string rewritten = endpoint_with_port_offset(send_hint, k_mesh_shadow_port_offset);
+    if (!rewritten.empty())
+      send_hint = rewritten;
+  }
+  if (!send_hint.empty())
+    stack->peers().note_peer(std::string{pubkey}, send_hint, true);
+  (void)stack->send_to_peer(pubkey, command, payload, send_hint);
 }
 } // namespace arqmq

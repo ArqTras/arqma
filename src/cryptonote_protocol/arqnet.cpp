@@ -181,14 +181,16 @@ void *new_snnwrapper(cryptonote::core &core, const std::string &bind)
           return decision == IncomingCurveDecision::ServiceNode ? arqmq::CurvePeerAllow::ServiceNode
                                                                 : arqmq::CurvePeerAllow::Denied;
         });
-    if (arqmq::native_mesh_shadow_relay_enabled())
+    if (arqmq::native_mesh_shadow_relay_enabled() || arqmq::native_mesh_ready())
     {
       if (const auto ec = arqmq::start_mesh_shadow_listener(*stack, bind))
         MWARNING("Arq-Net mesh shadow CURVE bind failed on "
                  << arqmq::endpoint_with_port_offset(bind, arqmq::k_mesh_shadow_port_offset) << ": " << ec.message());
       else
-        MINFO("Arq-Net mesh shadow CURVE listening on " << arqmq::native_mesh_shadow_endpoint()
-              << " (live mesh remains SNNetwork @ " << bind << ")");
+        MINFO("Arq-Net mesh CURVE listening on " << arqmq::native_mesh_shadow_endpoint()
+              << (arqmq::native_mesh_ready()
+                      ? " (native mesh primary; SNNetwork retained for rollback)"
+                      : " (shadow dual-write; live mesh remains SNNetwork @ " + bind + ")"));
     }
   }
   if (arqmq::native_transport_active())
@@ -237,7 +239,7 @@ public:
 
   template <typename QuorumIt>
   peer_info(SNNWrapper &snw, quorum_type q_type, QuorumIt qbegin, QuorumIt qend, bool opportunistic = true, std::unordered_set<crypto::public_key> exclude = {})
-    : snn{snw.snn}
+    : snn{snw.snn}, core{snw.core}
   {
     auto keys = snw.core.get_service_node_keys();
     assert(keys);
@@ -279,6 +281,7 @@ public:
 
 private:
   SNNetwork &snn;
+  cryptonote::core &core;
 
   bool add_peer(const crypto::public_key &pubkey, bool strong = true)
   {
@@ -365,9 +368,22 @@ private:
   template<size_t N, size_t... I>
   void relay_to_peers_impl(const std::string &cmd, std::array<send_option::serialized, N> relay_data, std::index_sequence<I...>)
   {
+    const uint8_t hf = core.get_blockchain_storage().get_current_hard_fork_version();
+    const bool native_primary = arqmq::native_mesh_ready_at(hf);
+
     for (auto &peer : peers)
     {
-      MTRACE("Relaying " << cmd << " to peer " << as_hex(peer.first) << (peer.second.empty() ? " (if connected)"s : " @ " + peer.second));
+      MTRACE("Relaying " << cmd << " to peer " << as_hex(peer.first) << (peer.second.empty() ? " (if connected)"s : " @ " + peer.second)
+             << (native_primary ? " [native-mesh]" : " [snnetwork]"));
+
+      if (native_primary)
+      {
+        // Cutover path (stage≥4 + HF20+): SocketStack is primary; SNNetwork not used for quorum.
+        if constexpr (N >= 1)
+          arqmq::primary_mesh_send_to_peer(peer.first, cmd, relay_data[0].data, peer.second);
+        continue;
+      }
+
       if (peer.second.empty())
         snn.send(peer.first, cmd, relay_data[I]..., send_option::optional{});
       else

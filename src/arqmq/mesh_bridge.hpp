@@ -96,4 +96,9 @@ bool native_mesh_shadow_parity_sample_ok(uint64_t min_vote_ob_live = 32, uint32_
 /// and the active stack has CURVE identity configured.
 void shadow_send_to_peer(std::string_view pubkey, std::string_view command, std::string_view payload,
                          std::string_view hint = {});
+
+/// Primary native mesh send after cutover (`native_mesh_ready()`). Rewrites
+/// peer hints by `k_mesh_shadow_port_offset`. No-op while stage < 4.
+void primary_mesh_send_to_peer(std::string_view pubkey, std::string_view command, std::string_view payload,
+                               std::string_view hint = {});
 } // namespace arqmq

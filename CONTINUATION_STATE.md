@@ -6,7 +6,7 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
 ## Tip
 
-- Soak monitor script + tip `15297db2` shadow listener
+- Cutover relay scaffold (inactive until stage 4 / soak)
 - Native mesh Stages A–C + daemon shadow opt-in landed; cutover still off
 
 ## Mainnet readiness locks
@@ -30,9 +30,10 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - [x] Stage C parity telemetry: live vs shadow + `mesh_shadow_parity_sample_ok`
 - [x] Stage C shadow CURVE listen (ANET+10000) + hint rewrite
 - [x] Soak monitor: `utils/arqnet-mesh-soak-monitor.py`
+- [x] Cutover scaffold: HF-gated primary SocketStack relay (inactive until stage 4)
 - [ ] Stage C soak: enable shadow on stagenet, verify parity, then cutover (blocker: `vote-ob-parity-unverified`)
 - [ ] Stagenet HF20 parity → schedule mainnet height → default flip
 
 ## Quality gates
 
-- Local `unit_tests` → **564** passed (tip `15297db2`; monitor script additive)
+- Local `unit_tests` → **565** passed

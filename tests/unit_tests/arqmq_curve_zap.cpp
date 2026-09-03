@@ -302,6 +302,15 @@ TEST(arqmq_curve_zap, endpoint_port_offset_rewrites_tcp)
   EXPECT_TRUE(arqmq::endpoint_with_port_offset("tcp://host:70000", 1).empty());
 }
 
+TEST(arqmq_curve_zap, primary_mesh_send_noop_until_cutover_stage)
+{
+  EXPECT_FALSE(arqmq::native_mesh_ready());
+  EXPECT_TRUE(arqmq::peer_mesh_is_snnetwork());
+  EXPECT_STREQ(arqmq::k_transport_snnetwork, arqmq::mesh_transport_name());
+  // Must not throw / must not require an active stack while stage < 4.
+  arqmq::primary_mesh_send_to_peer(make_pubkey('Z'), "vote_ob", "x", "tcp://127.0.0.1:19996");
+}
+
 TEST(arqmq_curve_zap, shadow_listener_receives_offset_dual_write)
 {
   std::string server_pub;
