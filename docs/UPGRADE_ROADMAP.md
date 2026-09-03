@@ -116,7 +116,8 @@ Remaining before default flip (not blocking Milestone B; preserves compatibility
 - [x] Native mesh Stage C daemon flag + RPC shadow counters (`--arqnet-mesh-shadow`)
 - [x] Live/shadow parity telemetry + dual-write unit coverage
 - [x] Soak monitor script (`utils/arqnet-mesh-soak-monitor.py`)
-- [ ] Stagenet shadow soak + `vote_ob` parity → cutover gate
+- [x] Cutover relay scaffold (HF-gated; stage still 3)
+- [ ] Stagenet shadow soak + `vote_ob` parity → cutover gate (`k_native_mesh_port_stage = 4`)
 - [ ] Stagenet HF20 parity + schedule mainnet height + default flip docs
 
 ## Milestone C — product fork-in-the-road
