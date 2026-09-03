@@ -2949,6 +2949,7 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
       std::string transport;
       std::string mesh;
       bool mesh_shadow = false;
+      std::string mesh_shadow_endpoint;
       uint64_t mesh_shadow_attempts = 0;
       uint64_t mesh_shadow_ok = 0;
       uint64_t mesh_shadow_fail = 0;
@@ -2956,6 +2957,7 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
       uint64_t mesh_vote_ob_live = 0;
       uint64_t mesh_vote_ob_shadow_ok = 0;
       uint64_t mesh_vote_ob_shadow_fail = 0;
+      uint64_t mesh_vote_ob_shadow_in = 0;
       uint32_t mesh_shadow_ok_rate_bps = 0;
       bool mesh_shadow_parity_sample_ok = false;
       uint64_t last_arqnet_ping = 0;
@@ -2966,6 +2968,7 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
         KV_SERIALIZE(transport)
         KV_SERIALIZE(mesh)
         KV_SERIALIZE(mesh_shadow)
+        KV_SERIALIZE(mesh_shadow_endpoint)
         KV_SERIALIZE(mesh_shadow_attempts)
         KV_SERIALIZE(mesh_shadow_ok)
         KV_SERIALIZE(mesh_shadow_fail)
@@ -2973,6 +2976,7 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
         KV_SERIALIZE(mesh_vote_ob_live)
         KV_SERIALIZE(mesh_vote_ob_shadow_ok)
         KV_SERIALIZE(mesh_vote_ob_shadow_fail)
+        KV_SERIALIZE(mesh_vote_ob_shadow_in)
         KV_SERIALIZE(mesh_shadow_ok_rate_bps)
         KV_SERIALIZE(mesh_shadow_parity_sample_ok)
         KV_SERIALIZE(last_arqnet_ping)

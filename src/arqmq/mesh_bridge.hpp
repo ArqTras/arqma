@@ -33,9 +33,13 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <system_error>
 
 namespace arqmq {
 class SocketStack;
+
+/// Shadow CURVE listen port = live arqnet port + this offset (avoids P2P/RPC/ZMQ/ANET).
+inline constexpr int k_mesh_shadow_port_offset = 10000;
 
 /// Attaches dual-run command mirrors on the dedicated SocketStack without
 /// replacing SNNetwork wire handlers. No-op when native transport is inactive.
@@ -48,9 +52,19 @@ void attach_compatible_mesh_mirrors_if_active();
 /// work. Does not bind a listener (SNNetwork keeps the live arqnet port).
 void configure_mesh_shadow(SocketStack& stack, std::string public_key, std::string secret_key, AllowConnection allow);
 
+/// Bind SocketStack CURVE on `live_bind` with `k_mesh_shadow_port_offset`.
+/// Outbound shadow sends rewrite peer hints by the same offset.
+std::error_code start_mesh_shadow_listener(SocketStack& stack, std::string_view live_arqnet_bind);
+
+/// Rewrite `tcp://host:port` by adding `port_offset`. Empty on parse failure.
+std::string endpoint_with_port_offset(std::string_view endpoint, int port_offset);
+
 /// Opt-in dual-write of peer commands onto SocketStack (default off).
 bool native_mesh_shadow_relay_enabled() noexcept;
 void set_native_mesh_shadow_relay_enabled(bool enabled) noexcept;
+
+/// Actual bound shadow CURVE endpoint (may differ from request if port was 0).
+std::string native_mesh_shadow_endpoint();
 
 struct MeshShadowStats
 {
@@ -62,6 +76,7 @@ struct MeshShadowStats
   uint64_t vote_ob_live = 0;
   uint64_t vote_ob_shadow_ok = 0;
   uint64_t vote_ob_shadow_fail = 0;
+  uint64_t vote_ob_shadow_in = 0;
 };
 
 /// Cumulative shadow/live counters (reset when shadow is toggled on).

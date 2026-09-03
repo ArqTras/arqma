@@ -34,6 +34,8 @@
 
 #include <atomic>
 #include <cstdint>
+#include <mutex>
+#include <string>
 
 namespace arqmq {
 namespace {
@@ -45,6 +47,10 @@ std::atomic<uint64_t> g_live_relays{0};
 std::atomic<uint64_t> g_vote_ob_live{0};
 std::atomic<uint64_t> g_vote_ob_shadow_ok{0};
 std::atomic<uint64_t> g_vote_ob_shadow_fail{0};
+std::atomic<uint64_t> g_vote_ob_shadow_in{0};
+std::atomic<int> g_shadow_port_offset{0};
+std::mutex g_shadow_endpoint_mu;
+std::string g_shadow_endpoint;
 
 void reset_shadow_stats() noexcept
 {
@@ -55,11 +61,19 @@ void reset_shadow_stats() noexcept
   g_vote_ob_live.store(0, std::memory_order_relaxed);
   g_vote_ob_shadow_ok.store(0, std::memory_order_relaxed);
   g_vote_ob_shadow_fail.store(0, std::memory_order_relaxed);
+  g_vote_ob_shadow_in.store(0, std::memory_order_relaxed);
 }
 
 bool is_vote_ob(const std::string_view command) noexcept
 {
   return command == "vote_ob";
+}
+
+void clear_shadow_endpoint()
+{
+  std::lock_guard<std::mutex> lock{g_shadow_endpoint_mu};
+  g_shadow_endpoint.clear();
+  g_shadow_port_offset.store(0, std::memory_order_relaxed);
 }
 } // namespace
 
@@ -146,6 +160,57 @@ void configure_mesh_shadow(SocketStack& stack, std::string public_key, std::stri
   stack.set_allow_connection(std::move(allow));
 }
 
+std::string endpoint_with_port_offset(const std::string_view endpoint, const int port_offset)
+{
+  if (endpoint.empty() || port_offset == 0)
+    return std::string{endpoint};
+  const auto colon = endpoint.rfind(':');
+  if (colon == std::string_view::npos || colon + 1 >= endpoint.size())
+    return {};
+  // Require tcp://host:port shape (at least one prior ':').
+  if (endpoint.find(':') == colon)
+    return {};
+  try {
+    const int port = std::stoi(std::string{endpoint.substr(colon + 1)});
+    if (port <= 0 || port > 65535)
+      return {};
+    const long long next = static_cast<long long>(port) + port_offset;
+    if (next <= 0 || next > 65535)
+      return {};
+    return std::string{endpoint.substr(0, colon + 1)} + std::to_string(next);
+  } catch (...) {
+    return {};
+  }
+}
+
+std::error_code start_mesh_shadow_listener(SocketStack& stack, const std::string_view live_arqnet_bind)
+{
+  const std::string bind = endpoint_with_port_offset(live_arqnet_bind, k_mesh_shadow_port_offset);
+  if (bind.empty())
+    return std::make_error_code(std::errc::invalid_argument);
+  if (!stack.curve_zap_configured())
+    return std::make_error_code(std::errc::invalid_argument);
+
+  // Count inbound shadow vote_ob for soak observability (does not affect consensus).
+  stack.register_handler("vote_ob", CategoryAcl::ServiceNode, [](const InboundRequest&) {
+    g_vote_ob_shadow_in.fetch_add(1, std::memory_order_relaxed);
+    return std::string{k_transport_snnetwork};
+  });
+
+  const auto ec = stack.bind_curve(bind);
+  if (ec)
+    return ec;
+
+  {
+    std::lock_guard<std::mutex> lock{g_shadow_endpoint_mu};
+    g_shadow_endpoint = stack.last_curve_endpoint();
+    if (g_shadow_endpoint.empty())
+      g_shadow_endpoint = bind;
+  }
+  g_shadow_port_offset.store(k_mesh_shadow_port_offset, std::memory_order_relaxed);
+  return {};
+}
+
 bool native_mesh_shadow_relay_enabled() noexcept
 {
   return g_shadow_relay_enabled.load(std::memory_order_relaxed);
@@ -155,16 +220,24 @@ void set_native_mesh_shadow_relay_enabled(const bool enabled) noexcept
 {
   if (enabled)
     reset_shadow_stats();
+  else
+    clear_shadow_endpoint();
   g_shadow_relay_enabled.store(enabled, std::memory_order_relaxed);
+}
+
+std::string native_mesh_shadow_endpoint()
+{
+  std::lock_guard<std::mutex> lock{g_shadow_endpoint_mu};
+  return g_shadow_endpoint;
 }
 
 MeshShadowStats native_mesh_shadow_stats() noexcept
 {
   return MeshShadowStats{
-      g_shadow_attempts.load(std::memory_order_relaxed),    g_shadow_ok.load(std::memory_order_relaxed),
-      g_shadow_fail.load(std::memory_order_relaxed),        g_live_relays.load(std::memory_order_relaxed),
-      g_vote_ob_live.load(std::memory_order_relaxed),       g_vote_ob_shadow_ok.load(std::memory_order_relaxed),
-      g_vote_ob_shadow_fail.load(std::memory_order_relaxed)};
+      g_shadow_attempts.load(std::memory_order_relaxed),     g_shadow_ok.load(std::memory_order_relaxed),
+      g_shadow_fail.load(std::memory_order_relaxed),         g_live_relays.load(std::memory_order_relaxed),
+      g_vote_ob_live.load(std::memory_order_relaxed),        g_vote_ob_shadow_ok.load(std::memory_order_relaxed),
+      g_vote_ob_shadow_fail.load(std::memory_order_relaxed), g_vote_ob_shadow_in.load(std::memory_order_relaxed)};
 }
 
 void note_live_mesh_relay(const std::string_view command) noexcept
@@ -213,10 +286,19 @@ void shadow_send_to_peer(const std::string_view pubkey, const std::string_view c
       g_vote_ob_shadow_fail.fetch_add(1, std::memory_order_relaxed);
     return;
   }
+
+  std::string send_hint{hint};
+  const int offset = g_shadow_port_offset.load(std::memory_order_relaxed);
+  if (!send_hint.empty() && offset != 0) {
+    const std::string rewritten = endpoint_with_port_offset(send_hint, offset);
+    if (!rewritten.empty())
+      send_hint = rewritten;
+  }
+
   g_shadow_attempts.fetch_add(1, std::memory_order_relaxed);
-  if (!hint.empty())
-    stack->peers().note_peer(std::string{pubkey}, std::string{hint}, true);
-  if (stack->send_to_peer(pubkey, command, payload, hint)) {
+  if (!send_hint.empty())
+    stack->peers().note_peer(std::string{pubkey}, send_hint, true);
+  if (stack->send_to_peer(pubkey, command, payload, send_hint)) {
     g_shadow_fail.fetch_add(1, std::memory_order_relaxed);
     if (vote)
       g_vote_ob_shadow_fail.fetch_add(1, std::memory_order_relaxed);

@@ -3179,6 +3179,7 @@ namespace cryptonote
     res.transport = arqmq::transport_name();
     res.mesh = arqmq::mesh_transport_name();
     res.mesh_shadow = arqmq::native_mesh_shadow_relay_enabled();
+    res.mesh_shadow_endpoint = arqmq::native_mesh_shadow_endpoint();
     const auto shadow = arqmq::native_mesh_shadow_stats();
     res.mesh_shadow_attempts = shadow.attempts;
     res.mesh_shadow_ok = shadow.ok;
@@ -3187,6 +3188,7 @@ namespace cryptonote
     res.mesh_vote_ob_live = shadow.vote_ob_live;
     res.mesh_vote_ob_shadow_ok = shadow.vote_ob_shadow_ok;
     res.mesh_vote_ob_shadow_fail = shadow.vote_ob_shadow_fail;
+    res.mesh_vote_ob_shadow_in = shadow.vote_ob_shadow_in;
     res.mesh_shadow_ok_rate_bps = arqmq::native_mesh_shadow_ok_rate_bps();
     res.mesh_shadow_parity_sample_ok = arqmq::native_mesh_shadow_parity_sample_ok();
     res.last_arqnet_ping = static_cast<uint64_t>(m_core.m_last_arqnet_ping);

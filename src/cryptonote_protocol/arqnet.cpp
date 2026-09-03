@@ -168,8 +168,9 @@ void *new_snnwrapper(cryptonote::core &core, const std::string &bind)
   arqmq::attach_compatible_mesh_mirrors_if_active();
   if (auto *stack = arqmq::active_socket_stack(); stack && keys)
   {
-    // Shadow CURVE identity for opt-in dual-write; do not bind_curve (SNNetwork
-    // owns the live arqnet listener port).
+    // Shadow CURVE identity for opt-in dual-write. Live arqnet port stays on
+    // SNNetwork; SocketStack binds live_bind + k_mesh_shadow_port_offset when
+    // --arqnet-mesh-shadow is enabled.
     arqmq::configure_mesh_shadow(
         *stack, get_data_as_string(keys->pub_x25519), get_data_as_string(keys->key_x25519.data),
         [&sn_list = core.get_service_node_list()](const std::string & /*ip*/, const std::string &x25519_pubkey_str) {
@@ -180,6 +181,15 @@ void *new_snnwrapper(cryptonote::core &core, const std::string &bind)
           return decision == IncomingCurveDecision::ServiceNode ? arqmq::CurvePeerAllow::ServiceNode
                                                                 : arqmq::CurvePeerAllow::Denied;
         });
+    if (arqmq::native_mesh_shadow_relay_enabled())
+    {
+      if (const auto ec = arqmq::start_mesh_shadow_listener(*stack, bind))
+        MWARNING("Arq-Net mesh shadow CURVE bind failed on "
+                 << arqmq::endpoint_with_port_offset(bind, arqmq::k_mesh_shadow_port_offset) << ": " << ec.message());
+      else
+        MINFO("Arq-Net mesh shadow CURVE listening on " << arqmq::native_mesh_shadow_endpoint()
+              << " (live mesh remains SNNetwork @ " << bind << ")");
+    }
   }
   if (arqmq::native_transport_active())
   {

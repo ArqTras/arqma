@@ -28,8 +28,10 @@ arqmad --stagenet --arqnet-backend=arqmq --arqnet-mesh-shadow
    Soak exit criteria (before flipping `native_mesh_implementation_ready()`):
 
    1. ≥2 stagenet SNs run `arqmq` + mesh-shadow (legacy-only peers inflate fails).
-   2. `mesh_shadow_parity_sample_ok == true` across a multi-hour quorum window.
-   3. No consensus / uptime regressions vs SNNetwork-only control nodes.
+   2. Open firewall for **ANET port + 10000** (shadow CURVE listener; live mesh stays on ANET).
+   3. `mesh_shadow_endpoint` populated; watch `mesh_vote_ob_shadow_in` on receivers.
+   4. `mesh_shadow_parity_sample_ok == true` across a multi-hour quorum window.
+   5. No consensus / uptime regressions vs SNNetwork-only control nodes.
 
    Do **not** enable shadow on mainnet production SNs.
 

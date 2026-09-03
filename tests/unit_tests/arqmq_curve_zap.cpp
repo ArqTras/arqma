@@ -292,3 +292,81 @@ TEST(arqmq_curve_zap, parity_sample_requires_vote_ob_volume)
   EXPECT_FALSE(arqmq::native_mesh_shadow_parity_sample_ok(1, 1)); // not vote_ob
   arqmq::set_native_mesh_shadow_relay_enabled(false);
 }
+
+TEST(arqmq_curve_zap, endpoint_port_offset_rewrites_tcp)
+{
+  EXPECT_EQ("tcp://10.0.0.1:29996",
+            arqmq::endpoint_with_port_offset("tcp://10.0.0.1:19996", arqmq::k_mesh_shadow_port_offset));
+  EXPECT_EQ("tcp://127.0.0.1:0", arqmq::endpoint_with_port_offset("tcp://127.0.0.1:0", 0));
+  EXPECT_TRUE(arqmq::endpoint_with_port_offset("not-an-endpoint", 1).empty());
+  EXPECT_TRUE(arqmq::endpoint_with_port_offset("tcp://host:70000", 1).empty());
+}
+
+TEST(arqmq_curve_zap, shadow_listener_receives_offset_dual_write)
+{
+  std::string server_pub;
+  std::string server_sec;
+  std::string client_pub;
+  std::string client_sec;
+  ASSERT_TRUE(make_curve_keypair(server_pub, server_sec));
+  ASSERT_TRUE(make_curve_keypair(client_pub, client_sec));
+
+  std::mutex mu;
+  std::condition_variable cv;
+  bool got = false;
+
+  // Server listens only on the shadow offset port (simulates soak peer).
+  arqmq::SocketStack server;
+  ASSERT_FALSE(server.start());
+  server.set_curve_identity(server_pub, server_sec);
+  server.set_allow_connection([&](const std::string&, const std::string& pk) {
+    return pk == client_pub ? arqmq::CurvePeerAllow::ServiceNode : arqmq::CurvePeerAllow::Denied;
+  });
+  server.register_handler("vote_ob", arqmq::CategoryAcl::ServiceNode, [&](const arqmq::InboundRequest&) {
+    {
+      std::lock_guard<std::mutex> lock{mu};
+      got = true;
+    }
+    cv.notify_one();
+    return std::string{"ok"};
+  });
+  ASSERT_FALSE(server.bind_curve("tcp://127.0.0.1:0"));
+  const std::string shadow_ep = server.last_curve_endpoint();
+  ASSERT_FALSE(shadow_ep.empty());
+
+  // Derive a fake live hint that rewrites to shadow_ep via +0 by using the
+  // shadow endpoint directly after enabling offset rewrite through start_mesh_shadow_listener.
+  EXPECT_FALSE(arqmq::shutdown());
+  EXPECT_FALSE(arqmq::init(arqmq::Config{arqmq::Backend::ArqMq, arqmq::CategoryAcl::ServiceNode}));
+  auto* client = arqmq::active_socket_stack();
+  ASSERT_NE(nullptr, client);
+  arqmq::configure_mesh_shadow(*client, client_pub, client_sec,
+                               [](const std::string&, const std::string&) { return arqmq::CurvePeerAllow::Denied; });
+  arqmq::set_native_mesh_shadow_relay_enabled(true);
+
+  // Bind client shadow listener on an ephemeral live bind rewritten by offset.
+  // Use a high live port so live+10000 stays valid; listener itself is unused here.
+  ASSERT_FALSE(arqmq::start_mesh_shadow_listener(*client, "tcp://127.0.0.1:45000"));
+  EXPECT_FALSE(arqmq::native_mesh_shadow_endpoint().empty());
+
+  // Peer published live port = shadow_ep.port - offset; dual-write rewrites up.
+  const auto colon = shadow_ep.rfind(':');
+  ASSERT_NE(std::string::npos, colon);
+  const int shadow_port = std::stoi(shadow_ep.substr(colon + 1));
+  const int live_port = shadow_port - arqmq::k_mesh_shadow_port_offset;
+  ASSERT_GT(live_port, 0);
+  const std::string live_hint = "tcp://127.0.0.1:" + std::to_string(live_port);
+
+  arqmq::note_live_mesh_relay("vote_ob");
+  arqmq::shadow_send_to_peer(server_pub, "vote_ob", "offset-payload", live_hint);
+
+  {
+    std::unique_lock<std::mutex> lock{mu};
+    ASSERT_TRUE(cv.wait_for(lock, std::chrono::seconds(3), [&] { return got; }));
+  }
+  EXPECT_GE(arqmq::native_mesh_shadow_stats().vote_ob_shadow_ok, 1u);
+
+  arqmq::set_native_mesh_shadow_relay_enabled(false);
+  EXPECT_FALSE(arqmq::shutdown());
+  server.stop();
+}

@@ -28,7 +28,7 @@ backend without breaking operators.
 | `--arqnet-backend=legacy-arqnet` | Current production path (default; **required for mainnet**) |
 | `--arqnet-backend=arqmq` | Experimental SocketStack; allowed on testnet/stagenet; mainnet needs `--arqnet-allow-experimental` |
 | `--arqnet-allow-experimental` | Explicit mainnet override for `arqmq` / mesh-shadow (not for production SNs) |
-| `--arqnet-mesh-shadow` | Opt-in SocketStack dual-write of peer commands (needs `arqmq` stack; stagenet/testnet soak) |
+| `--arqnet-mesh-shadow` | Opt-in SocketStack dual-write of peer commands (needs `arqmq` stack; stagenet/testnet soak; binds ANET+10000) |
 
 ## Hard fork gate (HF20)
 
@@ -64,5 +64,6 @@ Alias: `HF_VERSION_NATIVE_ARQNET_MESH` → `network_version_20`.
 - [x] Outbound CURVE peer send + inbound `vote_ob` handler path (unit-tested; not live-wired)
 - [x] Daemon `--arqnet-mesh-shadow` + RPC counters (`mesh_shadow_*` on `get_arqnet_status`)
 - [x] Live vs shadow parity telemetry + local dual-write `vote_ob` unit coverage
+- [x] Shadow CURVE listener on ANET+10000 + outbound hint rewrite
 - [ ] Stagenet soak: enable shadow + verify `vote_ob` parity → flip `native_mesh_implementation_ready()`
 - [ ] Schedule mainnet HF20 height + release notes / `OPERATOR_UPGRADE.md` for cutover

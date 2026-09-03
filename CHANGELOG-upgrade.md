@@ -41,6 +41,8 @@
   on `get_arqnet_status`. Live peer mesh remains SNNetwork.
 - Add live-vs-shadow parity telemetry (`mesh_live_relays`, `mesh_vote_ob_*`,
   `mesh_shadow_parity_sample_ok`) for stagenet soak decisions.
+- Bind opt-in mesh-shadow CURVE listener on ANET+10000 and rewrite dual-write
+  peer hints to that port (`mesh_shadow_endpoint`, `mesh_vote_ob_shadow_in`).
 - Restore `arqnet_ping` RPC and `last_arqnet_ping` daemon info fields.
 - Add testnet hard fork 19 at height 1200.
 - Add `--storage-client-url` for outbound Storage Server TCP reachability probes.
