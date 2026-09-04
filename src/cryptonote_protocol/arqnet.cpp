@@ -7,6 +7,7 @@
 #include "arqnet/conn_matrix.h"
 #include "arqmq/command_registry.hpp"
 #include "arqmq/mesh_bridge.hpp"
+#include "arqmq/socket_stack.hpp"
 #include "arqmq/arqmq.h"
 #include "arqnet_auth.h"
 
