@@ -409,6 +409,8 @@ void SocketStack::process_listener_messages(zmq::socket_t& listener)
     InboundRequest request;
     request.command.assign(static_cast<const char*>(parts[1].data()), parts[1].size());
     request.peer_acl = acl;
+    if (parts[0].size() == 32)
+      request.peer_pubkey.assign(static_cast<const char*>(parts[0].data()), parts[0].size());
     if (parts.size() >= 3)
       request.payload.assign(static_cast<const char*>(parts[2].data()), parts[2].size());
 

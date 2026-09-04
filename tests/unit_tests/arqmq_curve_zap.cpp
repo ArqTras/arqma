@@ -164,6 +164,7 @@ TEST(arqmq_curve_zap, curve_peer_send_delivers_vote_ob)
   std::condition_variable cv;
   bool got = false;
   std::string got_payload;
+  std::string got_peer;
 
   arqmq::SocketStack server;
   ASSERT_FALSE(server.start());
@@ -175,6 +176,7 @@ TEST(arqmq_curve_zap, curve_peer_send_delivers_vote_ob)
     {
       std::lock_guard<std::mutex> lock{mu};
       got_payload = req.payload;
+      got_peer = req.peer_pubkey;
       got = true;
     }
     cv.notify_one();
@@ -197,9 +199,17 @@ TEST(arqmq_curve_zap, curve_peer_send_delivers_vote_ob)
     ASSERT_TRUE(cv.wait_for(lock, std::chrono::seconds(3), [&] { return got; }));
   }
   EXPECT_EQ("vote-payload", got_payload);
+  EXPECT_EQ(client_pub, got_peer);
 
   client.stop();
   server.stop();
+}
+
+TEST(arqmq_curve_zap, native_inbound_install_is_noop_before_cutover)
+{
+  // install_native_mesh_inbound_handlers lives in arqnet.cpp; gate itself is stage-based.
+  EXPECT_FALSE(arqmq::native_mesh_ready());
+  EXPECT_STREQ("vote-ob-parity-unverified", arqmq::native_mesh_blocker());
 }
 
 TEST(arqmq_curve_zap, native_mesh_blocker_awaits_vote_ob_parity)

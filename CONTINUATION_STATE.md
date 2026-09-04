@@ -6,8 +6,8 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
 ## Tip
 
-- Tip pending push — RPC cutover gates on `get_arqnet_status`
-- Prior tip `566d399b` CI **green**; cutover still off (`vote-ob-parity-unverified`)
+- Tip pending — native inbound vote_ob cutover handler scaffold
+- Prior tip `41928b09` RPC gates; cutover still off (`vote-ob-parity-unverified`)
 
 ## Mainnet readiness locks
 
@@ -32,6 +32,7 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - [x] Soak monitor: `utils/arqnet-mesh-soak-monitor.py`
 - [x] Cutover scaffold: HF-gated primary SocketStack relay (inactive until stage 4)
 - [x] RPC cutover gates: `native_mesh_ready` / `blocker` / `hf_permits` / `hard_fork_version`
+- [x] Native inbound `vote_ob` handler scaffold (installed only when stage ≥4)
 - [ ] **BLOCKED ON OPS:** Stage C soak on ≥2 stagenet SNs → then `k_native_mesh_port_stage = 4`
 - [ ] Stagenet HF20 parity → schedule mainnet height → default flip
 

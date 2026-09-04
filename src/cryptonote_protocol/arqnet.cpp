@@ -49,6 +49,8 @@ struct SNNWrapper {
   }
 };
 
+void install_native_mesh_inbound_handlers(arqmq::SocketStack &stack, SNNWrapper &snw);
+
 template <typename T>
 std::string get_data_as_string(const T &key)
 {
@@ -192,6 +194,7 @@ void *new_snnwrapper(cryptonote::core &core, const std::string &bind)
                       ? " (native mesh primary; SNNetwork retained for rollback)"
                       : " (shadow dual-write; live mesh remains SNNetwork @ " + bind + ")"));
     }
+    install_native_mesh_inbound_handlers(*stack, *obj);
   }
   if (arqmq::native_transport_active())
   {
@@ -565,6 +568,52 @@ void handle_obligation_vote(SNNetwork::message &m, void *self)
   {
     MWARNING("Deserialization of vote from " << as_hex(m.pubkey) << " failed: " << e.what());
   }
+}
+
+/// Native-mesh inbound path (SocketStack). Active only after cutover stage ≥4.
+/// During soak, shadow handlers only count; SNNetwork remains the live processor.
+void install_native_mesh_inbound_handlers(arqmq::SocketStack &stack, SNNWrapper &snw)
+{
+  if (!arqmq::native_mesh_ready())
+    return;
+
+  stack.register_handler("vote_ob", arqmq::CategoryAcl::ServiceNode, [&snw](const arqmq::InboundRequest &req) {
+    if (!arqmq::authorize_request("vote_ob", req.peer_acl, req.payload.size(), 1))
+    {
+      MWARNING("Dropping native-mesh vote_ob from unauthorized peer "
+               << (req.peer_pubkey.size() == 32 ? as_hex(req.peer_pubkey) : "unknown"));
+      return std::string{};
+    }
+    if (req.payload.empty())
+      return std::string{};
+
+    try
+    {
+      bt_value decoded;
+      bt_deserialize(req.payload.data(), req.payload.size(), decoded);
+      std::vector<quorum_vote_t> vvote;
+      vvote.push_back(deserialize_vote(decoded));
+      auto &vote = vvote.back();
+      if (vote.type != quorum_type::obligations)
+        return std::string{};
+      if (vote.block_height > snw.core.get_current_blockchain_height())
+        return std::string{};
+
+      cryptonote::vote_verification_context vvc{};
+      snw.core.add_service_node_vote(vote, vvc);
+      if (vvc.m_verification_failed)
+        return std::string{};
+      if (vvc.m_added_to_pool)
+        relay_obligation_votes(&snw, std::move(vvote));
+    }
+    catch (const std::exception &e)
+    {
+      MWARNING("Native-mesh vote_ob deserialize failed: " << e.what());
+    }
+    return std::string{};
+  });
+
+  MINFO("Arq-Net native mesh inbound vote_ob handler installed (cutover active)");
 }
 
 template <typename I>

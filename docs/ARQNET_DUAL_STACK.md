@@ -19,8 +19,9 @@ backend without breaking operators.
 4. **Dual-run coexistence (landed, compatibility mode)** — native stack + SNNetwork mesh
    run together; RPC reports `transport` vs `mesh`; peer wire protocol unchanged.
 5. **Cutover** — after stagenet parity, set `k_native_mesh_port_stage = 4` so
-   `native_mesh_ready()` flips; relay uses `primary_mesh_send_to_peer` at HF20+.
-   Default `--arqnet-backend` flips one release later; legacy retained one cycle.
+   `native_mesh_ready()` flips; relay uses `primary_mesh_send_to_peer` at HF20+
+   and inbound `vote_ob` is processed on SocketStack. Default `--arqnet-backend`
+   flips one release later; legacy retained one cycle.
 6. **Optional hard gate** — Arq-Net ping for uptime proofs after operator notice.
 
 ## Operator flags
@@ -70,5 +71,6 @@ Alias: `HF_VERSION_NATIVE_ARQNET_MESH` → `network_version_20`.
 - [x] Soak monitor script (`utils/arqnet-mesh-soak-monitor.py`)
 - [x] Cutover relay scaffold (`primary_mesh_send_to_peer` / HF gate; stage still 3)
 - [x] RPC cutover gate fields on `get_arqnet_status`
+- [x] Native inbound `vote_ob` processing scaffold (dead until stage 4)
 - [ ] Stagenet soak: enable shadow + verify `vote_ob` parity → flip `native_mesh_implementation_ready()`
 - [ ] Schedule mainnet HF20 height + release notes / `OPERATOR_UPGRADE.md` for cutover

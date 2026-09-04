@@ -53,6 +53,8 @@ struct InboundRequest
   std::string command;
   CategoryAcl peer_acl = CategoryAcl::Denied;
   std::string payload;
+  /// 32-byte CURVE public key when known (ROUTER routing-id), else empty.
+  std::string peer_pubkey;
 };
 
 using CommandHandler = std::function<std::string(const InboundRequest&)>;
