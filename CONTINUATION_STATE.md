@@ -6,8 +6,8 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
 ## Tip
 
-- Tip pending — native inbound vote_ob cutover handler scaffold
-- Prior tip `41928b09` RPC gates; cutover still off (`vote-ob-parity-unverified`)
+- Tip `428ee2b4` — native inbound vote_ob cutover scaffold
+- Cutover still off (`vote-ob-parity-unverified`); soak remains the ops gate
 
 ## Mainnet readiness locks
 
