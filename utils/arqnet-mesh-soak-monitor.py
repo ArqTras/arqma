@@ -39,6 +39,10 @@ def rpc_call(url: str, method: str) -> dict:
 
 def fmt_row(result: dict) -> str:
     return (
+        f"hf={result.get('hard_fork_version', '-')} "
+        f"ready={result.get('native_mesh_ready')} "
+        f"hf_ok={result.get('native_mesh_hf_permits')} "
+        f"blocker={result.get('native_mesh_blocker') or '-'} "
         f"shadow={result.get('mesh_shadow')} "
         f"ep={result.get('mesh_shadow_endpoint') or '-'} "
         f"live_vote={result.get('mesh_vote_ob_live', 0)} "

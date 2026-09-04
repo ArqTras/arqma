@@ -24,6 +24,8 @@ arqmad --stagenet --arqnet-backend=arqmq --arqnet-mesh-shadow
    | `mesh_vote_ob_shadow_ok` / `*_fail` | SocketStack dual-write results |
    | `mesh_shadow_ok_rate_bps` | overall shadow success (0–10000) |
    | `mesh_shadow_parity_sample_ok` | heuristic: ≥32 `vote_ob` live + ≥95% shadow ok |
+   | `native_mesh_ready` / `native_mesh_blocker` | cutover implementation gate (stage ≥4) |
+   | `native_mesh_hf_permits` / `hard_fork_version` | HF20+ permit on this chain |
 
    Soak exit criteria (before flipping `native_mesh_implementation_ready()`):
 
@@ -32,6 +34,16 @@ arqmad --stagenet --arqnet-backend=arqmq --arqnet-mesh-shadow
    3. `mesh_shadow_endpoint` populated; watch `mesh_vote_ob_shadow_in` on receivers.
    4. `mesh_shadow_parity_sample_ok == true` across a multi-hour quorum window.
    5. No consensus / uptime regressions vs SNNetwork-only control nodes.
+
+   After soak succeeds, flip cutover in one place:
+
+```text
+# src/arqmq/mesh_bridge.cpp
+constexpr int k_native_mesh_port_stage = 4;  // was 3
+```
+
+   That enables `native_mesh_ready()` and HF20+ `primary_mesh_send_to_peer`. Do **not**
+   change mainnet default `--arqnet-backend` in the same release.
 
    Do **not** enable shadow on mainnet production SNs.
 

@@ -46,6 +46,8 @@
 - Add `utils/arqnet-mesh-soak-monitor.py` to poll soak parity via `get_arqnet_status`.
 - Scaffold HF20 cutover relay (`primary_mesh_send_to_peer`); inactive while
   `k_native_mesh_port_stage == 3` / `vote-ob-parity-unverified`.
+- Expose cutover gates on `get_arqnet_status` (`native_mesh_ready`,
+  `native_mesh_blocker`, `native_mesh_hf_permits`, `hard_fork_version`).
 - Restore `arqnet_ping` RPC and `last_arqnet_ping` daemon info fields.
 - Add testnet hard fork 19 at height 1200.
 - Add `--storage-client-url` for outbound Storage Server TCP reachability probes.

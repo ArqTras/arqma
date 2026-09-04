@@ -69,5 +69,6 @@ Alias: `HF_VERSION_NATIVE_ARQNET_MESH` → `network_version_20`.
 - [x] Shadow CURVE listener on ANET+10000 + outbound hint rewrite
 - [x] Soak monitor script (`utils/arqnet-mesh-soak-monitor.py`)
 - [x] Cutover relay scaffold (`primary_mesh_send_to_peer` / HF gate; stage still 3)
+- [x] RPC cutover gate fields on `get_arqnet_status`
 - [ ] Stagenet soak: enable shadow + verify `vote_ob` parity → flip `native_mesh_implementation_ready()`
 - [ ] Schedule mainnet HF20 height + release notes / `OPERATOR_UPGRADE.md` for cutover

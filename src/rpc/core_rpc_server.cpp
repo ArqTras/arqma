@@ -3191,6 +3191,11 @@ namespace cryptonote
     res.mesh_vote_ob_shadow_in = shadow.vote_ob_shadow_in;
     res.mesh_shadow_ok_rate_bps = arqmq::native_mesh_shadow_ok_rate_bps();
     res.mesh_shadow_parity_sample_ok = arqmq::native_mesh_shadow_parity_sample_ok();
+    const uint8_t hf = m_core.get_blockchain_storage().get_current_hard_fork_version();
+    res.hard_fork_version = hf;
+    res.native_mesh_ready = arqmq::native_mesh_ready();
+    res.native_mesh_hf_permits = arqmq::hf_permits_native_mesh(hf);
+    res.native_mesh_blocker = arqmq::native_mesh_blocker();
     res.last_arqnet_ping = static_cast<uint64_t>(m_core.m_last_arqnet_ping);
     res.status = CORE_RPC_STATUS_OK;
     return true;
