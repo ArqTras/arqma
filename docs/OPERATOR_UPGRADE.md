@@ -128,8 +128,37 @@ before HF21 so exclusive mesh has a CURVE stack.
   cmake --build build --parallel --target unit_tests hash-target-tests
   ctest --test-dir build -R 'unit_tests|hash-target' --output-on-failure
   ```
-- Windows / cross macOS release binaries: `make depends target=<triplet>`
-  (CI matrix in `.github/workflows/depends.yml`).
+- Expect `[  PASSED  ] 628 tests.` plus `hash-target` via ctest.
+- Windows / cross macOS / Linux arm release binaries: `make depends target=<triplet>`
+  (CI matrix in `.github/workflows/depends.yml`). Do **not** commit built binaries.
+
+### Linux native package inventory
+
+Ship these from `build/.../bin/` (same names on depends artifacts, `.exe` on Windows):
+
+| Binary | Required for |
+|--------|----------------|
+| `arqmad` | Service node / full node |
+| `arqma-wallet-cli`, `arqma-wallet-rpc` | CLSAG wallets (upgrade before HF20) |
+| `arqma-storage`, `arqma-router`, `arqma-msg` | Companion stack (`utils/arqma-stack`) |
+| `arqma-blockchain-export`, `arqma-blockchain-import` | Datadir migration / backup |
+| `arqma-blockchain-stats`, `arqma-blockchain-usage`, `arqma-blockchain-depth`, `arqma-blockchain-ancestry`, `arqma-blockchain-mark-spent-outputs` | Ops utilities |
+| `arqma-generate-ssl-certificate` | Optional TLS helper |
+
+`gen_multisig` is intentionally not built (`src/CMakeLists.txt`).
+
+**Debian/Ubuntu build packages (typical):** `build-essential` `cmake` `ninja-build`
+`pkg-config` `libboost-all-dev` `libssl-dev` `libzmq3-dev` `libsodium-dev`
+`libunbound-dev` `libreadline-dev` (plus libevent/hidapi pulled in by deps).
+
+**Runtime shared libs (Linux native link of `arqmad`):** `libboost_*`, `libssl`/`libcrypto`,
+`libzmq`, `libsodium`, `libunbound`, `libreadline`, `libstdc++`, plus transitive
+(`libevent`, `libhidapi`, …). Prefer shipping a depends-built tarball when you need
+a self-contained tree.
+
+**Cross / CI artifacts** (`.github/workflows/depends.yml`): Windows x64 mingw,
+Linux x86_64, Linux aarch64 (+ RPi `NO_AES`), macOS x64, macOS arm64. Use those
+when the build host cannot run full `contrib/depends`.
 
 ## How to test (before merge / before HF20)
 
@@ -185,15 +214,30 @@ build/upgrade-test/bin/arqmad --storage-client-url=http://127.0.0.1:22021 --arq-
 
 Keep `--arqnet-backend=legacy-arqnet` on mainnet SNs.
 
-### 4. Optional stagenet soak (when a quorum exists)
+### 4. Network soak (multi-SN quorum — not available in a single VM)
+
+A single Cloud Agent / laptop **cannot** exercise a real service-node quorum.
+Operators with ≥2 stagenet SNs should run the soak before relying on `arqmq` mesh:
 
 ```text
+# On each soak SN (≥2 nodes; open ANET and ANET+10000):
 arqmad --stagenet --arqnet-backend=arqmq --arqnet-mesh-shadow
-utils/arqnet-mesh-soak-monitor.py 127.0.0.1:39994
-print_pulse
+
+# On a workstation with unrestricted RPC to one SN (default stagenet RPC 39994):
+utils/arqnet-mesh-soak-monitor.py <sn-ip>:39994
+utils/arqnet-mesh-soak-monitor.py <sn-ip>:39994 --once   # exit 0 when sample_ok
 ```
 
-Watch `get_pulse_status` after stagenet height 240 (`hybrid`) and `mesh_pulse_rnd_shadow_*`.
+Pass criteria (multi-hour window):
+
+1. `mesh_shadow_parity_sample_ok == true` on participating nodes.
+2. `mesh_vote_ob_shadow_parse_fail` / `mesh_pulse_rnd_shadow_parse_fail` near 0.
+3. After stagenet HF20 (height 240): `get_pulse_status` → `hybrid`,
+   `pow_replacement_ready=false`; `print_pulse` shows rising `signature_count`.
+4. No consensus / uptime regressions vs SNNetwork-only control peers.
+
+Mainnet production SNs stay on `--arqnet-backend=legacy-arqnet` until after soak
+and an explicit operator decision (still needs `--arqnet-allow-experimental` for `arqmq`).
 
 ## New / restored operator knobs
 

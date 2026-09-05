@@ -99,3 +99,8 @@ See `docs/UPGRADE_ROADMAP.md` and `docs/OPERATOR_UPGRADE.md` for mainnet locks.
 2. Native Windows MSVC unit job not yet in CI (Windows product binaries are mingw depends).
 3. Full Storage swarm gossip protocol and Session-class clients remain follow-ups.
    Companion binaries, KV TTL, and inbox swarm fan-out are already in-tree.
+4. Multi-SN stagenet soak needs a live quorum (steps in `docs/OPERATOR_UPGRADE.md`).
+5. Cross builds: use CI `depends.yml` artifacts when `contrib/depends` is too heavy locally.
+
+Release packaging (binary list, Linux deps, soak how-to): `docs/OPERATOR_UPGRADE.md`
+and `docs/RELEASE_NOTES_upgrade_A.md`.

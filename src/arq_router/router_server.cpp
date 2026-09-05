@@ -7,6 +7,7 @@
 #include "arq_storage/http_io.h"
 #include "arq_storage/storage_endpoint.h"
 
+#include <boost/asio/connect.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
@@ -149,7 +150,21 @@ void RouterServer::stop()
 {
   if (!impl_)
     return;
+  // Same wakeup pattern as arq_storage::StorageServer::stop — sync accept()
+  // is not reliably interrupted by close() alone across threads.
+  const auto port = impl_->port.load();
+  const std::string host = impl_->host;
   impl_->running = false;
+  if (port != 0) {
+    try {
+      boost::asio::io_context wake_io;
+      boost::asio::ip::tcp::socket wake{wake_io};
+      boost::system::error_code wake_ec;
+      wake.connect({boost::asio::ip::make_address(host), port}, wake_ec);
+      wake.close(wake_ec);
+    } catch (...) {
+    }
+  }
   boost::system::error_code ec;
   impl_->acceptor.cancel(ec);
   impl_->acceptor.close(ec);

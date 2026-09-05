@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Fixes
+
+- Unblock `arqma-storage` / `arqma-router` shutdown: `StorageServer::stop` and
+  `RouterServer::stop` self-connect to wake a synchronous `accept()` before
+  `join()` (close alone could hang unit tests and process teardown). Apply a
+  2s socket timeout on cleartext storage HTTP GET probes.
+
 ### Security
 
 - Fix HF19 amount-burn construction gate (`<` instead of `<=`) so burns are
@@ -175,3 +182,6 @@
   `--arq-router` experimental scaffold flag.
 - Expand the OpenAPI stub with `get_service_nodes` pagination parameters and
   refresh the phase/roadmap status docs for the latest upgrade work.
+- Release prep: Linux binary inventory + system deps, depends/CI artifact map,
+  multi-SN stagenet soak how-to, local **628**-test verify notes
+  (`CONTINUATION_STATE.md`, `docs/OPERATOR_UPGRADE.md`, release notes / gate).

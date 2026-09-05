@@ -10,11 +10,16 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - Pulse Milestone C: hybrid producer; majority certificate extra bound to miner
   payload hash; weight-neutral miner extra; round bound to block timestamp
 - PR notes: GitHub PR https://github.com/ArqTras/arqma/pull/3 (EN + PL)
+- Release prep (Linux native): `build/upgrade-release` Release + `BUILD_TESTS=ON`
+  → **628** unit tests + hash-target green; companion `stop()` accept/join hang fixed
 
-## Mainnet locks until 4 000 000
+## Mainnet locks until 4 000 000 (do **not** flip)
 
 - Default `--arqnet-backend=legacy-arqnet`
 - Mainnet `arqmq` needs `--arqnet-allow-experimental`
+- `k_native_mesh_port_stage = 4`
+- Mainnet HF20=**4 000 000**, HF21=**5 000 000**
+- `k_pulse_pow_stage = 2` (hybrid; do **not** bump to 3 / PoW-off)
 - v19 wire / miner RandomARQ
 
 ## SN operating modes
@@ -24,6 +29,26 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 | 19 | now → 3 999 999 | legacy | SNNetwork | RandomARQ |
 | 20 | 4 000 000 → 4 999 999 | hybrid | native if `arqmq`+CURVE else SNNetwork | RandomARQ + Pulse signatures via `pulse_rnd` (PoW still required) |
 | 21 | ≥ 5 000 000 | exclusive (mesh) | native intended; SNNetwork fallback if no CURVE | RandomARQ **+** Pulse (hybrid; PoW not dropped) |
+
+## Local release build (this VM)
+
+Config: `/workspace/build/upgrade-release` · Release · gcc/g++ · `BUILD_TESTS=ON`
+
+Binaries in `build/upgrade-release/bin/` (do **not** commit):
+
+| Binary | Role |
+|--------|------|
+| `arqmad` | Daemon |
+| `arqma-wallet-cli` / `arqma-wallet-rpc` | Wallets |
+| `arqma-storage` / `arqma-router` / `arqma-msg` | Companions |
+| `arqma-blockchain-*` | Import/export/stats/usage/depth/ancestry/mark-spent |
+| `arqma-generate-ssl-certificate` | TLS helper |
+
+Linux system deps (native link): Boost, OpenSSL, libzmq, libsodium, unbound, readline,
+plus transitive (libevent, hidapi, …). Cross Windows/macOS/Linux arm: `make depends`
+/ `.github/workflows/depends.yml` (too heavy for this VM — use CI artifacts).
+
+`gen_multisig` stays commented out in `src/CMakeLists.txt`.
 
 ## Next
 
@@ -48,10 +73,14 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - [x] Everyday `send <hex> hello` (positional) + remembered names (`name=hex` → `~/.arqma/msg/contacts`)
 - [x] Mainnet HF20 prep: weight-neutral Pulse splice, stack token, opaque inbox, honest Blink/UBSan docs, CLSAG operator checklist
 - [x] Unified daemon restricted-RPC catalog (`rpc_auth.h` drives `MAP_*_IF` + handler denials); storage quota per namespace
+- [x] Fix companion `StorageServer` / `RouterServer` `stop()` accept/join hang (self-connect wakeup)
+- [x] Local Release verify: 628 unit + hash-target; binary inventory + packaging docs
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
+- [ ] Multi-SN stagenet soak (needs live quorum; see `docs/OPERATOR_UPGRADE.md`)
 
 ## Quality
 
-- Local `unit_tests` → **628** passed (restricted-RPC catalog + KV namespace quota)
-- Test steps: `docs/OPERATOR_UPGRADE.md` (unit / messenger / daemon probes)
+- Local `unit_tests` → **628** passed; `ctest -R 'unit_tests|hash-target'` green
+- Test steps: `docs/OPERATOR_UPGRADE.md` (unit / messenger / daemon probes / network soak)
+- Release readiness: code + unit gate ready; network soak deferred to operators with SN quorum

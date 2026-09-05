@@ -43,6 +43,15 @@ https://github.com/ArqTras/arqma/pull/3.
 - Pulse/Blink/L2: Pulse **hybrid producer started**; Blink collector/RPC in-tree (does not replace Pulse or PoW)
 - Restoring every legacy Monero-era unit fixture / `core_tests` in default CI
 - Native MSVC unit job on `windows-latest` (Windows covered via mingw depends)
+- Multi-SN stagenet mesh/Pulse soak (operator-run; single-VM CI cannot host a quorum)
+- Default `--arqnet-backend` flip and Pulse PoW-off (`k_pulse_pow_stage` 3)
+
+### Local release verify (upgrade tip)
+
+- [x] Linux Release `unit_tests` **628** + `hash-target` via ctest
+- [x] Binary inventory + packaging notes in `docs/OPERATOR_UPGRADE.md`
+- [x] Mainnet locks re-checked in tree (legacy backend, HF20/21, stage 4, Pulse hybrid)
+- [x] Companion `stop()` accept/join hang fixed
 
 See `docs/PHASES_3_TO_12_STATUS.md`, `docs/PROCESS_BOUNDARIES.md`, and
 `docs/PLATFORM.md`.

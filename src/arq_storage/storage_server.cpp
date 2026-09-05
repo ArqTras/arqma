@@ -6,6 +6,7 @@
 #include "http_io.h"
 #include "arq_messaging/swarm_map.hpp"
 
+#include <boost/asio/connect.hpp>
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/read.hpp>
@@ -463,7 +464,22 @@ void StorageServer::stop()
 {
   if (!impl_)
     return;
+  // Closing the acceptor alone does not reliably unblock a synchronous
+  // accept() on another thread (join then hangs). Set running=false and
+  // self-connect first so accept() returns, then tear down.
+  const auto port = impl_->port.load();
+  const std::string host = impl_->host;
   impl_->running = false;
+  if (port != 0) {
+    try {
+      boost::asio::io_context wake_io;
+      boost::asio::ip::tcp::socket wake{wake_io};
+      boost::system::error_code wake_ec;
+      wake.connect({boost::asio::ip::make_address(host), port}, wake_ec);
+      wake.close(wake_ec);
+    } catch (...) {
+    }
+  }
   boost::system::error_code ec;
   impl_->acceptor.cancel(ec);
   impl_->acceptor.close(ec);

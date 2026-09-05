@@ -43,6 +43,14 @@
 #include <sstream>
 #include <utility>
 
+#if defined(_WIN32)
+#include <winsock2.h>
+#else
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#endif
+
 namespace {
 std::error_code not_connected() noexcept
 {
@@ -90,6 +98,18 @@ bool http_get_probe(const arq_storage::Endpoint& endpoint) noexcept
     boost::asio::connect(socket, results, ec);
     if (ec)
       return false;
+
+#if defined(_WIN32)
+    DWORD ms = 2000;
+    setsockopt(socket.native_handle(), SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&ms), sizeof(ms));
+    setsockopt(socket.native_handle(), SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&ms), sizeof(ms));
+#else
+    timeval tv{};
+    tv.tv_sec = 2;
+    tv.tv_usec = 0;
+    setsockopt(socket.native_handle(), SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    setsockopt(socket.native_handle(), SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+#endif
 
     boost::asio::write(socket, boost::asio::buffer(request), ec);
     if (ec)
