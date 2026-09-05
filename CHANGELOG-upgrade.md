@@ -96,7 +96,9 @@
   Everyday `arqma-msg` reads `$ARQMA_STACK_DIR/env` from `utils/arqma-stack` so
   `send` / `inbox` / `open` need no `--url` / `--router`; a down router falls back
   to storage. `gen` saves `~/.arqma/msg/identity` so `inbox` / `open` need no
-  `--to` / `--secret` / `--key`.
+  `--to` / `--secret` / `--key`. Everyday send is `arqma-msg send <hex> hello`
+  (`--to` / `--text` still work). `send bob=<hex> hello` remembers `bob` in
+  `~/.arqma/msg/contacts`; `gen` also records `me`.
 - Expose cutover gates on `get_arqnet_status` (`native_mesh_ready`,
   `native_mesh_blocker`, `native_mesh_hf_permits`, `hard_fork_version`).
 - Scaffold native-mesh inbound `vote_ob` processing (installed only after

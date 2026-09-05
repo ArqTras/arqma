@@ -141,13 +141,14 @@ Companion processes (same repo, separate PIDs — [`docs/PRODUCT.md`](PRODUCT.md
 utils/arqma-stack.sh
 utils/arqma-stack.cmd
 arqma-msg gen
-arqma-msg send --to <64-hex> --text hello
+arqma-msg send <hex> hello
 arqma-msg inbox
 arqma-msg open
 ```
 
 The stack writes `$ARQMA_STACK_DIR/env` so `arqma-msg` needs no `--url` / `--router`.
 `gen` saves `~/.arqma/msg/identity`; `inbox` and `open` use it.
+`send bob=<hex> hello` remembers the name in `~/.arqma/msg/contacts`.
 Daemon probe (separate process):
 
 ```text

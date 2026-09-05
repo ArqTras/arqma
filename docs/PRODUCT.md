@@ -27,7 +27,7 @@ It pre-confirms transactions. It does **not** replace Pulse or RandomARQ.
 utils/arqma-stack.sh                 # Linux / macOS
 utils/arqma-stack.cmd                # Windows
 arqma-msg gen
-arqma-msg send --to <64-hex> --text hello
+arqma-msg send <hex> hello
 arqma-msg inbox
 arqma-msg open
 ```
@@ -36,7 +36,9 @@ The stack starts storage + router and writes `ARQMA_STORAGE_URL` /
 `ARQMA_ROUTER_URL` into `$ARQMA_STACK_DIR/env` (default `/tmp/arqma-stack/env`,
 Windows `%TEMP%\arqma-stack\env`). `arqma-msg` reads that file, so send/inbox/open
 need no `--url` / `--router`. `gen` writes `~/.arqma/msg/identity` so `inbox` and
-`open` need no `--to` / `--secret` / `--key`. If the router is down, send stores directly.
+`open` need no `--to` / `--secret` / `--key`. `send bob=<hex> hello` remembers
+`bob` in `~/.arqma/msg/contacts`; later `send bob hello`. If the router is down,
+send stores directly.
 
 Operators still have `--url`, `--router` (repeat, max 3), `swarm --snode`,
 `--peer`, and `--storage-url`. Those stay out of the everyday path.

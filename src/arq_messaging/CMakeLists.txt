@@ -4,6 +4,7 @@ set(arq_messaging_sources
   onion_layer.cpp)
 
 set(arq_messaging_headers
+  contacts.hpp
   identity.hpp
   message_envelope.hpp
   onion_forward.hpp

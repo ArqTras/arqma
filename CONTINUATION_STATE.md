@@ -45,9 +45,10 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - [x] Swarm membership merge + push to listed members (`arqma-msg swarm`)
 - [x] Simple messenger defaults (stack env file; `send`/`inbox`/`open` without extra flags)
 - [x] Local messenger identity (`gen` saves `~/.arqma/msg/identity`; `inbox`/`open` use it)
+- [x] Everyday `send <hex> hello` (positional) + remembered names (`name=hex` → `~/.arqma/msg/contacts`)
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 
 ## Quality
 
-- Local `unit_tests` → **621** passed (local messenger identity)
+- Local `unit_tests` → **624** passed (positional send + remembered contacts)

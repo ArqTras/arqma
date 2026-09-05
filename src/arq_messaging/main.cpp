@@ -2,6 +2,7 @@
 //
 // All rights reserved.
 
+#include "arq_messaging/contacts.hpp"
 #include "arq_messaging/identity.hpp"
 #include "arq_messaging/message_envelope.hpp"
 #include "arq_messaging/onion_layer.hpp"
@@ -90,7 +91,7 @@ int main(int argc, char** argv)
   std::string cmd;
   std::string url = "http://127.0.0.1:22021";
   std::string to;
-  std::string text;
+  std::vector<std::string> text_parts;
   std::string key;
   std::string secret;
   std::vector<std::string> routers;
@@ -98,18 +99,20 @@ int main(int argc, char** argv)
   std::uint32_t ttl = 3600;
   po::options_description desc{"arqma-msg"};
   desc.add_options()("help,h", "show help")("url", po::value<std::string>(&url), "storage base URL")(
-      "to", po::value<std::string>(&to), "recipient x25519 hex (send)")("ttl", po::value<std::uint32_t>(&ttl),
-                                                                        "envelope TTL seconds")(
-      "key", po::value<std::string>(&key), "storage key (get/open)")("text", po::value<std::string>(&text),
-                                                                     "plaintext (send)")(
-      "secret", po::value<std::string>(&secret),
-      "recipient private key hex (open)")("router", po::value<std::vector<std::string>>(&routers)->composing(),
-                                          "arqma-router URL (repeat, outermost first, max 3)")(
+      "to", po::value<std::string>(&to), "recipient (64-hex, name, or name=hex)")(
+      "ttl", po::value<std::uint32_t>(&ttl), "envelope TTL seconds")("key", po::value<std::string>(&key),
+                                                                     "storage key (get/open)")(
+      "text", po::value<std::vector<std::string>>(&text_parts)->composing(),
+      "plaintext (send)")("secret", po::value<std::string>(&secret), "recipient private key hex (open)")(
+      "router", po::value<std::vector<std::string>>(&routers)->composing(),
+      "arqma-router URL (repeat, outermost first, max 3)")(
       "snode", po::value<std::vector<std::string>>(&snodes)->composing(), "storage member URL (swarm announce)");
   po::options_description hidden;
   hidden.add_options()("cmd", po::value<std::string>(&cmd));
   po::positional_options_description pos;
   pos.add("cmd", 1);
+  pos.add("to", 1);
+  pos.add("text", -1);
   po::variables_map vm;
   po::options_description all;
   all.add(desc).add(hidden);
@@ -121,15 +124,21 @@ int main(int argc, char** argv)
   const bool explicit_router = vm.count("router") != 0;
   if (!explicit_router && !stack.router_url.empty())
     routers.push_back(stack.router_url);
+  std::string text;
+  for (const auto& word : text_parts) {
+    if (!text.empty())
+      text.push_back(' ');
+    text += word;
+  }
   if (vm.count("help") || cmd.empty()) {
     std::cout << "Usage: arqma-msg gen|send|inbox|open [options]\n"
               << desc
               << "\nEveryday (start utils/arqma-stack.sh first):\n"
                  "  arqma-msg gen\n"
-                 "  arqma-msg send --to <hex> --text hello\n"
+                 "  arqma-msg send <hex> hello\n"
                  "  arqma-msg inbox\n"
                  "  arqma-msg open\n"
-                 "\nOperator knobs: --url, --to, --secret, --key, --router, swarm --snode.\n";
+                 "\nOperator knobs: --url, --to, --secret, --key, --router, name=hex contacts, swarm --snode.\n";
     return vm.count("help") ? 0 : 1;
   }
 
@@ -140,6 +149,7 @@ int main(int argc, char** argv)
       return 1;
     }
     std::cout << to_hex(id.public_key.data.data(), 32) << " " << to_hex(id.private_key.data.data(), 32) << "\n";
+    arq_messaging::upsert_contact(arq_messaging::default_contacts_path(), "me", to_hex(id.public_key.data.data(), 32));
     return 0;
   }
 
@@ -150,12 +160,17 @@ int main(int argc, char** argv)
   arq_storage::StorageClient client{cfg};
 
   if (cmd == "send") {
-    if (to.size() != 64 || text.empty()) {
-      std::cerr << "send requires --to <64 hex> and --text\n";
+    if (to.empty() || text.empty()) {
+      std::cerr << "send requires a recipient and text\n";
+      return 1;
+    }
+    std::string hex;
+    if (!arq_messaging::resolve_recipient(to, arq_messaging::default_contacts_path(), hex)) {
+      std::cerr << "unknown recipient (64-hex, saved name, or name=hex)\n";
       return 1;
     }
     arq_messaging::X25519PublicKey pub{};
-    if (!from_hex(to, pub.data.data(), 32))
+    if (!from_hex(hex, pub.data.data(), 32))
       return 1;
     std::vector<std::uint8_t> plain(text.begin(), text.end());
     std::vector<std::uint8_t> sealed;
@@ -191,7 +206,7 @@ int main(int argc, char** argv)
       std::vector<std::uint8_t> onion;
       if (arq_messaging::compose_onion_route(pubs, routers, blob, onion))
         return false;
-      std::string rpath = "/v1/store?ns=inbox-" + to + "&key=" + store_key;
+      std::string rpath = "/v1/store?ns=inbox-" + hex + "&key=" + store_key;
       if (env.ttl_seconds != 0)
         rpath += "&ttl=" + std::to_string(env.ttl_seconds);
       const auto ep = arq_storage::parse_endpoint(routers.front());
@@ -207,7 +222,7 @@ int main(int argc, char** argv)
         return 1;
       }
     }
-    arq_storage::StoreRequest req{"inbox-" + to, store_key, std::string(blob.begin(), blob.end())};
+    arq_storage::StoreRequest req{"inbox-" + hex, store_key, std::string(blob.begin(), blob.end())};
     req.ttl_seconds = env.ttl_seconds;
     if (const auto ec = client.store(req)) {
       std::cerr << "store failed: " << ec.message() << "\n";

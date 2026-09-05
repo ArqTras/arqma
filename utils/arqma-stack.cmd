@@ -32,7 +32,7 @@ echo env           %STACK_DIR%\env
 echo.
 echo Messenger:
 echo   "%BIN_DIR%\arqma-msg.exe" gen
-echo   "%BIN_DIR%\arqma-msg.exe" send --to ^<64-hex^> --text hello
+echo   "%BIN_DIR%\arqma-msg.exe" send ^<hex^> hello
 echo   "%BIN_DIR%\arqma-msg.exe" inbox
 echo   "%BIN_DIR%\arqma-msg.exe" open
 echo.

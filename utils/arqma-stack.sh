@@ -37,7 +37,7 @@ echo "env           ${STACK_DIR}/env"
 echo
 echo "Messenger:"
 echo "  ${BIN_DIR}/arqma-msg gen"
-echo "  ${BIN_DIR}/arqma-msg send --to <64-hex> --text hello"
+echo "  ${BIN_DIR}/arqma-msg send <hex> hello"
 echo "  ${BIN_DIR}/arqma-msg inbox"
 echo "  ${BIN_DIR}/arqma-msg open"
 echo

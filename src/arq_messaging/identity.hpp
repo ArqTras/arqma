@@ -97,4 +97,9 @@ inline std::filesystem::path default_identity_path()
     return std::filesystem::path{"arqma-msg"} / "identity";
   return default_msg_dir(home) / "identity";
 }
+
+inline std::filesystem::path default_contacts_path()
+{
+  return default_identity_path().parent_path() / "contacts";
+}
 } // namespace arq_messaging

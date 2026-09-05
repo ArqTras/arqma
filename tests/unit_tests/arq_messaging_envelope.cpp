@@ -28,11 +28,14 @@
 
 #include "gtest/gtest.h"
 
+#include "arq_messaging/contacts.hpp"
 #include "arq_messaging/message_envelope.hpp"
 #include "arq_messaging/onion_forward.hpp"
 #include "arq_messaging/onion_layer.hpp"
 #include "arq_messaging/sealed_sender.hpp"
 #include "arq_messaging/stack_env.hpp"
+
+#include <filesystem>
 
 TEST(arq_messaging_envelope, roundtrip_binary_encoding)
 {
@@ -166,4 +169,46 @@ TEST(arq_messaging_envelope, parse_stack_env_storage_and_router)
   const auto empty = arq_messaging::parse_stack_env("");
   EXPECT_EQ("http://127.0.0.1:22021", empty.storage_url);
   EXPECT_TRUE(empty.router_url.empty());
+}
+
+TEST(arq_messaging_envelope, parse_recipient_hex_name_and_remember)
+{
+  const std::string hex(64, 'a');
+  std::string name;
+  std::string got;
+  ASSERT_TRUE(arq_messaging::parse_recipient_token(hex, name, got));
+  EXPECT_TRUE(name.empty());
+  EXPECT_EQ(hex, got);
+  ASSERT_TRUE(arq_messaging::parse_recipient_token("bob=" + hex, name, got));
+  EXPECT_EQ("bob", name);
+  EXPECT_EQ(hex, got);
+  ASSERT_TRUE(arq_messaging::parse_recipient_token("alice", name, got));
+  EXPECT_EQ("alice", name);
+  EXPECT_TRUE(got.empty());
+  EXPECT_FALSE(arq_messaging::parse_recipient_token("nope!", name, got));
+  EXPECT_FALSE(arq_messaging::parse_recipient_token("bad=zz", name, got));
+  EXPECT_FALSE(arq_messaging::is_contact_name(hex));
+}
+
+TEST(arq_messaging_envelope, contacts_upsert_lookup_and_unknown)
+{
+  const auto dir = std::filesystem::temp_directory_path() / "arqma-contacts-test";
+  std::filesystem::remove_all(dir);
+  std::filesystem::create_directories(dir);
+  const auto path = dir / "contacts";
+  const std::string hex(64, 'b');
+  std::string got;
+  EXPECT_FALSE(arq_messaging::resolve_recipient("bob", path, got));
+  ASSERT_TRUE(arq_messaging::resolve_recipient("bob=" + hex, path, got));
+  EXPECT_EQ(hex, got);
+  got.clear();
+  ASSERT_TRUE(arq_messaging::resolve_recipient("bob", path, got));
+  EXPECT_EQ(hex, got);
+  EXPECT_TRUE(static_cast<bool>(arq_messaging::upsert_contact(path, "bad name", hex)));
+  std::filesystem::remove_all(dir);
+}
+
+TEST(arq_messaging_envelope, contacts_file_sits_next_to_identity)
+{
+  EXPECT_EQ(arq_messaging::default_identity_path().parent_path() / "contacts", arq_messaging::default_contacts_path());
 }
