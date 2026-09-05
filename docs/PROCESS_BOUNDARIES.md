@@ -22,7 +22,8 @@ repository** ([`docs/PRODUCT.md`](PRODUCT.md)); they are still separate PIDs.
 | Privacy router | `arqma-router` | Network stack lifecycle separate from consensus |
 | Messenger CLI | `arqma-msg` | UX surface over storage + envelopes |
 
-`utils/arqma-stack.sh` starts storage (`--data-dir`) + router (`--storage-url`).
+`utils/arqma-stack.sh` (Linux/macOS) or `utils/arqma-stack.cmd` (Windows) starts
+storage (`--data-dir`) + router (`--storage-url`).
 Point `arqmad` at them with `--storage-client-url` and `--arq-router`.
 
 ## Reachability vs full APIs

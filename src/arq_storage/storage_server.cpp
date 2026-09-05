@@ -12,8 +12,8 @@
 #include <boost/asio/read_until.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/write.hpp>
+#include <algorithm>
 #include <atomic>
-#include <cctype>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -23,6 +23,7 @@
 #include <iterator>
 #include <map>
 #include <mutex>
+#include <set>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -157,9 +158,13 @@ struct StorageServer::Impl
       urls = peers;
     }
     urls.insert(urls.end(), extra.begin(), extra.end());
-    const auto self = "http://" + host + ":" + std::to_string(port.load());
-    for (const auto& url : urls) {
-      if (url.empty() || url == self)
+    const auto self = "http://" + format_http_authority(host, port.load());
+    std::set<std::string> seen;
+    seen.insert(self);
+    for (auto& url : urls) {
+      if (!url.empty() && url.back() == '/')
+        url.pop_back();
+      if (url.empty() || !seen.insert(url).second)
         continue;
       const auto ep = parse_endpoint(url);
       http_exchange(ep, "PUT", path, body);
@@ -180,6 +185,10 @@ struct StorageServer::Impl
         for (const auto& key_ent : std::filesystem::directory_iterator{ns_ent.path(), ec}) {
           if (!key_ent.is_regular_file())
             continue;
+          std::error_code size_ec;
+          const auto sz = std::filesystem::file_size(key_ent.path(), size_ec);
+          if (size_ec || sz > max_http_body_bytes)
+            continue;
           std::ifstream in{key_ent.path(), std::ios::binary};
           std::string value((std::istreambuf_iterator<char>(in)), {});
           const auto key = url_decode(key_ent.path().filename().string());
@@ -196,6 +205,10 @@ struct StorageServer::Impl
     if (std::filesystem::exists(sn_root, ec)) {
       for (const auto& ent : std::filesystem::directory_iterator{sn_root, ec}) {
         if (!ent.is_regular_file())
+          continue;
+        std::error_code size_ec;
+        const auto sz = std::filesystem::file_size(ent.path(), size_ec);
+        if (size_ec || sz > max_http_body_bytes)
           continue;
         std::ifstream in{ent.path(), std::ios::binary};
         std::string body((std::istreambuf_iterator<char>(in)), {});
@@ -214,7 +227,7 @@ struct StorageServer::Impl
     if (path_only == "/v1/kv") {
       const auto ns = query_get(path, "ns");
       const auto key = query_get(path, "key");
-      if (ns.empty() || key.empty())
+      if (ns.empty() || key.empty() || ns.size() > max_kv_name_bytes || key.size() > max_kv_name_bytes)
         return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
       if (method == "PUT") {
         Stored stored;
@@ -342,7 +355,7 @@ struct StorageServer::Impl
   void serve(boost::asio::ip::tcp::socket socket)
   {
     try {
-      boost::asio::streambuf buf;
+      boost::asio::streambuf buf{max_http_header_bytes};
       boost::system::error_code ec;
       boost::asio::read_until(socket, buf, "\r\n\r\n", ec);
       if (ec)
@@ -371,9 +384,14 @@ struct StorageServer::Impl
           continue;
         std::string name = header.substr(0, colon);
         for (char& c : name)
-          c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+          c = static_cast<char>(c >= 'A' && c <= 'Z' ? c - 'A' + 'a' : c);
         if (name == "content-length")
           content_length = static_cast<std::size_t>(std::strtoul(header.c_str() + colon + 1, nullptr, 10));
+      }
+      if (content_length > max_http_body_bytes) {
+        const char* too_large = "HTTP/1.1 413 Payload Too Large\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+        boost::asio::write(socket, boost::asio::buffer(too_large, std::strlen(too_large)), ec);
+        return;
       }
       std::string body(std::istreambuf_iterator<char>(is), {});
       if (content_length > body.size()) {
@@ -461,7 +479,7 @@ std::string StorageServer::base_url() const
 {
   if (!running())
     return {};
-  return "http://" + impl_->host + ":" + std::to_string(port());
+  return "http://" + format_http_authority(impl_->host, port());
 }
 
 void StorageServer::set_data_dir(std::string path)
@@ -477,9 +495,13 @@ const std::string& StorageServer::data_dir() const noexcept
 
 void StorageServer::add_peer(std::string base_url)
 {
-  if (base_url.empty())
+  if (!base_url.empty() && base_url.back() == '/')
+    base_url.pop_back();
+  if (base_url.empty() || !parse_endpoint(base_url))
     return;
   std::lock_guard<std::mutex> lock{impl_->mu};
+  if (std::find(impl_->peers.begin(), impl_->peers.end(), base_url) != impl_->peers.end())
+    return;
   impl_->peers.push_back(std::move(base_url));
 }
 } // namespace arq_storage

@@ -10,14 +10,26 @@
 #include <boost/asio/read_until.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/write.hpp>
-#include <cctype>
-#include <cstdio>
 #include <cstdlib>
 #include <iterator>
 #include <sstream>
 
+#if defined(_WIN32)
+#include <winsock2.h>
+#else
+#include <sys/socket.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#endif
+
 namespace arq_storage {
 namespace {
+bool ascii_unreserved(const unsigned char c) noexcept
+{
+  return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '-' || c == '_' ||
+         c == '.' || c == '~';
+}
+
 char hex_nibble(unsigned v) noexcept
 {
   return static_cast<char>(v < 10 ? '0' + v : 'a' + (v - 10));
@@ -33,6 +45,24 @@ int from_hex(char c) noexcept
     return 10 + (c - 'A');
   return -1;
 }
+
+void apply_socket_timeout(boost::asio::ip::tcp::socket& socket, const std::chrono::milliseconds timeout) noexcept
+{
+  if (timeout.count() <= 0)
+    return;
+  const auto native = socket.native_handle();
+#if defined(_WIN32)
+  DWORD ms = static_cast<DWORD>(timeout.count());
+  setsockopt(native, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&ms), sizeof(ms));
+  setsockopt(native, SOL_SOCKET, SO_SNDTIMEO, reinterpret_cast<const char*>(&ms), sizeof(ms));
+#else
+  timeval tv{};
+  tv.tv_sec = static_cast<time_t>(timeout.count() / 1000);
+  tv.tv_usec = static_cast<suseconds_t>((timeout.count() % 1000) * 1000);
+  setsockopt(native, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+  setsockopt(native, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+#endif
+}
 } // namespace
 
 std::string url_encode(const std::string_view raw)
@@ -40,7 +70,7 @@ std::string url_encode(const std::string_view raw)
   std::string out;
   out.reserve(raw.size() * 3);
   for (unsigned char c : raw) {
-    if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~')
+    if (ascii_unreserved(c))
       out.push_back(static_cast<char>(c));
     else {
       out.push_back('%');
@@ -131,15 +161,15 @@ HttpResult http_exchange(const Endpoint& endpoint, const std::string_view method
       out.error = std::make_error_code(std::errc::not_connected);
       return out;
     }
-    (void)timeout;
-    const auto req = format_http_request(method, path, endpoint.host, body);
+    apply_socket_timeout(socket, timeout);
+    const auto req = format_http_request(method, path, http_host_header(endpoint), body);
     boost::asio::write(socket, boost::asio::buffer(req), ec);
     if (ec) {
       out.error = std::make_error_code(std::errc::io_error);
       return out;
     }
 
-    boost::asio::streambuf buf;
+    boost::asio::streambuf buf{max_http_header_bytes};
     boost::asio::read_until(socket, buf, "\r\n\r\n", ec);
     if (ec && ec != boost::asio::error::eof) {
       out.error = std::make_error_code(std::errc::io_error);
@@ -167,9 +197,13 @@ HttpResult http_exchange(const Endpoint& endpoint, const std::string_view method
         continue;
       std::string name = header.substr(0, colon);
       for (char& c : name)
-        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        c = static_cast<char>(c >= 'A' && c <= 'Z' ? c - 'A' + 'a' : c);
       if (name == "content-length")
         content_length = static_cast<std::size_t>(std::strtoul(header.c_str() + colon + 1, nullptr, 10));
+    }
+    if (content_length > max_http_body_bytes) {
+      out.error = std::make_error_code(std::errc::file_too_large);
+      return out;
     }
     out.body.assign(std::istreambuf_iterator<char>(is), {});
     if (content_length > out.body.size()) {

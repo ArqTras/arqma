@@ -34,7 +34,13 @@
 #include "arq_storage/storage_endpoint.h"
 #include "arq_storage/storage_server.h"
 
+#include <boost/asio/connect.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/read_until.hpp>
+#include <boost/asio/streambuf.hpp>
+#include <boost/asio/write.hpp>
 #include <chrono>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <thread>
@@ -64,13 +70,34 @@ TEST(arq_storage_endpoint, rejects_invalid_urls)
   EXPECT_FALSE(arq_storage::parse_endpoint("http://host:99999"));
 }
 
+TEST(arq_storage_endpoint, parses_ipv6_and_listen_addresses)
+{
+  const auto ep = arq_storage::parse_endpoint("http://[::1]:22021/status");
+  ASSERT_TRUE(ep);
+  EXPECT_EQ("::1", ep.host);
+  EXPECT_EQ(22021, ep.port);
+  EXPECT_EQ("/status", ep.path);
+  EXPECT_EQ("[::1]:22021", arq_storage::format_http_authority(ep.host, ep.port));
+  EXPECT_EQ("[::1]:22021", arq_storage::http_host_header(ep));
+
+  std::string host;
+  std::uint16_t port = 0;
+  ASSERT_TRUE(arq_storage::parse_listen_address("[::1]:22021", host, port));
+  EXPECT_EQ("::1", host);
+  EXPECT_EQ(22021, port);
+  EXPECT_TRUE(arq_storage::parse_listen_address("127.0.0.1:0", host, port));
+  EXPECT_EQ(0, port);
+  EXPECT_FALSE(arq_storage::parse_listen_address("127.0.0.1", host, port));
+  EXPECT_FALSE(arq_storage::parse_listen_address("bad", host, port));
+}
+
 TEST(arq_storage_endpoint, formats_http_get_request)
 {
   const auto ep = arq_storage::parse_endpoint("http://127.0.0.1:22021/status");
   ASSERT_TRUE(ep);
   const auto req = arq_storage::format_http_get_request(ep);
   EXPECT_NE(std::string::npos, req.find("GET /status HTTP/1.1\r\n"));
-  EXPECT_NE(std::string::npos, req.find("Host: 127.0.0.1\r\n"));
+  EXPECT_NE(std::string::npos, req.find("Host: 127.0.0.1:22021\r\n"));
   EXPECT_NE(std::string::npos, req.find("Connection: close\r\n\r\n"));
 }
 
@@ -265,5 +292,24 @@ TEST(arq_storage_server, swarm_status_lists_members)
   const auto expected = std::to_string(arq_messaging::hash_pubkey_to_swarm("alice"));
   EXPECT_EQ(0u, got.body.find(expected + "\n"));
   EXPECT_NE(std::string::npos, got.body.find("http://127.0.0.1:1"));
+  server.stop();
+}
+
+TEST(arq_storage_server, rejects_oversized_content_length)
+{
+  arq_storage::StorageServer server;
+  ASSERT_FALSE(server.listen("127.0.0.1", 0));
+  boost::asio::io_context io;
+  boost::asio::ip::tcp::socket socket{io};
+  socket.connect(boost::asio::ip::tcp::endpoint{boost::asio::ip::make_address("127.0.0.1"), server.port()});
+  const std::string req =
+      "PUT /v1/kv?ns=n&key=k HTTP/1.1\r\nHost: 127.0.0.1\r\nContent-Length: 2000000\r\nConnection: close\r\n\r\n";
+  boost::asio::write(socket, boost::asio::buffer(req));
+  boost::asio::streambuf buf;
+  boost::asio::read_until(socket, buf, "\r\n");
+  std::istream is{&buf};
+  std::string line;
+  std::getline(is, line);
+  EXPECT_NE(std::string::npos, line.find("413"));
   server.stop();
 }

@@ -81,8 +81,7 @@ TEST(arq_messaging_onion, validates_complete_three_hop_request)
 {
   arq_messaging::OnionRequest req;
   req.endpoint = "/store";
-  for (auto &hop : req.hops)
-  {
+  for (auto& hop : req.hops) {
     hop.service_node_pubkey = "pk";
     hop.address = "127.0.0.1";
     hop.port = 19994;
@@ -161,6 +160,8 @@ TEST(arq_router, enabled_requires_data_dir_and_sane_listen)
   EXPECT_EQ(std::make_error_code(std::errc::invalid_argument), arq_router::validate_config(cfg));
   cfg.listen = "127.0.0.1:1090";
   EXPECT_FALSE(arq_router::validate_config(cfg));
+  cfg.listen = "[::1]:1090";
+  EXPECT_FALSE(arq_router::validate_config(cfg));
 
   arq_router::RouterService router{cfg};
   EXPECT_EQ(std::make_error_code(std::errc::not_connected), router.start());
@@ -188,8 +189,8 @@ TEST(arq_router, store_after_peel_writes_storage)
   ASSERT_FALSE(arq_messaging::generate_identity(hop));
   const std::string payload = "routed-body";
   std::vector<std::uint8_t> outer;
-  ASSERT_FALSE(arq_messaging::wrap_onion_layer(hop.public_key, std::vector<std::uint8_t>(payload.begin(), payload.end()),
-                                               outer));
+  ASSERT_FALSE(arq_messaging::wrap_onion_layer(hop.public_key,
+                                               std::vector<std::uint8_t>(payload.begin(), payload.end()), outer));
   const auto res = arq_router::handle_http("POST", "/v1/store?ns=inbox&key=k1", std::string(outer.begin(), outer.end()),
                                            hop, storage.base_url());
   EXPECT_NE(std::string::npos, res.find("204"));

@@ -15,7 +15,7 @@ repository. Hybrid PoW stays on (no Pulse PoW-off).
 |-------|--------|-----------------|--------------------------------------|
 | 3 MQ feature parity | Foundation + native transport + dual-run | facade, ACL, `SocketStack`; live `mesh=arqmq` at HF20+ with CURVE; exclusive intent at HF21 | Default backend flip |
 | 4 Arq-Net evolution | Foundation done | SN-only auth, ping, dual-stack, CURVE ping/pong, stage-4, HF20/21 | Stagenet soak re-check |
-| 5 Storage Server | In-repo binary | `arqma-storage` HTTP KV + TTL + `--data-dir` + `--peer` + inbox swarm fan-out | Full swarm membership gossip protocol |
+| 5 Storage Server | In-repo binary | `arqma-storage` HTTP KV + TTL + IPv6 listen + 1 MiB cap + `--peer` + inbox swarm fan-out | Full swarm membership gossip protocol |
 | 6 Messaging modules | In-repo CLI | identity, onion, swarm, envelope, `arqma-msg` + router `POST /v1/store` | Session-class client UX |
 | 7 RPC modernization | Foundation done | validation, pagination, DoS caps, auth helpers, OpenAPI | Generated OpenAPI + full auth middleware wiring |
 | 8 P2P improvements | Foundation done | limit aliases, compile-time budget checks, unit coverage | Measured rollout tuning |

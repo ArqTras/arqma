@@ -30,6 +30,7 @@
 
 #include <array>
 #include <cstdint>
+#include <filesystem>
 #include <string>
 #include <system_error>
 
@@ -63,7 +64,15 @@ struct Identity
 /// Generates a Curve25519 identity via libsodium `crypto_box_keypair`.
 std::error_code generate_identity(Identity& out) noexcept;
 
-/// 64-byte file: public key || private key.
-std::error_code save_identity(const std::string& path, const Identity& id);
-std::error_code load_identity(const std::string& path, Identity& out);
+/// 64-byte file: public key || private key. Path overloads use Unicode on Windows.
+std::error_code save_identity(const std::filesystem::path& path, const Identity& id);
+std::error_code load_identity(const std::filesystem::path& path, Identity& out);
+inline std::error_code save_identity(const std::string& path, const Identity& id)
+{
+  return save_identity(std::filesystem::path{path}, id);
+}
+inline std::error_code load_identity(const std::string& path, Identity& out)
+{
+  return load_identity(std::filesystem::path{path}, out);
+}
 } // namespace arq_messaging

@@ -46,7 +46,7 @@ std::error_code generate_identity(Identity& out) noexcept
   return {};
 }
 
-std::error_code save_identity(const std::string& path, const Identity& id)
+std::error_code save_identity(const std::filesystem::path& path, const Identity& id)
 {
   std::ofstream out{path, std::ios::binary | std::ios::trunc};
   if (!out)
@@ -60,7 +60,7 @@ std::error_code save_identity(const std::string& path, const Identity& id)
   return {};
 }
 
-std::error_code load_identity(const std::string& path, Identity& out)
+std::error_code load_identity(const std::filesystem::path& path, Identity& out)
 {
   std::ifstream in{path, std::ios::binary};
   if (!in)

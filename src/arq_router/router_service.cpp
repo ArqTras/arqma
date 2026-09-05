@@ -27,8 +27,10 @@
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "router_service.h"
+#include "arq_storage/storage_endpoint.h"
 
-#include <cctype>
+#include <cstdint>
+#include <string>
 #include <system_error>
 #include <utility>
 
@@ -38,15 +40,9 @@ bool listen_looks_sane(const std::string& listen) noexcept
 {
   if (listen.empty())
     return true; // optional until sockets land
-  // Accept host:port with a numeric port; reject spaces / empty host.
-  const auto colon = listen.rfind(':');
-  if (colon == std::string::npos || colon == 0 || colon + 1 >= listen.size())
-    return false;
-  for (std::size_t i = colon + 1; i < listen.size(); ++i) {
-    if (!std::isdigit(static_cast<unsigned char>(listen[i])))
-      return false;
-  }
-  return true;
+  std::string host;
+  std::uint16_t port = 0;
+  return arq_storage::parse_listen_address(listen, host, port);
 }
 } // namespace
 

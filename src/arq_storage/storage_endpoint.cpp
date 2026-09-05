@@ -30,8 +30,82 @@
 
 #include <cctype>
 #include <cstdlib>
+#include <string>
 
 namespace arq_storage {
+namespace {
+bool parse_port_digits(const std::string_view raw, std::uint16_t& port) noexcept
+{
+  if (raw.empty() || raw.size() > 5)
+    return false;
+  unsigned long value = 0;
+  for (char c : raw) {
+    if (!std::isdigit(static_cast<unsigned char>(c)))
+      return false;
+    value = value * 10u + static_cast<unsigned long>(c - '0');
+  }
+  if (value > 65535u)
+    return false;
+  port = static_cast<std::uint16_t>(value);
+  return true;
+}
+
+bool parse_host_port(const std::string_view hostport, std::string& host, std::uint16_t& port,
+                     const std::uint16_t default_port, const bool require_port) noexcept
+{
+  if (hostport.empty() || hostport.find(' ') != std::string_view::npos)
+    return false;
+  if (hostport.front() == '[') {
+    const auto close = hostport.find(']');
+    if (close == std::string_view::npos || close < 2)
+      return false;
+    host.assign(hostport.substr(1, close - 1));
+    if (host.empty())
+      return false;
+    if (close + 1 == hostport.size()) {
+      if (require_port)
+        return false;
+      port = default_port;
+      return true;
+    }
+    if (hostport[close + 1] != ':')
+      return false;
+    return parse_port_digits(hostport.substr(close + 2), port);
+  }
+  const auto colon = hostport.rfind(':');
+  if (colon == std::string_view::npos) {
+    if (require_port)
+      return false;
+    host.assign(hostport);
+    port = default_port;
+    return !host.empty();
+  }
+  if (colon == 0)
+    return false;
+  host.assign(hostport.substr(0, colon));
+  return !host.empty() && parse_port_digits(hostport.substr(colon + 1), port);
+}
+} // namespace
+
+bool parse_listen_address(const std::string_view listen, std::string& host, std::uint16_t& port) noexcept
+{
+  host.clear();
+  port = 0;
+  return parse_host_port(listen, host, port, 0, true);
+}
+
+std::string format_http_authority(const std::string_view host, const std::uint16_t port)
+{
+  if (host.find(':') != std::string_view::npos)
+    return "[" + std::string{host} + "]:" + std::to_string(port);
+  return std::string{host} + ":" + std::to_string(port);
+}
+
+std::string http_host_header(const Endpoint& endpoint)
+{
+  return format_http_authority(endpoint.host, endpoint.port);
+}
+
 Endpoint parse_endpoint(const std::string_view url) noexcept
 {
   Endpoint out{};
@@ -55,30 +129,8 @@ Endpoint parse_endpoint(const std::string_view url) noexcept
   if (out.path.empty())
     out.path = "/";
 
-  if (hostport.empty() || hostport.find(' ') != std::string_view::npos)
+  if (!parse_host_port(hostport, out.host, out.port, out.tls ? 443 : 80, false))
     return {};
-
-  const auto colon = hostport.rfind(':');
-  if (colon == std::string_view::npos) {
-    out.host = std::string{hostport};
-    out.port = out.tls ? 443 : 80;
-  } else {
-    if (colon == 0)
-      return {};
-    out.host = std::string{hostport.substr(0, colon)};
-    const auto port_sv = hostport.substr(colon + 1);
-    if (port_sv.empty())
-      return {};
-    for (char c : port_sv) {
-      if (!std::isdigit(static_cast<unsigned char>(c)))
-        return {};
-    }
-    const long port = std::strtol(std::string{port_sv}.c_str(), nullptr, 10);
-    if (port <= 0 || port > 65535)
-      return {};
-    out.port = static_cast<std::uint16_t>(port);
-  }
-
   if (out.host.empty() || out.host == "." || out.host.find('/') != std::string::npos)
     return {};
   return out;
@@ -89,6 +141,6 @@ std::string format_http_get_request(const Endpoint& endpoint) noexcept
   if (!endpoint)
     return {};
   const std::string& path = endpoint.path.empty() ? "/" : endpoint.path;
-  return "GET " + path + " HTTP/1.1\r\nHost: " + endpoint.host + "\r\nConnection: close\r\n\r\n";
+  return "GET " + path + " HTTP/1.1\r\nHost: " + http_host_header(endpoint) + "\r\nConnection: close\r\n\r\n";
 }
 } // namespace arq_storage

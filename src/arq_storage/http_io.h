@@ -7,6 +7,7 @@
 #include "storage_endpoint.h"
 
 #include <chrono>
+#include <cstddef>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -14,6 +15,9 @@
 #include <vector>
 
 namespace arq_storage {
+constexpr std::size_t max_http_header_bytes = 8192;
+constexpr std::size_t max_http_body_bytes = 1024 * 1024;
+constexpr std::size_t max_kv_name_bytes = 128;
 struct HttpResult
 {
   int status = 0;

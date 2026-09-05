@@ -21,7 +21,8 @@ It pre-confirms transactions. It does **not** replace Pulse or RandomARQ.
 ## Local stack
 
 ```text
-utils/arqma-stack.sh                 # arqma-storage + arqma-router
+utils/arqma-stack.sh                 # Linux / macOS
+utils/arqma-stack.cmd                # Windows
 arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
 arqma-msg gen
 arqma-msg send --url http://127.0.0.1:22021 --to <64-hex> --text hello
@@ -32,7 +33,8 @@ arqma-msg open --to <pub> --secret <priv> --key <id>
 
 `PUT /v1/kv?ttl=` expires values (cap 14 days; `0` means keep). Inbox namespaces
 `inbox-<pubkey>` also fan out to URLs in `PUT /v1/snodes`. `GET /v1/swarm?pubkey=`
-returns the FNV swarm id plus those member URLs.
+returns the FNV swarm id plus those member URLs. HTTP bodies are capped at 1 MiB;
+listen addresses accept IPv6 (`[::1]:22021`).
 
 `get_storage_status` / `storage_server_ping` talk to `arqma-storage`.
 `get_blink_status` / `print_blink` report the in-daemon Blink collector.

@@ -83,7 +83,10 @@
   on-disk blobs stay immortal). `arqma-router` peels one onion hop and can
   `POST /v1/store` into `--storage-url` (TTL query forwarded). `arqma-msg` can
   onion-send via `--router` and `open` sealed envelopes. `utils/arqma-stack.sh`
-  starts storage with `--data-dir` and the router with `--storage-url`.
+  (Linux/macOS) and `utils/arqma-stack.cmd` (Windows) start storage with `--data-dir`
+  and the router with `--storage-url`. Companion HTTP listens accept IPv6
+  (`[::1]:port`), cap bodies at 1 MiB, apply socket timeouts on Windows and POSIX,
+  and open identity files via `std::filesystem::path` (Unicode-safe on Windows).
 - Expose cutover gates on `get_arqnet_status` (`native_mesh_ready`,
   `native_mesh_blocker`, `native_mesh_hf_permits`, `hard_fork_version`).
 - Scaffold native-mesh inbound `vote_ob` processing (installed only after

@@ -6,6 +6,8 @@
 #include "router_service.h"
 
 #include "arq_messaging/identity.hpp"
+#include "arq_storage/http_io.h"
+#include "arq_storage/storage_endpoint.h"
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -14,9 +16,9 @@
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/write.hpp>
 #include <boost/program_options.hpp>
-#include <cctype>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <iostream>
 #include <iterator>
@@ -24,21 +26,11 @@
 #include <string>
 
 namespace {
-bool split_host_port(const std::string& listen, std::string& host, std::uint16_t& port)
-{
-  const auto colon = listen.rfind(':');
-  if (colon == std::string::npos || colon == 0 || colon + 1 >= listen.size())
-    return false;
-  host = listen.substr(0, colon);
-  port = static_cast<std::uint16_t>(std::stoi(listen.substr(colon + 1)));
-  return port != 0;
-}
-
 std::error_code load_or_create_identity(const std::string& data_dir, arq_messaging::Identity& id)
 {
   std::error_code fs_ec;
   std::filesystem::create_directories(data_dir, fs_ec);
-  const auto path = (std::filesystem::path{data_dir} / "identity").string();
+  const auto path = std::filesystem::path{data_dir} / "identity";
   if (!arq_messaging::load_identity(path, id))
     return {};
   if (arq_messaging::generate_identity(id))
@@ -49,7 +41,7 @@ std::error_code load_or_create_identity(const std::string& data_dir, arq_messagi
 void serve(boost::asio::ip::tcp::socket socket, const arq_messaging::Identity& hop, const std::string& storage_url)
 {
   try {
-    boost::asio::streambuf buf;
+    boost::asio::streambuf buf{arq_storage::max_http_header_bytes};
     boost::system::error_code ec;
     boost::asio::read_until(socket, buf, "\r\n\r\n", ec);
     if (ec)
@@ -78,9 +70,14 @@ void serve(boost::asio::ip::tcp::socket socket, const arq_messaging::Identity& h
         continue;
       std::string name = header.substr(0, colon);
       for (char& c : name)
-        c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        c = static_cast<char>(c >= 'A' && c <= 'Z' ? c - 'A' + 'a' : c);
       if (name == "content-length")
         content_length = static_cast<std::size_t>(std::strtoul(header.c_str() + colon + 1, nullptr, 10));
+    }
+    if (content_length > arq_storage::max_http_body_bytes) {
+      const char* too_large = "HTTP/1.1 413 Payload Too Large\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+      boost::asio::write(socket, boost::asio::buffer(too_large, std::strlen(too_large)), ec);
+      return;
     }
     std::string body(std::istreambuf_iterator<char>(is), {});
     if (content_length > body.size()) {
@@ -137,8 +134,8 @@ int main(int argc, char** argv)
 
   std::string host;
   std::uint16_t port = 0;
-  if (!split_host_port(cfg.listen, host, port)) {
-    std::cerr << "listen must be host:port\n";
+  if (!arq_storage::parse_listen_address(cfg.listen, host, port)) {
+    std::cerr << "listen must be host:port or [ipv6]:port\n";
     return 1;
   }
 
@@ -149,7 +146,8 @@ int main(int argc, char** argv)
   acceptor.set_option(boost::asio::socket_base::reuse_address(true));
   acceptor.bind(ep);
   acceptor.listen();
-  std::cout << "arqma-router " << service.state_name() << " on http://" << host << ":" << port << std::endl;
+  std::cout << "arqma-router " << service.state_name() << " on http://"
+            << arq_storage::format_http_authority(host, port) << std::endl;
 
   for (;;) {
     boost::system::error_code ec;

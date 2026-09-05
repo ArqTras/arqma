@@ -39,9 +39,10 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - [x] Storage `--data-dir` volume + router `POST /v1/peel` + `arqma-msg inbox`
 - [x] Storage `--peer` replica fan-out + router `POST /v1/store` + `arqma-msg open`
 - [x] Storage TTL (`?ttl=`) + inbox swarm fan-out (`/v1/snodes` members) + `GET /v1/swarm`
+- [x] Cross-platform companion HTTP (IPv6 listen, 1 MiB body cap, socket timeouts, Windows stack.cmd)
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 
 ## Quality
 
-- Local `unit_tests` → **609** passed (storage TTL + inbox swarm fan-out)
+- Local `unit_tests` → **611** passed (IPv6 listen + HTTP body cap)

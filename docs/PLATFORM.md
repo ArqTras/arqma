@@ -72,6 +72,8 @@ Working end-to-end on the platforms above:
   `snnetwork`. Experimental `arqmq` is refused on mainnet without
   `--arqnet-allow-experimental`.
 - Storage client TCP/HTTP GET probe; messaging envelope / onion / swarm helpers
+- In-repo companions: `arqma-storage`, `arqma-router`, `arqma-msg` (IPv6 listen,
+  1 MiB HTTP body cap, socket timeouts on Windows and POSIX)
 - Experimental `arq_router` lifecycle (scaffold; not a Lokinet product)
 
 See `docs/UPGRADE_ROADMAP.md` and `docs/OPERATOR_UPGRADE.md` for mainnet locks.
@@ -93,6 +95,6 @@ See `docs/UPGRADE_ROADMAP.md` and `docs/OPERATOR_UPGRADE.md` for mainnet locks.
 ## Known gaps (documented, not blockers for foundation merge)
 
 1. Legacy Monero-era `core_tests` / some unit fixtures need API migration.
-2. Native Windows MSVC unit job not yet in CI.
-3. Milestone C products (full Storage Server binary, Lokinet-class router,
-   Pulse/Blink) require an explicit product decision.
+2. Native Windows MSVC unit job not yet in CI (Windows product binaries are mingw depends).
+3. Full Storage swarm gossip protocol and Session-class clients remain follow-ups.
+   Companion binaries, KV TTL, and inbox swarm fan-out are already in-tree.

@@ -3,6 +3,7 @@
 // All rights reserved.
 
 #include "storage_server.h"
+#include "storage_endpoint.h"
 
 #include <boost/program_options.hpp>
 #include <chrono>
@@ -33,13 +34,12 @@ int main(int argc, char** argv)
               << listen << "\n";
     return 0;
   }
-  const auto colon = listen.rfind(':');
-  if (colon == std::string::npos) {
-    std::cerr << "listen must be host:port\n";
+  std::string host;
+  std::uint16_t port = 0;
+  if (!arq_storage::parse_listen_address(listen, host, port)) {
+    std::cerr << "listen must be host:port or [ipv6]:port\n";
     return 1;
   }
-  const auto host = listen.substr(0, colon);
-  const auto port = static_cast<std::uint16_t>(std::stoi(listen.substr(colon + 1)));
   arq_storage::StorageServer server;
   if (!data_dir.empty())
     server.set_data_dir(data_dir);

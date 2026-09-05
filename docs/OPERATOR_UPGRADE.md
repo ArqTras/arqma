@@ -139,6 +139,7 @@ Companion processes (same repo, separate PIDs — [`docs/PRODUCT.md`](PRODUCT.md
 
 ```text
 utils/arqma-stack.sh
+utils/arqma-stack.cmd
 arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
 arqma-msg gen
 arqma-storage --listen 127.0.0.1:22021 --data-dir ~/.arqma/storage --peer http://127.0.0.1:22022
@@ -149,7 +150,8 @@ arqma-msg inbox --url http://127.0.0.1:22021 --to <64-hex>
 
 `arqma-storage` honors `PUT /v1/kv?ttl=` (max 14 days). Inbox keys also copy to
 URLs listed in `PUT /v1/snodes?pubkey=`. `GET /v1/swarm?pubkey=` returns swarm id
-plus those members.
+plus those members. Listen on IPv6 as `[::1]:22021`. HTTP bodies are capped at
+1 MiB on Linux, macOS, and Windows.
 
 ## Compatibility
 
