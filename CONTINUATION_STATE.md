@@ -8,7 +8,7 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
 - Stage 4 mesh gate on; HF20 **4 000 000** hybrid SN; HF21 **5 000 000** exclusive
 - Pulse Milestone C started (`get_pulse_status`); PoW still required
-- PR notes: `docs/PR_SUMMARY.md` (EN + PL)
+- PR notes: GitHub PR https://github.com/ArqTras/arqma/pull/3 (EN + PL)
 
 ## Mainnet locks until 4 000 000
 

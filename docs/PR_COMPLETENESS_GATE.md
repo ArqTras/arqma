@@ -7,7 +7,8 @@ macOS**.
 It does **not** claim that full Oxen Storage Server, Lokinet-class routing,
 Session messenger clients, or Blink are shipped. Pulse SN **hybrid (HF20) /
 exclusive (HF21)** gates and `get_pulse_status` are started; RandomARQ is still
-required until a Pulse producer is wired. See `docs/PR_SUMMARY.md`.
+required until a Pulse producer is wired. See
+https://github.com/ArqTras/arqma/pull/3.
 
 ### Must-have (satisfied)
 
