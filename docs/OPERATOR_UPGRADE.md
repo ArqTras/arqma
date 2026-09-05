@@ -140,14 +140,24 @@ Companion processes (same repo, separate PIDs — [`docs/PRODUCT.md`](PRODUCT.md
 ```text
 utils/arqma-stack.sh
 utils/arqma-stack.cmd
-arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
 arqma-msg gen
+arqma-msg send --to <64-hex> --text hello
+arqma-msg inbox --to <64-hex>
+arqma-msg open --to <pub> --secret <priv> --key <id>
+```
+
+The stack writes `$ARQMA_STACK_DIR/env` so `arqma-msg` needs no `--url` / `--router`.
+Daemon probe (separate process):
+
+```text
+arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
+```
+
+Operator binaries if you are not using the stack:
+
+```text
 arqma-storage --listen 127.0.0.1:22021 --data-dir ~/.arqma/storage --peer http://127.0.0.1:22022
 arqma-router --listen 127.0.0.1:1090 --data-dir ~/.arqma/arq-router --storage-url http://127.0.0.1:22021
-arqma-msg send --router http://127.0.0.1:1090 --to <64-hex> --text hello
-arqma-msg send --router http://127.0.0.1:1090 --router http://127.0.0.1:1091 --to <64-hex> --text hello
-arqma-msg inbox --url http://127.0.0.1:22021 --to <64-hex>
-arqma-msg swarm --to <64-hex> --snode http://127.0.0.1:22022
 ```
 
 `arqma-storage` honors `PUT /v1/kv?ttl=` (max 14 days). Inbox keys also copy to

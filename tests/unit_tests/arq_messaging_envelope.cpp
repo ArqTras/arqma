@@ -32,6 +32,7 @@
 #include "arq_messaging/onion_forward.hpp"
 #include "arq_messaging/onion_layer.hpp"
 #include "arq_messaging/sealed_sender.hpp"
+#include "arq_messaging/stack_env.hpp"
 
 TEST(arq_messaging_envelope, roundtrip_binary_encoding)
 {
@@ -152,4 +153,17 @@ TEST(arq_messaging_envelope, compose_onion_route_peels_forward_frame)
   std::vector<std::uint8_t> recovered;
   ASSERT_FALSE(arq_messaging::peel_onion_layer(hop1, rest, recovered));
   EXPECT_EQ(payload, recovered);
+}
+
+TEST(arq_messaging_envelope, parse_stack_env_storage_and_router)
+{
+  const auto env = arq_messaging::parse_stack_env("# comment\n"
+                                                  "ARQMA_STORAGE_URL=http://127.0.0.1:22021\n"
+                                                  "ARQMA_ROUTER_URL = http://127.0.0.1:1090\n"
+                                                  "OTHER=ignore\n");
+  EXPECT_EQ("http://127.0.0.1:22021", env.storage_url);
+  EXPECT_EQ("http://127.0.0.1:1090", env.router_url);
+  const auto empty = arq_messaging::parse_stack_env("");
+  EXPECT_EQ("http://127.0.0.1:22021", empty.storage_url);
+  EXPECT_TRUE(empty.router_url.empty());
 }

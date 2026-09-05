@@ -10,6 +10,7 @@ set(arq_messaging_headers
   onion_layer.hpp
   onion_request.hpp
   sealed_sender.hpp
+  stack_env.hpp
   swarm_map.hpp)
 
 arqma_find_all_headers(arq_messaging_private_headers "${CMAKE_CURRENT_SOURCE_DIR}")

@@ -93,6 +93,9 @@
   `arqma-msg send --router` may be repeated (outermost first). `PUT /v1/snodes`
   merges unique HTTP member URLs (cap 32) and pushes the list to those members;
   `arqma-msg swarm` lists or announces them (not a full gossip protocol).
+  Everyday `arqma-msg` reads `$ARQMA_STACK_DIR/env` from `utils/arqma-stack` so
+  `send` / `inbox` / `open` need no `--url` / `--router`; a down router falls back
+  to storage.
 - Expose cutover gates on `get_arqnet_status` (`native_mesh_ready`,
   `native_mesh_blocker`, `native_mesh_hf_permits`, `hard_fork_version`).
 - Scaffold native-mesh inbound `vote_ob` processing (installed only after

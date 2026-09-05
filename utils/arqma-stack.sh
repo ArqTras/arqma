@@ -15,6 +15,11 @@ fi
 
 mkdir -p "${STACK_DIR}/storage" "${STACK_DIR}/router"
 
+cat > "${STACK_DIR}/env" <<EOF
+ARQMA_STORAGE_URL=http://${STORAGE_LISTEN}
+ARQMA_ROUTER_URL=http://${ROUTER_LISTEN}
+EOF
+
 "${BIN_DIR}/arqma-storage" --listen "${STORAGE_LISTEN}" --data-dir "${STACK_DIR}/storage" &
 STORAGE_PID=$!
 "${BIN_DIR}/arqma-router" --listen "${ROUTER_LISTEN}" --data-dir "${STACK_DIR}/router" \
@@ -28,18 +33,15 @@ trap cleanup EXIT INT TERM
 
 echo "arqma-storage pid=${STORAGE_PID} http://${STORAGE_LISTEN} data=${STACK_DIR}/storage"
 echo "arqma-router  pid=${ROUTER_PID} http://${ROUTER_LISTEN} data=${STACK_DIR}/router"
+echo "env           ${STACK_DIR}/env"
 echo
-echo "Point the consensus daemon at the companions (still a separate process):"
-echo "  ${BIN_DIR}/arqmad --storage-client-url=http://${STORAGE_LISTEN} --arq-router"
-echo
-echo "Messenger CLI (after storage is up):"
+echo "Messenger:"
 echo "  ${BIN_DIR}/arqma-msg gen"
-echo "  ${BIN_DIR}/arqma-msg send --url http://${STORAGE_LISTEN} --to <64-hex> --text hello"
-echo "  ${BIN_DIR}/arqma-msg send --router http://${ROUTER_LISTEN} --to <64-hex> --text hello"
-echo "  # repeat --router (outermost first, max 3) for extra hops"
-echo "  ${BIN_DIR}/arqma-msg inbox --url http://${STORAGE_LISTEN} --to <64-hex>"
-echo "  ${BIN_DIR}/arqma-msg swarm --to <64-hex>"
-echo "  ${BIN_DIR}/arqma-msg swarm --to <64-hex> --snode http://127.0.0.1:22022"
-echo "  ${BIN_DIR}/arqma-msg open --url http://${STORAGE_LISTEN} --to <pub> --secret <priv> --key <id>"
+echo "  ${BIN_DIR}/arqma-msg send --to <64-hex> --text hello"
+echo "  ${BIN_DIR}/arqma-msg inbox --to <64-hex>"
+echo "  ${BIN_DIR}/arqma-msg open --to <pub> --secret <priv> --key <id>"
+echo
+echo "Daemon (separate process):"
+echo "  ${BIN_DIR}/arqmad --storage-client-url=http://${STORAGE_LISTEN} --arq-router"
 echo
 wait

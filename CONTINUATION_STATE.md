@@ -43,9 +43,10 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - [x] Inbox swarm read fallback (`retrieve` / `list_keys` try `/v1/snodes` members)
 - [x] Multi-hop onion forward (`ARQH` frame, `fwd` cap, repeatable `--router`)
 - [x] Swarm membership merge + push to listed members (`arqma-msg swarm`)
+- [x] Simple messenger defaults (stack env file; `send`/`inbox`/`open` without extra flags)
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 
 ## Quality
 
-- Local `unit_tests` → **619** passed (swarm membership merge + gossip push)
+- Local `unit_tests` → **620** passed (simple stack env defaults)

@@ -18,21 +18,25 @@ if not exist "%BIN_DIR%\arqma-storage.exe" (
 
 mkdir "%STACK_DIR%\storage" 2>nul
 mkdir "%STACK_DIR%\router" 2>nul
+(
+  echo ARQMA_STORAGE_URL=http://%STORAGE_LISTEN%
+  echo ARQMA_ROUTER_URL=http://%ROUTER_LISTEN%
+) > "%STACK_DIR%\env"
 
 start "arqma-storage" "%BIN_DIR%\arqma-storage.exe" --listen %STORAGE_LISTEN% --data-dir "%STACK_DIR%\storage"
 start "arqma-router" "%BIN_DIR%\arqma-router.exe" --listen %ROUTER_LISTEN% --data-dir "%STACK_DIR%\router" --storage-url http://%STORAGE_LISTEN%
 
 echo arqma-storage http://%STORAGE_LISTEN% data=%STACK_DIR%\storage
 echo arqma-router  http://%ROUTER_LISTEN% data=%STACK_DIR%\router
+echo env           %STACK_DIR%\env
 echo.
-echo Point the consensus daemon at the companions (still a separate process):
-echo   "%BIN_DIR%\arqmad.exe" --storage-client-url=http://%STORAGE_LISTEN% --arq-router
-echo.
-echo Messenger CLI:
+echo Messenger:
 echo   "%BIN_DIR%\arqma-msg.exe" gen
-echo   "%BIN_DIR%\arqma-msg.exe" send --url http://%STORAGE_LISTEN% --to ^<64-hex^> --text hello
-echo   "%BIN_DIR%\arqma-msg.exe" send --router http://%ROUTER_LISTEN% --to ^<64-hex^> --text hello
-echo   rem repeat --router (outermost first, max 3) for extra hops
-echo   "%BIN_DIR%\arqma-msg.exe" swarm --to ^<64-hex^>
+echo   "%BIN_DIR%\arqma-msg.exe" send --to ^<64-hex^> --text hello
+echo   "%BIN_DIR%\arqma-msg.exe" inbox --to ^<64-hex^>
+echo   "%BIN_DIR%\arqma-msg.exe" open --to ^<pub^> --secret ^<priv^> --key ^<id^>
+echo.
+echo Daemon (separate process):
+echo   "%BIN_DIR%\arqmad.exe" --storage-client-url=http://%STORAGE_LISTEN% --arq-router
 echo Close the companion console windows to stop the stack.
 endlocal

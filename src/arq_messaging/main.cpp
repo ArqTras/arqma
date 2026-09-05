@@ -7,6 +7,7 @@
 #include "arq_messaging/onion_layer.hpp"
 #include "arq_messaging/onion_request.hpp"
 #include "arq_messaging/sealed_sender.hpp"
+#include "arq_messaging/stack_env.hpp"
 #include "arq_storage/http_io.h"
 #include "arq_storage/storage_client.h"
 
@@ -85,21 +86,21 @@ int main(int argc, char** argv)
   all.add(desc).add(hidden);
   po::store(po::command_line_parser(argc, argv).options(all).positional(pos).run(), vm);
   po::notify(vm);
+  const auto stack = arq_messaging::load_stack_env();
+  if (!vm.count("url"))
+    url = stack.storage_url;
+  const bool explicit_router = vm.count("router") != 0;
+  if (!explicit_router && !stack.router_url.empty())
+    routers.push_back(stack.router_url);
   if (vm.count("help") || cmd.empty()) {
-    std::cout
-        << "Usage: arqma-msg gen|send|get|inbox|open|swarm [options]\n"
-        << desc
-        << "\nRequires arqma-storage. Example:\n"
-           "  arqma-msg gen\n"
-           "  arqma-msg send --to <hex> --text hello --url http://127.0.0.1:22021\n"
-           "  arqma-msg send --router http://127.0.0.1:1090 --to <hex> --text hello\n"
-           "  arqma-msg send --router http://127.0.0.1:1090 --router http://127.0.0.1:1091 --to <hex> --text hello\n"
-           "  arqma-msg inbox --to <hex>\n"
-           "  arqma-msg get --to <hex> --key <id>\n"
-           "  arqma-msg open --to <pub> --secret <priv> --key <id>\n"
-           "  arqma-msg swarm --to <hex>\n"
-           "  arqma-msg swarm --to <hex> --snode http://127.0.0.1:22022\n"
-           "get/inbox/open follow inbox swarm members advertised by --url.\n";
+    std::cout << "Usage: arqma-msg gen|send|inbox|open [options]\n"
+              << desc
+              << "\nEveryday (start utils/arqma-stack.sh first):\n"
+                 "  arqma-msg gen\n"
+                 "  arqma-msg send --to <hex> --text hello\n"
+                 "  arqma-msg inbox --to <hex>\n"
+                 "  arqma-msg open --to <pub> --secret <priv> --key <id>\n"
+                 "\nOperator knobs: --url, --router (repeat, max 3), swarm --snode.\n";
     return vm.count("help") ? 0 : 1;
   }
 
@@ -137,41 +138,43 @@ int main(int argc, char** argv)
     env.payload = std::move(sealed);
     const auto blob = arq_messaging::encode_message_envelope(env);
     const auto store_key = to_hex(blob.data(), std::min<std::size_t>(blob.size(), 16));
-    if (!routers.empty()) {
-      if (routers.size() > arq_messaging::OnionRequest::hop_count) {
-        std::cerr << "at most 3 --router hops\n";
-        return 1;
-      }
+    if (explicit_router && routers.size() > arq_messaging::OnionRequest::hop_count) {
+      std::cerr << "at most 3 --router hops\n";
+      return 1;
+    }
+    auto send_via_router = [&]() -> bool {
+      if (routers.size() > arq_messaging::OnionRequest::hop_count)
+        return false;
       std::vector<arq_messaging::X25519PublicKey> pubs;
       pubs.reserve(routers.size());
       for (const auto& router : routers) {
         const auto ep = arq_storage::parse_endpoint(router);
         const auto pubget = arq_storage::http_exchange(ep, "GET", "/v1/pubkey", {});
-        if (!pubget || pubget.body.size() < 64) {
-          std::cerr << "router pubkey failed\n";
-          return 1;
-        }
+        if (!pubget || pubget.body.size() < 64)
+          return false;
         arq_messaging::X25519PublicKey rpub{};
         if (!from_hex(pubget.body.substr(0, 64), rpub.data.data(), 32))
-          return 1;
+          return false;
         pubs.push_back(rpub);
       }
       std::vector<std::uint8_t> onion;
-      if (arq_messaging::compose_onion_route(pubs, routers, blob, onion)) {
-        std::cerr << "onion wrap failed\n";
-        return 1;
-      }
+      if (arq_messaging::compose_onion_route(pubs, routers, blob, onion))
+        return false;
       std::string rpath = "/v1/store?ns=inbox-" + to + "&key=" + store_key;
       if (env.ttl_seconds != 0)
         rpath += "&ttl=" + std::to_string(env.ttl_seconds);
       const auto ep = arq_storage::parse_endpoint(routers.front());
-      const auto put = arq_storage::http_exchange(ep, "POST", rpath, std::string(onion.begin(), onion.end()));
-      if (!put) {
+      return static_cast<bool>(arq_storage::http_exchange(ep, "POST", rpath, std::string(onion.begin(), onion.end())));
+    };
+    if (!routers.empty()) {
+      if (send_via_router()) {
+        std::cout << store_key << "\n";
+        return 0;
+      }
+      if (explicit_router) {
         std::cerr << "router store failed\n";
         return 1;
       }
-      std::cout << store_key << "\n";
-      return 0;
     }
     arq_storage::StoreRequest req{"inbox-" + to, store_key, std::string(blob.begin(), blob.end())};
     req.ttl_seconds = env.ttl_seconds;
