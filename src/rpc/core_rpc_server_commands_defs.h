@@ -3112,6 +3112,41 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
     typedef epee::misc_utils::struct_init<response_t> response;
   };
 
+  struct COMMAND_RPC_GET_BLINK_STATUS
+  {
+    struct request_t
+    {
+      BEGIN_KV_SERIALIZE_MAP()
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+
+    struct response_t
+    {
+      uint64_t height = 0;
+      uint64_t quorum_size = 0;
+      uint64_t majority_required = 0;
+      uint64_t signature_count = 0;
+      bool majority_ok = false;
+      bool replaces_pow = false;
+      bool replaces_pulse = false;
+      std::string blink_blocker;
+      std::string status;
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(height)
+        KV_SERIALIZE(quorum_size)
+        KV_SERIALIZE(majority_required)
+        KV_SERIALIZE(signature_count)
+        KV_SERIALIZE(majority_ok)
+        KV_SERIALIZE(replaces_pow)
+        KV_SERIALIZE(replaces_pulse)
+        KV_SERIALIZE(blink_blocker)
+        KV_SERIALIZE(status)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<response_t> response;
+  };
+
   struct COMMAND_RPC_GET_STAKING_REQUIREMENT
   {
     struct request_t

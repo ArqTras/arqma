@@ -92,6 +92,8 @@ public:
 
   bool print_pulse();
 
+  bool print_blink();
+
   bool set_log_level(int8_t level);
 
   bool set_log_categories(const std::string &categories);

@@ -115,6 +115,12 @@ t_command_server::t_command_server(
     , "Print hybrid Pulse round status (get_pulse_status)."
     );
   m_command_lookup.set_handler(
+      "print_blink"
+    , std::bind(&t_command_parser_executor::print_blink, &m_parser, p::_1)
+    , "print_blink"
+    , "Print Blink quorum status (get_blink_status). Blink does not replace Pulse or RandomARQ."
+    );
+  m_command_lookup.set_handler(
       "print_sn_key"
     , std::bind(&t_command_parser_executor::print_sn_key, &m_parser, p::_1)
     , "print_sn_key"

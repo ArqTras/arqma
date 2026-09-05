@@ -258,6 +258,16 @@ bool t_command_parser_executor::print_pulse(const std::vector<std::string>& args
   return m_executor.print_pulse();
 }
 
+bool t_command_parser_executor::print_blink(const std::vector<std::string>& args)
+{
+  if (!args.empty())
+  {
+    std::cout << "use: print_blink" << std::endl;
+    return true;
+  }
+  return m_executor.print_blink();
+}
+
 bool t_command_parser_executor::print_sn_key(const std::vector<std::string>& args)
 {
   if(!args.empty())

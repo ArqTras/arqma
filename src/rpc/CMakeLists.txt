@@ -113,6 +113,7 @@ target_link_libraries(rpc
     cryptonote_protocol
     arqmq
     arq_storage
+    arq_blink
     net
     version
     ${Boost_REGEX_LIBRARY}

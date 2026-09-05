@@ -30,6 +30,7 @@
 # Green CI suite for the upgrade branch. Legacy fixtures (Monero-era addresses,
 # decimals, DNS) and Boost.Asio API-drift tests are restored incrementally.
 set(unit_tests_sources
+  arq_blink.cpp
   arq_messaging_envelope.cpp
   arq_storage_client.cpp
   arq_upgrade_modules.cpp
@@ -95,6 +96,7 @@ target_link_libraries(unit_tests
     arq_storage
     arq_messaging
     arq_router
+    arq_blink
     version
     epee
     ${Boost_CHRONO_LIBRARY}

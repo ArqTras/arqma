@@ -41,7 +41,7 @@ struct RouterConfig
 };
 
 /// Structural validation for the experimental in-process scaffold.
-/// Production Lokinet-class routing remains a separate binary.
+/// Production routing is the `arqma-router` binary in this repository.
 std::error_code validate_config(const RouterConfig& config) noexcept;
 
 class RouterService

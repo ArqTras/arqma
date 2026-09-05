@@ -15,8 +15,8 @@ Platform matrix: [`docs/PLATFORM.md`](PLATFORM.md).
 | 2 Core modernization | **Done** | C++20, CI, CLSAG tests, HF/Arq-Net fixes |
 | 3 Oxen feature parity (selective) | **Foundation + native transport** | ArqMQ facade + `SocketStack` behind `--arqnet-backend=arqmq` |
 | 4 Arq-Net evolution | **Foundation done** | Auth harden, ping, dual-stack plan |
-| 5 Storage Server | **Client foundation** | HTTP GET cleartext probe; TLS TCP-only; separate binary = Milestone C |
-| 6 Session-like modules | **Foundation done** | Envelope, onion peel, swarm bounds + hash, sealed-box |
+| 5 Storage Server | **In-repo binary** | `arqma-storage` HTTP KV; daemon still probes, does not embed the server |
+| 6 Session-like modules | **In-repo CLI** | Envelope, onion peel, swarm, sealed-box, `arqma-msg` |
 | 7 RPC modernization | **Foundation done** | Validation, wallet caps/auth, OpenAPI 0.2.0 |
 | 8 P2P improvements | **Foundation done** | Limits + Levin/preauth lock |
 | 9 Performance | **Baseline** | Local measurement doc |
@@ -67,14 +67,14 @@ Platform matrix: [`docs/PLATFORM.md`](PLATFORM.md).
 
 ## Requires SN economics / product decision (Milestone C)
 
-- Full Storage Server + swarm replication for messaging
+- Storage swarm replication for messaging (`arqma-storage` HTTP KV is in-tree)
 - Pulse-like PoS block production (**started:** HF20 hybrid / HF21 exclusive mesh +
   leader/quorum + miner extra + `pulse_rnd` collector + wait-windows + payload-bound extra +
   `get_pulse_status`;
   RandomARQ stays required — hybrid PoW, no PoW-off; SN idle `pulse_rnd`)
-- Blink-like instant tx quorums
-- Lokinet-class onion routing network
-- Session-class messenger clients
+- Blink-like instant tx quorums (**started:** `arq_blink` collector + `get_blink_status`; does not replace Pulse/PoW)
+- Privacy routing daemon (`arqma-router` HTTP status is in-tree)
+- Session-class messenger clients (`arqma-msg` CLI is in-tree)
 
 Do not implement those as drive-by copies; schedule behind an explicit product
 milestone.
@@ -132,13 +132,13 @@ Remaining before default flip (not blocking Milestone B; preserves compatibility
 
 **Requires human product decision.** Choose one primary value-add:
 
-1. Storage + onion requests (production Storage Server binary)
-2. Blink-like fast confirmation
-3. Pulse-like consensus change
-4. Privacy routing daemon (Lokinet-inspired)
+1. Storage swarm replication (HTTP KV binary is in-tree: `arqma-storage`)
+2. Blink-like fast confirmation (collector/RPC in-tree; not a Pulse/PoW replacement)
+3. Pulse-like consensus change (hybrid producer started; PoW stays)
+4. Privacy routing daemon (HTTP companion is in-tree: `arqma-router`)
 
-Foundation scaffolding for (1) and (4) exists; shipping them as products is
-out of scope for the foundation PR (`docs/PR_COMPLETENESS_GATE.md`).
+See [`docs/PRODUCT.md`](PRODUCT.md). Swarm replication and Session-class clients
+remain follow-ups (`docs/PR_COMPLETENESS_GATE.md`).
 
 ## Explicit non-goals (near term)
 

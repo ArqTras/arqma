@@ -83,6 +83,7 @@ public:
   std::error_code ping() const noexcept;
   std::error_code store(const StoreRequest& request) noexcept;
   Result<std::string> retrieve(std::string namespace_name, std::string key) const noexcept;
+  Result<std::vector<std::string>> list_keys(std::string namespace_name) const noexcept;
   Result<std::vector<std::string>> get_snodes_for_pubkey(std::string pubkey) const noexcept;
 
   void set_snodes_for_pubkey(std::string pubkey, std::vector<std::string> snodes);

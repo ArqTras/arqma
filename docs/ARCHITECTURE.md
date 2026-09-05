@@ -86,6 +86,8 @@ a maintained MQ layer while preserving wire compatibility during transition.
 ## Related documents
 
 - [UPGRADE_ROADMAP.md](UPGRADE_ROADMAP.md)
+- [PRODUCT.md](PRODUCT.md)
+- [PROCESS_BOUNDARIES.md](PROCESS_BOUNDARIES.md)
 - [SECURITY.md](SECURITY.md)
 - [ARQNET.md](ARQNET.md)
 - [MIGRATION.md](MIGRATION.md)

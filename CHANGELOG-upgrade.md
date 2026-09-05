@@ -73,6 +73,10 @@
   total (no synthetic +1). Daemon `print_pulse` prints the same snapshot. Block headers
   expose `pulse_certificate` / `pulse_round` / `pulse_signature_count` / `pulse_payload_hash`
   when miner extra carries a Pulse certificate. The collector drops votes once the height is produced (and on reorg).
+- Ship Storage, router, and messenger as in-repo companion binaries (`arqma-storage`,
+  `arqma-router`, `arqma-msg`) plus an in-daemon Blink collector (`get_blink_status` /
+  `print_blink`, 7 of 10). Processes stay separate from `arqmad`; see `docs/PRODUCT.md`.
+  Blink does not replace Pulse or RandomARQ.
 - Expose cutover gates on `get_arqnet_status` (`native_mesh_ready`,
   `native_mesh_blocker`, `native_mesh_hf_permits`, `hard_fork_version`).
 - Scaffold native-mesh inbound `vote_ob` processing (installed only after

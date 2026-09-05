@@ -6,7 +6,7 @@ info:
     Minimal OpenAPI scaffold for selected Arqma daemon JSON-RPC methods during
     the upgrade branch modernization work. Ping/status helpers are JSON-RPC
     methods (`arqnet_ping`, `storage_server_ping`, `get_arqnet_status`,
-    `get_pulse_status`, `get_storage_status`), not REST GET paths.
+    `get_pulse_status`, `get_storage_status`, `get_blink_status`), not REST GET paths.
     `get_arqnet_status` returns `backend`, `transport`, `mesh` (live peer quorum:
     `snnetwork` until HF20+ with a CURVE `--arqnet-backend=arqmq` stack; exclusive
     intent at HF21), soak counters (`mesh_vote_ob_*`, `mesh_pulse_rnd_*`),
@@ -19,6 +19,10 @@ info:
     Daemon `print_pulse` dumps the same fields. Block header RPC adds
     `pulse_certificate` / `pulse_round` / `pulse_signature_count` / `pulse_payload_hash`
     when miner extra carries a Pulse certificate.
+    `get_blink_status` / `print_blink` report the in-daemon Blink collector
+    (7 of 10); Blink does not replace Pulse or RandomARQ.
+    Companion processes `arqma-storage` and `arqma-router` live in this repo
+    (`docs/PRODUCT.md`); `arqmad` still only probes them.
     Block production is hybrid: RandomARQ stays required
     (`pulse-pow-replacement-not-ready`; `pow_replacement_ready` stays false).
     Privileged wallet-rpc methods
@@ -88,6 +92,7 @@ components:
             - get_arqnet_status
             - get_pulse_status
             - get_storage_status
+            - get_blink_status
             - arqnet_ping
             - storage_server_ping
             - get_block_header_by_hash

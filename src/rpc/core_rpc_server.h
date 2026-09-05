@@ -180,6 +180,7 @@ namespace cryptonote
         MAP_JON_RPC_WE_IF("get_arqnet_status",                     on_get_arqnet_status,                       COMMAND_RPC_GET_ARQNET_STATUS, !m_restricted)
         MAP_JON_RPC_WE_IF("get_pulse_status",                      on_get_pulse_status,                        COMMAND_RPC_GET_PULSE_STATUS, !m_restricted)
         MAP_JON_RPC_WE_IF("get_storage_status",                    on_get_storage_status,                      COMMAND_RPC_GET_STORAGE_STATUS, !m_restricted)
+        MAP_JON_RPC_WE_IF("get_blink_status",                      on_get_blink_status,                        COMMAND_RPC_GET_BLINK_STATUS, !m_restricted)
         MAP_JON_RPC_WE("get_service_nodes_states_changes",         on_get_service_nodes_state_changes,         COMMAND_RPC_GET_SN_STATE_CHANGES)
         MAP_JON_RPC_WE_IF("report_peer_storage_server_status",     on_report_peer_storage_server_status,       COMMAND_RPC_REPORT_PEER_SS_STATUS, !m_restricted)
         MAP_JON_RPC_WE_IF("test_trigger_p2p_resync",               on_test_trigger_p2p_resync,                 COMMAND_RPC_TEST_TRIGGER_P2P_RESYNC, !m_restricted)
@@ -265,6 +266,7 @@ namespace cryptonote
     bool on_get_arqnet_status(const COMMAND_RPC_GET_ARQNET_STATUS::request& req, COMMAND_RPC_GET_ARQNET_STATUS::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
     bool on_get_pulse_status(const COMMAND_RPC_GET_PULSE_STATUS::request& req, COMMAND_RPC_GET_PULSE_STATUS::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
     bool on_get_storage_status(const COMMAND_RPC_GET_STORAGE_STATUS::request& req, COMMAND_RPC_GET_STORAGE_STATUS::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
+    bool on_get_blink_status(const COMMAND_RPC_GET_BLINK_STATUS::request& req, COMMAND_RPC_GET_BLINK_STATUS::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
     bool on_get_checkpoints(const COMMAND_RPC_GET_CHECKPOINTS::request& req, COMMAND_RPC_GET_CHECKPOINTS::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
     bool on_get_service_nodes_state_changes(const COMMAND_RPC_GET_SN_STATE_CHANGES::request& req, COMMAND_RPC_GET_SN_STATE_CHANGES::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);
     bool on_report_peer_storage_server_status(const COMMAND_RPC_REPORT_PEER_SS_STATUS::request& req, COMMAND_RPC_REPORT_PEER_SS_STATUS::response& res, epee::json_rpc::error& error_resp, const connection_context *ctx = NULL);

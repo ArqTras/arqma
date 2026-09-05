@@ -30,6 +30,7 @@
 
 #include "arq_storage/storage_client.h"
 #include "arq_storage/storage_endpoint.h"
+#include "arq_storage/storage_server.h"
 
 TEST(arq_storage_endpoint, parses_http_and_https_urls)
 {
@@ -105,4 +106,32 @@ TEST(arq_storage_client, daemon_client_config_roundtrip)
   EXPECT_EQ(arq_storage::Backend::InMemory, client.backend());
   EXPECT_FALSE(client.ping());
   arq_storage::configure_daemon_client({});
+}
+
+TEST(arq_storage_server, remote_client_http_roundtrip)
+{
+  arq_storage::StorageServer server;
+  ASSERT_FALSE(server.listen("127.0.0.1", 0)) << "bind ephemeral storage port";
+  ASSERT_NE(0, server.port());
+  arq_storage::Config cfg;
+  cfg.backend = arq_storage::Backend::Remote;
+  cfg.base_url = server.base_url();
+  cfg.connect_timeout = std::chrono::milliseconds{2000};
+  arq_storage::StorageClient client{cfg};
+  EXPECT_FALSE(client.ping());
+  EXPECT_FALSE(client.store({"messages", "hello", "world"}));
+  const auto got = client.retrieve("messages", "hello");
+  EXPECT_FALSE(got.error);
+  EXPECT_EQ("world", got.value);
+  const auto keys = client.list_keys("messages");
+  ASSERT_FALSE(keys.error);
+  ASSERT_EQ(1u, keys.value.size());
+  EXPECT_EQ("hello", keys.value[0]);
+  client.set_snodes_for_pubkey("pk", {"sn-a", "sn-b"});
+  const auto snodes = client.get_snodes_for_pubkey("pk");
+  ASSERT_FALSE(snodes.error);
+  ASSERT_EQ(2u, snodes.value.size());
+  EXPECT_EQ("sn-a", snodes.value[0]);
+  server.stop();
+  EXPECT_FALSE(server.running());
 }

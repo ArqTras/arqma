@@ -29,3 +29,18 @@ target_link_libraries(arq_messaging
     sodium
   PRIVATE
     ${EXTRA_LIBRARIES})
+
+if(NOT IOS)
+  arqma_add_executable(arqma_msg main.cpp)
+  target_link_libraries(arqma_msg
+    PRIVATE
+      arq_messaging
+      arq_storage
+      epee
+      ${Boost_PROGRAM_OPTIONS_LIBRARY}
+      ${Boost_SYSTEM_LIBRARY}
+      ${CMAKE_THREAD_LIBS_INIT}
+      ${EXTRA_LIBRARIES})
+  set_property(TARGET arqma_msg PROPERTY OUTPUT_NAME "arqma-msg")
+  install(TARGETS arqma_msg DESTINATION bin)
+endif()

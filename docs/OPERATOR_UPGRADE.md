@@ -124,15 +124,24 @@ before HF21 so exclusive mesh has a CURVE stack.
 | `--arqnet-backend=legacy-arqnet\|arqmq` | Messaging selection (default `legacy-arqnet`; mainnet refuses `arqmq` without override) |
 | `--arqnet-allow-experimental` | Permit `arqmq` / mesh-shadow on mainnet (dev/soak only; peer mesh still SNNetwork) |
 | `--arqnet-mesh-shadow` | Dual-write peer commands onto SocketStack (needs `arqmq`; default off) |
-| `--arq-router` | Experimental privacy-router scaffold (lives for daemon lifetime) |
-| `--storage-client-url=<url>` | Outbound Storage Server reachability probe (`http://` GET / `https://` TCP) |
+| `--arq-router` | Hold experimental router lifecycle in the daemon (companion `arqma-router` is the HTTP process) |
+| `--storage-client-url=<url>` | Outbound Storage Server reachability probe (`http://` GET / `https://` TCP) — point at `arqma-storage` |
 | `arqnet_ping` | Records Arq-Net reachability (not yet a hard uptime gate) |
 | `get_arqnet_status` | `backend`, `transport`, `mesh`, shadow counters (`vote_ob` + `pulse_rnd`), `native_mesh_*`, `sn_operating_mode`, `pulse_*` |
 | `get_pulse_status` | Hybrid/exclusive SN mode, PoW gate, Pulse `round` / leader / quorum / collector `signature_count` / `majority_ok` / `certificate_ready` / `payload_hash` / `local_signature_ready` |
 | `print_pulse` | Daemon console dump of `get_pulse_status` |
+| `get_blink_status` / `print_blink` | In-daemon Blink quorum (7 of 10). Does not replace Pulse or RandomARQ |
 | `get_block_header_*` | Optional `pulse_certificate`, `pulse_round`, `pulse_signature_count`, `pulse_payload_hash` when miner extra has Pulse |
-| `get_storage_status` | Storage client scaffold status + last SS ping |
+| `get_storage_status` | Storage client status + last SS ping (`arqma-storage`) |
 | `get_service_nodes` `offset`/`limit` | Optional pagination |
+
+Companion processes (same repo, separate PIDs — [`docs/PRODUCT.md`](PRODUCT.md)):
+
+```text
+utils/arqma-stack.sh
+arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
+arqma-msg gen
+```
 
 ## Compatibility
 

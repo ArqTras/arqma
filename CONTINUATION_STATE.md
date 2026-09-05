@@ -35,9 +35,10 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - [x] Pulse extra payload binding (quorum signs miner template hash; idle votes stay round-only)
 - [x] Weight-neutral Pulse extra on miner templates + honest `get_pulse_status` certificate fields
 - [x] Daemon `print_pulse` + Pulse fields on block headers
+- [x] In-repo companions: `arqma-storage`, `arqma-router`, `arqma-msg` + Blink collector/`get_blink_status`
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 
 ## Quality
 
-- Local `unit_tests` → **597** passed (weight-locked extra, `print_pulse`, block-header Pulse fields)
+- Local `unit_tests` → **601** passed (in-repo `arqma-storage` HTTP roundtrip + Blink 7/10)

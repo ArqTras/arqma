@@ -957,6 +957,38 @@ bool t_rpc_command_executor::print_pulse()
   return true;
 }
 
+bool t_rpc_command_executor::print_blink()
+{
+  cryptonote::COMMAND_RPC_GET_BLINK_STATUS::request req;
+  cryptonote::COMMAND_RPC_GET_BLINK_STATUS::response res;
+  epee::json_rpc::error error_resp;
+  const std::string fail_message = "Unsuccessful";
+
+  if (m_is_rpc)
+  {
+    if (!m_rpc_client->json_rpc_request(req, res, "get_blink_status", fail_message.c_str()))
+      return true;
+  }
+  else
+  {
+    if (!m_rpc_server->on_get_blink_status(req, res, error_resp) || res.status != CORE_RPC_STATUS_OK)
+    {
+      tools::fail_msg_writer() << make_error(fail_message, res.status);
+      return true;
+    }
+  }
+
+  tools::success_msg_writer()
+      << "Blink height=" << res.height
+      << " sigs=" << res.signature_count << "/" << res.majority_required
+      << " quorum=" << res.quorum_size
+      << " majority=" << (res.majority_ok ? "true" : "false")
+      << "\n  replaces_pow=" << (res.replaces_pow ? "true" : "false")
+      << " replaces_pulse=" << (res.replaces_pulse ? "true" : "false")
+      << " blocker=" << (res.blink_blocker.empty() ? "-" : res.blink_blocker);
+  return true;
+}
+
 bool t_rpc_command_executor::set_log_level(int8_t level) {
   cryptonote::COMMAND_RPC_SET_LOG_LEVEL::request req;
   cryptonote::COMMAND_RPC_SET_LOG_LEVEL::response res;

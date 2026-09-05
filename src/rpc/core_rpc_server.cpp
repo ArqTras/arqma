@@ -48,6 +48,7 @@ using namespace epee;
 #include "arqmq/arqmq.h"
 #include "arqmq/mesh_bridge.hpp"
 #include "arq_storage/storage_client.h"
+#include "arq_blink/blink.h"
 #include "cryptonote_core/pulse.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "cryptonote_basic/account.h"
@@ -3287,6 +3288,21 @@ namespace cryptonote
     res.client_reachable = !ping_ec;
     res.client_error = ping_ec ? ping_ec.message() : std::string{};
     res.last_storage_server_ping = static_cast<uint64_t>(m_core.m_last_storage_server_ping);
+    res.status = CORE_RPC_STATUS_OK;
+    return true;
+  }
+  //------------------------------------------------------------------------------------------------------------------------------
+  bool core_rpc_server::on_get_blink_status(const COMMAND_RPC_GET_BLINK_STATUS::request&, COMMAND_RPC_GET_BLINK_STATUS::response& res, epee::json_rpc::error&, const connection_context*)
+  {
+    const auto& col = arq_blink::collector();
+    res.height = col.height();
+    res.quorum_size = arq_blink::k_quorum_size;
+    res.majority_required = arq_blink::min_signatures_for_quorum(arq_blink::k_quorum_size);
+    res.signature_count = col.signature_count();
+    res.majority_ok = col.majority_ok();
+    res.replaces_pow = false;
+    res.replaces_pulse = false;
+    res.blink_blocker = arq_blink::blocker();
     res.status = CORE_RPC_STATUS_OK;
     return true;
   }

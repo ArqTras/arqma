@@ -4,11 +4,12 @@ This PR lands the **production-grade foundation** for Arqma modernization
 (prompt phases 1–12 engineering baseline), verified on **Linux, Windows, and
 macOS**.
 
-It does **not** claim that full Oxen Storage Server, Lokinet-class routing,
-Session messenger clients, or Blink are shipped. Pulse SN **hybrid (HF20) /
-exclusive (HF21)** gates, Pulse `pulse_rnd` collector, wait-windows, payload-bound
-majority extra, and `get_pulse_status` are
-started; RandomARQ stays required (hybrid PoW — Pulse does not replace mining). See
+It does **not** claim Session-class mobile clients or Storage swarm
+replication. Pulse SN **hybrid (HF20) / exclusive (HF21)** gates, Pulse
+`pulse_rnd` collector, wait-windows, payload-bound majority extra, and
+`get_pulse_status` are started; RandomARQ stays required. Companion binaries
+`arqma-storage`, `arqma-router`, and `arqma-msg` plus in-daemon Blink
+(`get_blink_status`) ship from this repository. See
 https://github.com/ArqTras/arqma/pull/3.
 
 ### Must-have (satisfied)
@@ -34,10 +35,9 @@ https://github.com/ArqTras/arqma/pull/3.
 ### Explicitly deferred (documented)
 
 - Native mesh cutover: stage 4 is on; live `vote_ob` uses SocketStack only with HF20+ `arqmq`+CURVE (SNNetwork fallback otherwise)
-- Production Storage Server binary + swarm replication (Milestone C)
-- Full privacy router binary (Milestone C)
-- Messenger clients / Session protocol wire completeness (Milestone C)
-- Pulse/Blink/L2: Pulse **hybrid producer started** (signatures, `pulse_rnd`, wait-windows, idle SN votes); Blink still later
+- Storage swarm replication / durable volume (HTTP KV binary is in-tree)
+- Session-class client UX beyond `arqma-msg`
+- Pulse/Blink/L2: Pulse **hybrid producer started**; Blink collector/RPC in-tree (does not replace Pulse or PoW)
 - Restoring every legacy Monero-era unit fixture / `core_tests` in default CI
 - Native MSVC unit job on `windows-latest` (Windows covered via mingw depends)
 
