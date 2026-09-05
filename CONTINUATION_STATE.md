@@ -53,3 +53,4 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 ## Quality
 
 - Local `unit_tests` → **626** passed (HF20 prep: splice, stack token, opaque inbox)
+- Test steps: `docs/OPERATOR_UPGRADE.md` (unit / messenger / daemon probes)

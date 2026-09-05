@@ -61,6 +61,8 @@ not a full epidemic gossip protocol.
 `get_storage_status` / `storage_server_ping` talk to `arqma-storage`.
 `get_blink_status` / `print_blink` report the in-daemon Blink collector.
 
+How to test: [`docs/OPERATOR_UPGRADE.md`](OPERATOR_UPGRADE.md) (unit suite, messenger stack, daemon probes).
+
 ## Locks that stay
 
 1. Hybrid PoW + Pulse. RandomARQ remains required. Pulse stage stays **2**.

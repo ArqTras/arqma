@@ -131,6 +131,70 @@ before HF21 so exclusive mesh has a CURVE stack.
 - Windows / cross macOS release binaries: `make depends target=<triplet>`
   (CI matrix in `.github/workflows/depends.yml`).
 
+## How to test (before merge / before HF20)
+
+Curated suite is **626** tests. Default CMake keeps `BUILD_INTEGRATION_TESTS=OFF`
+(`core_tests` stay opt-in).
+
+### 1. Unit tests (Linux / macOS)
+
+```bash
+cmake -S . -B build/upgrade-test -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_TESTS=ON \
+  -DBUILD_INTEGRATION_TESTS=OFF
+cmake --build build/upgrade-test --parallel \
+  --target unit_tests daemon arqma_storage arqma_router arqma_msg
+build/upgrade-test/tests/unit_tests/unit_tests
+```
+
+Expect: `[  PASSED  ] 626 tests.`
+
+Optional: `ctest --test-dir build/upgrade-test -R 'unit_tests|hash-target' --output-on-failure`
+
+ASan (Linux CI equivalent): configure with `-DSANITIZE=ON` (address sanitizer only).
+
+### 2. Everyday messenger (no extra flags)
+
+```bash
+export ARQMA_BIN_DIR="$(pwd)/build/upgrade-test/bin"
+utils/arqma-stack.sh          # writes $ARQMA_STACK_DIR/env including ARQMA_STACK_TOKEN
+# other terminal:
+$ARQMA_BIN_DIR/arqma-msg gen
+PUB=$($ARQMA_BIN_DIR/arqma-msg gen | awk '{print $1}')
+$ARQMA_BIN_DIR/arqma-msg send "$PUB" hello
+$ARQMA_BIN_DIR/arqma-msg inbox
+$ARQMA_BIN_DIR/arqma-msg open
+```
+
+Checks: `gen` prints **one** hex (pubkey). `inbox`/`open` work without `--to`/`--secret`.
+`GET /status` on storage stays open without a token; `PUT /v1/kv` without token is 401.
+
+Windows: `utils/arqma-stack.cmd` then `arqma-msg.exe gen` / `send <hex> hello` / `inbox` / `open`.
+
+### 3. Daemon probes (separate PID)
+
+```bash
+build/upgrade-test/bin/arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
+# unrestricted RPC:
+# get_pulse_status  — hybrid, pow_replacement_ready=false
+# get_blink_status  — blink_blocker=blink-wire-not-connected
+# get_arqnet_status — mesh=snnetwork on default backend
+# print_pulse / print_blink
+```
+
+Keep `--arqnet-backend=legacy-arqnet` on mainnet SNs.
+
+### 4. Optional stagenet soak (when a quorum exists)
+
+```text
+arqmad --stagenet --arqnet-backend=arqmq --arqnet-mesh-shadow
+utils/arqnet-mesh-soak-monitor.py 127.0.0.1:39994
+print_pulse
+```
+
+Watch `get_pulse_status` after stagenet height 240 (`hybrid`) and `mesh_pulse_rnd_shadow_*`.
+
 ## New / restored operator knobs
 
 | Flag / RPC | Meaning |

@@ -102,7 +102,8 @@
   Inbox namespaces use an opaque id. `utils/arqma-stack` writes `ARQMA_STACK_TOKEN`
   so storage/router `/v1/*` require it without a user-facing flag. Miner templates
   splice Pulse majority extra into coinbase padding (weight-neutral). Blink RPC
-  reports `blink-wire-not-connected` (collector only).
+  reports `blink-wire-not-connected` (collector only). Operator test steps live in
+  `docs/OPERATOR_UPGRADE.md` (unit suite, messenger stack, daemon probes).
 - Expose cutover gates on `get_arqnet_status` (`native_mesh_ready`,
   `native_mesh_blocker`, `native_mesh_hf_permits`, `hard_fork_version`).
 - Scaffold native-mesh inbound `vote_ob` processing (installed only after
