@@ -77,7 +77,9 @@
   `arqma-router`, `arqma-msg`) plus an in-daemon Blink collector (`get_blink_status` /
   `print_blink`, 7 of 10). Processes stay separate from `arqmad`; see `docs/PRODUCT.md`.
   Blink does not replace Pulse or RandomARQ. `arqma-storage --data-dir` persists KV;
-  `arqma-router` peels one onion hop (`POST /v1/peel`); `arqma-msg inbox` lists stored keys.
+  `--peer` fans PUTs to replica storage URLs (`replicate=0` stops loops). `arqma-router`
+  peels one onion hop and can `POST /v1/store` into `--storage-url`. `arqma-msg` can
+  onion-send via `--router` and `open` sealed envelopes.
 - Expose cutover gates on `get_arqnet_status` (`native_mesh_ready`,
   `native_mesh_blocker`, `native_mesh_hf_permits`, `hard_fork_version`).
 - Scaffold native-mesh inbound `vote_ob` processing (installed only after

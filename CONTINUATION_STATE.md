@@ -37,9 +37,10 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - [x] Daemon `print_pulse` + Pulse fields on block headers
 - [x] In-repo companions: `arqma-storage`, `arqma-router`, `arqma-msg` + Blink collector/`get_blink_status`
 - [x] Storage `--data-dir` volume + router `POST /v1/peel` + `arqma-msg inbox`
+- [x] Storage `--peer` replica fan-out + router `POST /v1/store` + `arqma-msg open`
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 
 ## Quality
 
-- Local `unit_tests` → **603** passed (storage `--data-dir` persist + router onion peel)
+- Local `unit_tests` → **605** passed (storage `--peer` replica + router onion store)

@@ -30,6 +30,9 @@ public:
   void set_data_dir(std::string path);
   const std::string& data_dir() const noexcept;
 
+  /// Best-effort swarm replica. PUTs fan out with `replicate=0` so peers do not loop.
+  void add_peer(std::string base_url);
+
   std::uint16_t port() const noexcept;
   bool running() const noexcept;
   std::string base_url() const;

@@ -22,6 +22,7 @@
 #include <sstream>
 #include <thread>
 #include <utility>
+#include <vector>
 
 namespace arq_storage {
 struct StorageServer::Impl
@@ -33,6 +34,7 @@ struct StorageServer::Impl
   std::atomic<std::uint16_t> port{0};
   std::string host{"127.0.0.1"};
   std::string data_dir;
+  std::vector<std::string> peers;
   std::mutex mu;
   std::map<std::pair<std::string, std::string>, std::string> values;
   std::map<std::string, std::string> snodes;
@@ -69,6 +71,19 @@ struct StorageServer::Impl
     std::ofstream out{path, std::ios::binary | std::ios::trunc};
     if (out)
       out.write(body.data(), static_cast<std::streamsize>(body.size()));
+  }
+
+  void replicate(const std::string& path, const std::string& body)
+  {
+    std::vector<std::string> urls;
+    {
+      std::lock_guard<std::mutex> lock{mu};
+      urls = peers;
+    }
+    for (const auto& url : urls) {
+      const auto ep = parse_endpoint(url);
+      http_exchange(ep, "PUT", path, body);
+    }
   }
 
   void load_disk()
@@ -115,13 +130,18 @@ struct StorageServer::Impl
       const auto key = query_get(path, "key");
       if (ns.empty() || key.empty())
         return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
-      std::lock_guard<std::mutex> lock{mu};
       if (method == "PUT") {
-        values[{ns, key}] = body;
-        persist_kv(ns, key, body);
+        {
+          std::lock_guard<std::mutex> lock{mu};
+          values[{ns, key}] = body;
+          persist_kv(ns, key, body);
+        }
+        if (query_get(path, "replicate") != "0")
+          replicate(kv_path(ns, key) + "&replicate=0", body);
         return "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
       }
       if (method == "GET") {
+        std::lock_guard<std::mutex> lock{mu};
         const auto it = values.find({ns, key});
         if (it == values.end())
           return "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
@@ -136,13 +156,18 @@ struct StorageServer::Impl
       const auto pub = query_get(path, "pubkey");
       if (pub.empty())
         return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
-      std::lock_guard<std::mutex> lock{mu};
       if (method == "PUT") {
-        snodes[pub] = body;
-        persist_snodes(pub, body);
+        {
+          std::lock_guard<std::mutex> lock{mu};
+          snodes[pub] = body;
+          persist_snodes(pub, body);
+        }
+        if (query_get(path, "replicate") != "0")
+          replicate(snodes_path(pub) + "&replicate=0", body);
         return "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
       }
       if (method == "GET") {
+        std::lock_guard<std::mutex> lock{mu};
         const auto it = snodes.find(pub);
         const std::string& payload = it == snodes.end() ? std::string{} : it->second;
         std::ostringstream oss;
@@ -307,5 +332,13 @@ const std::string& StorageServer::data_dir() const noexcept
 {
   static const std::string empty;
   return impl_ ? impl_->data_dir : empty;
+}
+
+void StorageServer::add_peer(std::string base_url)
+{
+  if (base_url.empty())
+    return;
+  std::lock_guard<std::mutex> lock{impl_->mu};
+  impl_->peers.push_back(std::move(base_url));
 }
 } // namespace arq_storage

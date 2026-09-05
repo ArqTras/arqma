@@ -4,6 +4,7 @@
 
 #include "router_http.h"
 #include "arq_messaging/onion_layer.hpp"
+#include "arq_storage/http_io.h"
 
 #include <sstream>
 #include <vector>
@@ -29,10 +30,22 @@ std::string http_ok(const std::string& body, const char* type = "application/oct
       << body;
   return oss.str();
 }
+
+bool peel(const arq_messaging::Identity& hop, const std::string& body, std::string& inner)
+{
+  if (body.empty() || hop.public_key.is_null())
+    return false;
+  std::vector<std::uint8_t> outer(body.begin(), body.end());
+  std::vector<std::uint8_t> peeled;
+  if (arq_messaging::peel_onion_layer(hop, outer, peeled))
+    return false;
+  inner.assign(peeled.begin(), peeled.end());
+  return true;
+}
 } // namespace
 
 std::string handle_http(const std::string& method, const std::string& path, const std::string& body,
-                        const arq_messaging::Identity& hop)
+                        const arq_messaging::Identity& hop, const std::string& storage_url)
 {
   const auto path_only = path.substr(0, path.find('?'));
   if (method == "GET" && (path_only == "/" || path_only == "/status"))
@@ -42,13 +55,25 @@ std::string handle_http(const std::string& method, const std::string& path, cons
     return http_ok(hex32(hop.public_key), "text/plain");
 
   if (method == "POST" && path_only == "/v1/peel") {
-    if (body.empty() || hop.public_key.is_null())
+    std::string inner;
+    if (!peel(hop, body, inner))
       return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
-    std::vector<std::uint8_t> outer(body.begin(), body.end());
-    std::vector<std::uint8_t> inner;
-    if (arq_messaging::peel_onion_layer(hop, outer, inner))
+    return http_ok(inner);
+  }
+
+  if (method == "POST" && path_only == "/v1/store") {
+    const auto ns = arq_storage::query_get(path, "ns");
+    const auto key = arq_storage::query_get(path, "key");
+    if (ns.empty() || key.empty() || storage_url.empty())
+      return "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+    std::string inner;
+    if (!peel(hop, body, inner))
       return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
-    return http_ok(std::string(inner.begin(), inner.end()));
+    const auto ep = arq_storage::parse_endpoint(storage_url);
+    const auto put = arq_storage::http_exchange(ep, "PUT", arq_storage::kv_path(ns, key), inner);
+    if (!put)
+      return "HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+    return "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
   }
 
   return "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";

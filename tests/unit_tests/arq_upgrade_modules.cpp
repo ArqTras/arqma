@@ -35,8 +35,11 @@
 #include "arq_messaging/swarm_map.hpp"
 #include "arq_router/router_http.h"
 #include "arq_router/router_service.h"
+#include "arq_storage/storage_client.h"
+#include "arq_storage/storage_server.h"
 #include "rpc/rpc_auth.h"
 
+#include <chrono>
 #include <filesystem>
 
 TEST(arq_messaging_swarm, in_memory_mapping_roundtrip)
@@ -175,6 +178,27 @@ TEST(arq_router, peels_one_onion_hop_over_http_handler)
   EXPECT_NE(std::string::npos, res.find(std::string(inner.begin(), inner.end())));
   const auto status = arq_router::handle_http("GET", "/", "", hop);
   EXPECT_NE(std::string::npos, status.find("arqma-router"));
+}
+
+TEST(arq_router, store_after_peel_writes_storage)
+{
+  arq_storage::StorageServer storage;
+  ASSERT_FALSE(storage.listen("127.0.0.1", 0));
+  arq_messaging::Identity hop{};
+  ASSERT_FALSE(arq_messaging::generate_identity(hop));
+  const std::string payload = "routed-body";
+  std::vector<std::uint8_t> outer;
+  ASSERT_FALSE(arq_messaging::wrap_onion_layer(hop.public_key, std::vector<std::uint8_t>(payload.begin(), payload.end()),
+                                               outer));
+  const auto res = arq_router::handle_http("POST", "/v1/store?ns=inbox&key=k1", std::string(outer.begin(), outer.end()),
+                                           hop, storage.base_url());
+  EXPECT_NE(std::string::npos, res.find("204"));
+  arq_storage::Config cfg{arq_storage::Backend::Remote, storage.base_url(), std::chrono::milliseconds{2000}};
+  arq_storage::StorageClient client{cfg};
+  const auto got = client.retrieve("inbox", "k1");
+  EXPECT_FALSE(got.error);
+  EXPECT_EQ(payload, got.value);
+  storage.stop();
 }
 
 TEST(rpc_auth, access_levels_and_operator_methods)

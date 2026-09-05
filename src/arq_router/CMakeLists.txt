@@ -23,6 +23,7 @@ target_include_directories(arq_router
 target_link_libraries(arq_router
   PUBLIC
     arq_messaging
+    arq_storage
     ${Boost_SYSTEM_LIBRARY}
   PRIVATE
     ${EXTRA_LIBRARIES})
@@ -33,6 +34,7 @@ if(NOT IOS)
     PRIVATE
       arq_router
       arq_messaging
+      arq_storage
       epee
       ${Boost_PROGRAM_OPTIONS_LIBRARY}
       ${Boost_SYSTEM_LIBRARY}

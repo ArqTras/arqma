@@ -10,16 +10,19 @@
 #include <iostream>
 #include <string>
 #include <thread>
+#include <vector>
 
 int main(int argc, char** argv)
 {
   namespace po = boost::program_options;
   std::string listen = "127.0.0.1:22021";
   std::string data_dir;
+  std::vector<std::string> peers;
   po::options_description desc{"arqma-storage"};
   desc.add_options()("help,h", "show help")("listen", po::value<std::string>(&listen)->default_value(listen),
                                             "host:port (HTTP Storage Server)")(
-      "data-dir", po::value<std::string>(&data_dir), "optional on-disk volume for KV / snodes");
+      "data-dir", po::value<std::string>(&data_dir), "optional on-disk volume for KV / snodes")(
+      "peer", po::value<std::vector<std::string>>(&peers)->composing(), "replica base URL (repeatable)");
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
   po::notify(vm);
@@ -40,6 +43,8 @@ int main(int argc, char** argv)
   arq_storage::StorageServer server;
   if (!data_dir.empty())
     server.set_data_dir(data_dir);
+  for (const auto& peer : peers)
+    server.add_peer(peer);
   if (const auto ec = server.listen(host, port)) {
     std::cerr << "bind failed: " << ec.message() << "\n";
     return 1;

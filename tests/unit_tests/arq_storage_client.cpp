@@ -166,3 +166,22 @@ TEST(arq_storage_server, persists_kv_across_restart)
   }
   std::filesystem::remove_all(dir);
 }
+
+TEST(arq_storage_server, replicates_put_to_peer)
+{
+  arq_storage::StorageServer primary;
+  arq_storage::StorageServer replica;
+  ASSERT_FALSE(primary.listen("127.0.0.1", 0));
+  ASSERT_FALSE(replica.listen("127.0.0.1", 0));
+  primary.add_peer(replica.base_url());
+  arq_storage::Config cfg{arq_storage::Backend::Remote, primary.base_url(), std::chrono::milliseconds{2000}};
+  arq_storage::StorageClient writer{cfg};
+  ASSERT_FALSE(writer.store({"swarm", "k", "copy"}));
+  arq_storage::Config replica_cfg{arq_storage::Backend::Remote, replica.base_url(), std::chrono::milliseconds{2000}};
+  arq_storage::StorageClient reader{replica_cfg};
+  const auto got = reader.retrieve("swarm", "k");
+  EXPECT_FALSE(got.error);
+  EXPECT_EQ("copy", got.value);
+  primary.stop();
+  replica.stop();
+}

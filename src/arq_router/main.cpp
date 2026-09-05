@@ -46,7 +46,7 @@ std::error_code load_or_create_identity(const std::string& data_dir, arq_messagi
   return arq_messaging::save_identity(path, id);
 }
 
-void serve(boost::asio::ip::tcp::socket socket, const arq_messaging::Identity& hop)
+void serve(boost::asio::ip::tcp::socket socket, const arq_messaging::Identity& hop, const std::string& storage_url)
 {
   try {
     boost::asio::streambuf buf;
@@ -89,7 +89,7 @@ void serve(boost::asio::ip::tcp::socket socket, const arq_messaging::Identity& h
       if (!ec)
         body.append(rest);
     }
-    const auto response = arq_router::handle_http(method, path, body, hop);
+    const auto response = arq_router::handle_http(method, path, body, hop, storage_url);
     boost::asio::write(socket, boost::asio::buffer(response), ec);
   } catch (...) {
   }
@@ -103,15 +103,19 @@ int main(int argc, char** argv)
   cfg.enabled = true;
   cfg.listen = "127.0.0.1:1090";
   cfg.data_dir = "arq-router";
+  std::string storage_url;
   po::options_description desc{"arqma-router"};
   desc.add_options()("help,h", "show help")("listen", po::value<std::string>(&cfg.listen)->default_value(cfg.listen),
                                             "host:port HTTP status")(
-      "data-dir", po::value<std::string>(&cfg.data_dir)->default_value(cfg.data_dir), "router data directory");
+      "data-dir", po::value<std::string>(&cfg.data_dir)->default_value(cfg.data_dir), "router data directory")(
+      "storage-url", po::value<std::string>(&storage_url), "arqma-storage base URL for POST /v1/store");
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
   po::notify(vm);
   if (vm.count("help")) {
-    std::cout << desc << "\nPrivacy-router process (separate from arqmad). POST /v1/peel peels one onion hop.\n";
+    std::cout << desc
+              << "\nPrivacy-router process (separate from arqmad). POST /v1/peel peels one onion hop.\n"
+                 "POST /v1/store?ns=&key= peels then PUTs into --storage-url.\n";
     return 0;
   }
 
@@ -153,6 +157,6 @@ int main(int argc, char** argv)
     acceptor.accept(socket, ec);
     if (ec)
       continue;
-    serve(std::move(socket), hop);
+    serve(std::move(socket), hop, storage_url);
   }
 }
