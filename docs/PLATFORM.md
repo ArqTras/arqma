@@ -28,38 +28,103 @@ Default test CMake flag: `-DBUILD_INTEGRATION_TESTS=OFF` (curated `unit_tests`
 only). Legacy `core_tests` remain available with `-DBUILD_INTEGRATION_TESTS=ON`
 after API migration.
 
-## Local verification (all platforms)
+## Local developer environment (match CI)
 
-### Native (Linux / macOS)
+Install the same packages as `.github/workflows/ci.yml` (unit job) before
+configure. Do **not** commit `build/` or binaries.
+
+### Linux (native — `ubuntu-24.04` unit CI)
 
 ```bash
-cmake -S . -B build -G Ninja \
+sudo apt-get update
+sudo apt-get install -y \
+  build-essential cmake pkg-config ccache ninja-build \
+  libboost-all-dev libssl-dev libzmq3-dev libunbound-dev \
+  libsodium-dev libreadline-dev libhidapi-dev libusb-1.0-0-dev \
+  libprotobuf-dev protobuf-compiler libgtest-dev
+```
+
+```bash
+cmake -S . -B build/upgrade-release -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_TESTS=ON \
-  -DBUILD_INTEGRATION_TESTS=OFF
-cmake --build build --parallel --target unit_tests hash-target-tests
-ctest --test-dir build -R 'unit_tests|hash-target' --output-on-failure
+  -DBUILD_INTEGRATION_TESTS=OFF \
+  -DUSE_CCACHE=ON
+cmake --build build/upgrade-release --parallel \
+  --target unit_tests hash-target-tests daemon simplewallet wallet_rpc_server \
+           arqma_storage arqma_router arqma_msg
+ctest --test-dir build/upgrade-release -R 'unit_tests|hash-target' --output-on-failure
 ```
 
-On macOS Homebrew builds, point CMake at OpenSSL/Boost:
+ASan (sanitize job): add `-DSANITIZE=ON` on a Debug tree (`build-san` in CI).
+
+### macOS (native — `macos-14` unit CI)
 
 ```bash
--DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)" \
--DCMAKE_PREFIX_PATH="$(brew --prefix);$(brew --prefix openssl@3)"
+brew update
+brew install cmake ninja ccache pkg-config boost openssl@3 \
+  zeromq unbound libsodium readline hidapi protobuf googletest
 ```
+
+```bash
+cmake -S . -B build/upgrade-release -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DBUILD_TESTS=ON \
+  -DBUILD_INTEGRATION_TESTS=OFF \
+  -DUSE_CCACHE=ON \
+  -DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)" \
+  -DCMAKE_PREFIX_PATH="$(brew --prefix);$(brew --prefix openssl@3)"
+cmake --build build/upgrade-release --parallel --target unit_tests hash-target-tests
+ctest --test-dir build/upgrade-release -R 'unit_tests|hash-target' --output-on-failure
+```
+
+macOS **release product** binaries (static/depends tree) also use
+`make depends target=arm64-apple-darwin` or `x86_64-apple-darwin` (see below).
+
+### Windows
+
+| Path | When to use |
+|------|-------------|
+| **Depends / mingw** (`x86_64-w64-mingw32`) | Supported product path — same as `build-depends-windows-x64` in `.github/workflows/depends.yml` |
+| **Native MSVC** | Not in CI yet (Boost/OpenSSL pin deferred). Experimental local only; prefer depends artifacts |
+
+From a Linux (or WSL) host with mingw tools:
+
+```bash
+# CI also runs: update-alternatives …-posix for mingw gcc/g++
+make depends target=x86_64-w64-mingw32
+# artifacts: build/x86_64-w64-mingw32/release/bin/arqma*.exe
+```
+
+Companion stack on Windows: `utils/arqma-stack.cmd` then `arqma-msg.exe …`.
+
+## Local verification (flags shared with CI)
+
+Native unit flags (identical to `ci.yml` Configure step):
+
+`-DCMAKE_BUILD_TYPE=Release|Debug` · `-DBUILD_TESTS=ON` ·
+`-DBUILD_INTEGRATION_TESTS=OFF` · optional `-DUSE_CCACHE=ON`
+
+Build targets used by CI: `unit_tests` `hash-target-tests`. Operator verify also
+builds `daemon` `simplewallet` `wallet_rpc_server` `arqma_storage` `arqma_router`
+`arqma_msg`.
 
 ### Cross binaries (Linux host → Windows / macOS / Linux targets)
 
+Same host triplets as `.github/workflows/depends.yml`:
+
 ```bash
 make depends target=x86_64-w64-mingw32          # Windows
-make depends target=x86_64-apple-darwin         # macOS Intel (needs clang+lld)
+make depends target=x86_64-apple-darwin         # macOS Intel (needs clang-19 + lld-19)
 make depends target=arm64-apple-darwin          # macOS Apple Silicon
 make depends target=x86_64-unknown-linux-gnu    # Linux x64
 make depends target=aarch64-linux-gnu           # Linux ARM
+# RPi: same aarch64 host with cmake_opts -DNO_AES=ON (see depends.yml matrix)
 ```
 
 macOS cross from Linux requires LLVM 19 tools (`clang-19`, `lld-19`) as in
-`.github/workflows/depends.yml`.
+`.github/workflows/depends.yml`. Use CI artifacts when `contrib/depends` is too
+heavy on the local machine.
 
 ## Functional surface (this PR)
 

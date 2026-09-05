@@ -12,6 +12,8 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - PR notes: GitHub PR https://github.com/ArqTras/arqma/pull/3 (EN + PL)
 - Release prep (Linux native): `build/upgrade-release` Release + `BUILD_TESTS=ON`
   → **628** unit tests + hash-target green; companion `stop()` accept/join hang fixed
+- Local env docs: `docs/PLATFORM.md` lists Linux apt / macOS brew / Windows mingw
+  packages matching `ci.yml` + `depends.yml` (3-OS configure+build+unit_tests)
 
 ## Mainnet locks until 4 000 000 (do **not** flip)
 
@@ -44,9 +46,12 @@ Binaries in `build/upgrade-release/bin/` (do **not** commit):
 | `arqma-blockchain-*` | Import/export/stats/usage/depth/ancestry/mark-spent |
 | `arqma-generate-ssl-certificate` | TLS helper |
 
-Linux system deps (native link): Boost, OpenSSL, libzmq, libsodium, unbound, readline,
-plus transitive (libevent, hidapi, …). Cross Windows/macOS/Linux arm: `make depends`
-/ `.github/workflows/depends.yml` (too heavy for this VM — use CI artifacts).
+Linux system deps (native link): full apt list in `docs/PLATFORM.md` (matches
+`ci.yml`: Boost, OpenSSL, libzmq, libsodium, unbound, readline, hidapi, usb,
+protobuf, gtest, …). macOS: Homebrew list in PLATFORM.md. Windows product:
+`make depends target=x86_64-w64-mingw32` (MSVC unit CI deferred). Cross
+Windows/macOS/Linux arm: `make depends` / `.github/workflows/depends.yml`
+(too heavy for this VM — use CI artifacts).
 
 `gen_multisig` stays commented out in `src/CMakeLists.txt`.
 
@@ -75,6 +80,7 @@ plus transitive (libevent, hidapi, …). Cross Windows/macOS/Linux arm: `make de
 - [x] Unified daemon restricted-RPC catalog (`rpc_auth.h` drives `MAP_*_IF` + handler denials); storage quota per namespace
 - [x] Fix companion `StorageServer` / `RouterServer` `stop()` accept/join hang (self-connect wakeup)
 - [x] Local Release verify: 628 unit + hash-target; binary inventory + packaging docs
+- [x] Document 3-OS local env (Linux apt / macOS brew / Windows mingw) aligned with CI
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 - [ ] Multi-SN stagenet soak (needs live quorum; see `docs/OPERATOR_UPGRADE.md`)

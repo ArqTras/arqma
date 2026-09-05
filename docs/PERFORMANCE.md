@@ -9,10 +9,10 @@ instrumentation points; it does not ship speculative micro-optimizations.
 
 ```bash
 # Wall time to configure + build (Release)
-/usr/bin/time -p cmake --build build/upgrade-test --parallel
+/usr/bin/time -p cmake --build build/upgrade-release --parallel
 
 # Unit suite runtime
-/usr/bin/time -p ./build/upgrade-test/tests/unit_tests/unit_tests --gtest_brief=1
+/usr/bin/time -p ./build/upgrade-release/tests/unit_tests/unit_tests --gtest_brief=1
 
 # Optional sanitizers (slower, correctness first)
 cmake -S . -B build-asan -G Ninja -DSANITIZE=ON -DBUILD_TESTS=ON -DCMAKE_BUILD_TYPE=Debug

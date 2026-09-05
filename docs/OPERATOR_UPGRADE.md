@@ -118,23 +118,30 @@ before HF21 so exclusive mesh has a CURVE stack.
 ## Build / install notes
 
 - Toolchain: **C++20**, CMake ≥ **3.16**
-- Platforms: **Linux, macOS, Windows** — see [`docs/PLATFORM.md`](PLATFORM.md)
-- Recommended verify (native Linux/macOS):
+- Platforms: **Linux, macOS, Windows** — full package lists and commands in
+  [`docs/PLATFORM.md`](PLATFORM.md) (mirrors `.github/workflows/ci.yml` /
+  `depends.yml`).
+- Recommended verify (native Linux/macOS; tree `build/upgrade-release` is fine):
   ```bash
-  cmake -S . -B build -G Ninja \
+  cmake -S . -B build/upgrade-release -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_TESTS=ON \
     -DBUILD_INTEGRATION_TESTS=OFF
-  cmake --build build --parallel --target unit_tests hash-target-tests
-  ctest --test-dir build -R 'unit_tests|hash-target' --output-on-failure
+  cmake --build build/upgrade-release --parallel \
+    --target unit_tests hash-target-tests daemon simplewallet wallet_rpc_server \
+             arqma_storage arqma_router arqma_msg
+  ctest --test-dir build/upgrade-release -R 'unit_tests|hash-target' --output-on-failure
   ```
 - Expect `[  PASSED  ] 628 tests.` plus `hash-target` via ctest.
-- Windows / cross macOS / Linux arm release binaries: `make depends target=<triplet>`
-  (CI matrix in `.github/workflows/depends.yml`). Do **not** commit built binaries.
+- **Windows product binaries:** `make depends target=x86_64-w64-mingw32` (CI job
+  `build-depends-windows-x64`). Native MSVC unit CI is deferred — see PLATFORM.md.
+- **macOS product / cross:** native Homebrew unit build, or
+  `make depends target=arm64-apple-darwin` / `x86_64-apple-darwin`.
+- Do **not** commit `build/` or binaries.
 
-### Linux native package inventory
+### Package inventory (ship from `bin/`)
 
-Ship these from `build/.../bin/` (same names on depends artifacts, `.exe` on Windows):
+Same names on depends artifacts (`.exe` on Windows):
 
 | Binary | Required for |
 |--------|----------------|
@@ -147,18 +154,21 @@ Ship these from `build/.../bin/` (same names on depends artifacts, `.exe` on Win
 
 `gen_multisig` is intentionally not built (`src/CMakeLists.txt`).
 
-**Debian/Ubuntu build packages (typical):** `build-essential` `cmake` `ninja-build`
-`pkg-config` `libboost-all-dev` `libssl-dev` `libzmq3-dev` `libsodium-dev`
-`libunbound-dev` `libreadline-dev` (plus libevent/hidapi pulled in by deps).
+**Debian/Ubuntu build packages (same as `ci.yml`):** `build-essential` `cmake`
+`pkg-config` `ccache` `ninja-build` `libboost-all-dev` `libssl-dev` `libzmq3-dev`
+`libunbound-dev` `libsodium-dev` `libreadline-dev` `libhidapi-dev`
+`libusb-1.0-0-dev` `libprotobuf-dev` `protobuf-compiler` `libgtest-dev`.
+
+**macOS Homebrew (same as `ci.yml`):** `cmake` `ninja` `ccache` `pkg-config`
+`boost` `openssl@3` `zeromq` `unbound` `libsodium` `readline` `hidapi`
+`protobuf` `googletest` (+ CMake `OPENSSL_ROOT_DIR` / `CMAKE_PREFIX_PATH`).
 
 **Runtime shared libs (Linux native link of `arqmad`):** `libboost_*`, `libssl`/`libcrypto`,
 `libzmq`, `libsodium`, `libunbound`, `libreadline`, `libstdc++`, plus transitive
-(`libevent`, `libhidapi`, …). Prefer shipping a depends-built tarball when you need
-a self-contained tree.
+(`libevent`, `libhidapi`, …). Prefer a depends-built tarball for self-contained trees.
 
 **Cross / CI artifacts** (`.github/workflows/depends.yml`): Windows x64 mingw,
-Linux x86_64, Linux aarch64 (+ RPi `NO_AES`), macOS x64, macOS arm64. Use those
-when the build host cannot run full `contrib/depends`.
+Linux x86_64, Linux aarch64 (+ RPi `NO_AES`), macOS x64, macOS arm64.
 
 ## How to test (before merge / before HF20)
 
@@ -168,25 +178,26 @@ Curated suite is **628** tests. Default CMake keeps `BUILD_INTEGRATION_TESTS=OFF
 ### 1. Unit tests (Linux / macOS)
 
 ```bash
-cmake -S . -B build/upgrade-test -G Ninja \
+cmake -S . -B build/upgrade-release -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
   -DBUILD_TESTS=ON \
   -DBUILD_INTEGRATION_TESTS=OFF
-cmake --build build/upgrade-test --parallel \
-  --target unit_tests daemon arqma_storage arqma_router arqma_msg
-build/upgrade-test/tests/unit_tests/unit_tests
+cmake --build build/upgrade-release --parallel \
+  --target unit_tests hash-target-tests daemon simplewallet wallet_rpc_server \
+           arqma_storage arqma_router arqma_msg
+build/upgrade-release/tests/unit_tests/unit_tests
 ```
 
 Expect: `[  PASSED  ] 628 tests.`
 
-Optional: `ctest --test-dir build/upgrade-test -R 'unit_tests|hash-target' --output-on-failure`
+Optional: `ctest --test-dir build/upgrade-release -R 'unit_tests|hash-target' --output-on-failure`
 
 ASan (Linux CI equivalent): configure with `-DSANITIZE=ON` (address sanitizer only).
 
 ### 2. Everyday messenger (no extra flags)
 
 ```bash
-export ARQMA_BIN_DIR="$(pwd)/build/upgrade-test/bin"
+export ARQMA_BIN_DIR="$(pwd)/build/upgrade-release/bin"
 utils/arqma-stack.sh          # writes $ARQMA_STACK_DIR/env including ARQMA_STACK_TOKEN
 # other terminal:
 $ARQMA_BIN_DIR/arqma-msg gen
@@ -204,7 +215,7 @@ Windows: `utils/arqma-stack.cmd` then `arqma-msg.exe gen` / `send <hex> hello` /
 ### 3. Daemon probes (separate PID)
 
 ```bash
-build/upgrade-test/bin/arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
+build/upgrade-release/bin/arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
 # unrestricted RPC:
 # get_pulse_status  — hybrid, pow_replacement_ready=false
 # get_blink_status  — blink_blocker=blink-wire-not-connected
