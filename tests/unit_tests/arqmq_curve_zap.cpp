@@ -644,6 +644,10 @@ TEST(arqmq_curve_zap, pulse_rnd_wire_payload_rejects_garbage)
   std::string bad(service_nodes::pulse::k_relay_vote_bytes, '\0');
   EXPECT_FALSE(arqmq::pulse_rnd_wire_payload_ok(bad));
   service_nodes::pulse::RelayVote vote{};
+  std::string v1(114, '\0');
+  v1[0] = 1;
+  EXPECT_FALSE(arqmq::pulse_rnd_wire_payload_ok(v1));
+  EXPECT_FALSE(service_nodes::pulse::decode_relay_vote(v1, vote));
   vote.height = 240;
   std::string blob;
   ASSERT_TRUE(service_nodes::pulse::encode_relay_vote(vote, blob));

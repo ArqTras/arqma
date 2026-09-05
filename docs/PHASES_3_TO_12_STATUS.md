@@ -3,7 +3,8 @@
 Branch: `upgrade`
 
 Foundation engineering for phases 3–12 is landed. Pulse SN hybrid/exclusive
-gates, local signatures, `pulse_rnd` quorum gossip, 15s wait-windows, and idle-loop
+gates, local signatures, `pulse_rnd` quorum gossip, 15s wait-windows, payload-bound
+majority extra, and idle-loop
 SN participation are started (Milestone C); hybrid PoW (no Pulse PoW-off), Storage Server binary, Lokinet-class
 router, Session clients, and Blink remain follow-ups.
 

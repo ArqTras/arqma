@@ -10,6 +10,7 @@
 #include <array>
 #include <cstring>
 #include <mutex>
+#include <string>
 
 namespace service_nodes
 {
@@ -150,12 +151,28 @@ std::vector<crypto::public_key> quorum_pubkeys(const uint64_t height,
   return out;
 }
 
-crypto::hash round_hash(const uint64_t height, const crypto::hash& prev_id, const uint8_t round)
+crypto::hash round_hash(const uint64_t height, const crypto::hash& prev_id, const uint8_t round,
+                        const crypto::hash& payload_hash)
 {
   const auto prefix = tools::memcpy_le(height, round);
-  std::array<char, sizeof(prefix) + crypto::HASH_SIZE> buf{};
+  std::array<char, sizeof(prefix) + 2 * crypto::HASH_SIZE> buf{};
   std::memcpy(buf.data(), prefix.data(), prefix.size());
   std::memcpy(buf.data() + prefix.size(), prev_id.data, crypto::HASH_SIZE);
+  std::memcpy(buf.data() + prefix.size() + crypto::HASH_SIZE, payload_hash.data, crypto::HASH_SIZE);
+  crypto::hash out{};
+  crypto::cn_fast_hash(buf.data(), buf.size(), out);
+  return out;
+}
+
+crypto::hash miner_payload_hash(const uint64_t timestamp, const std::vector<crypto::hash>& tx_hashes,
+                                const crypto::public_key& miner_out_key)
+{
+  const auto hdr = tools::memcpy_le(timestamp, static_cast<uint64_t>(tx_hashes.size()));
+  std::string buf;
+  buf.append(hdr.data(), hdr.size());
+  for (const auto& hashed : tx_hashes)
+    buf.append(reinterpret_cast<const char*>(hashed.data), crypto::HASH_SIZE);
+  buf.append(reinterpret_cast<const char*>(&miner_out_key), sizeof(miner_out_key));
   crypto::hash out{};
   crypto::cn_fast_hash(buf.data(), buf.size(), out);
   return out;
@@ -178,7 +195,7 @@ bool check_round_signature(const crypto::hash& hashed, const crypto::public_key&
 bool try_local_round(const uint64_t height, const crypto::hash& prev_id, const uint8_t round,
                      const crypto::public_key& pub, const crypto::secret_key& sec,
                      const std::vector<crypto::public_key>& active_pubs,
-                     cryptonote::tx_extra_pulse_round& out)
+                     cryptonote::tx_extra_pulse_round& out, const crypto::hash& payload_hash)
 {
   const size_t slot = validator_slot(height, active_pubs, pub, round);
   if (slot == k_not_in_quorum)
@@ -188,21 +205,23 @@ bool try_local_round(const uint64_t height, const crypto::hash& prev_id, const u
   out.height = height;
   out.round = round;
   out.leader_index = static_cast<uint32_t>(leader_index(height, active_pubs.size(), round));
-  const crypto::hash hashed = round_hash(height, prev_id, round);
+  out.payload_hash = payload_hash;
+  const crypto::hash hashed = round_hash(height, prev_id, round, payload_hash);
   out.votes.push_back({sign_round(hashed, pub, sec), static_cast<uint32_t>(slot)});
   return true;
 }
 
 bool participate_round(const uint64_t height, const crypto::hash& prev_id, const uint8_t round,
                        const crypto::public_key& pub, const crypto::secret_key& sec,
-                       const std::vector<crypto::public_key>& active_pubs, const bool relay)
+                       const std::vector<crypto::public_key>& active_pubs, const bool relay,
+                       const crypto::hash& payload_hash)
 {
   if (active_pubs.empty())
     return false;
   const uint32_t lead = static_cast<uint32_t>(leader_index(height, active_pubs.size(), round));
   collector().prepare(height, prev_id, round, lead);
   cryptonote::tx_extra_pulse_round local{};
-  if (!try_local_round(height, prev_id, round, pub, sec, active_pubs, local) || local.votes.empty())
+  if (!try_local_round(height, prev_id, round, pub, sec, active_pubs, local, payload_hash) || local.votes.empty())
     return false;
   RelayVote vote{};
   vote.height = local.height;
@@ -210,12 +229,13 @@ bool participate_round(const uint64_t height, const crypto::hash& prev_id, const
   vote.leader_index = local.leader_index;
   vote.validator_index = local.votes.front().validator_index;
   vote.prev_id = prev_id;
+  vote.payload_hash = payload_hash;
   vote.signature = local.votes.front().signature;
   const bool added = collector().add_vote(vote, quorum_pubkeys(height, active_pubs, round), active_pubs.size(),
                                           false);
   if (!added && !collector().has_vote(vote.validator_index))
     return false;
-  if (relay && g_relay_new_vote)
+  if (relay && g_relay_new_vote && collector().payload_hash() == payload_hash)
     g_relay_new_vote(vote);
   return added;
 }
@@ -237,7 +257,7 @@ bool verify_round(const cryptonote::tx_extra_pulse_round& extra, const uint64_t 
   if (extra.votes.size() < min_signatures)
     return false;
 
-  const crypto::hash hashed = round_hash(height, prev_id, extra.round);
+  const crypto::hash hashed = round_hash(height, prev_id, extra.round, extra.payload_hash);
   uint32_t prev_index = 0;
   bool first = true;
   for (const auto& vote : extra.votes)
@@ -261,6 +281,8 @@ bool verify_majority_certificate(const cryptonote::tx_extra_pulse_round& extra, 
   const size_t min_sigs = min_signatures_for_quorum(quorum_keys.size());
   if (min_sigs == 0 || extra.votes.size() != min_sigs)
     return false;
+  if (extra.payload_hash == crypto::null_hash)
+    return false;
   return verify_round(extra, height, prev_id, active_sn_count, quorum_keys, min_sigs);
 }
 
@@ -271,7 +293,8 @@ bool encode_relay_vote(const RelayVote& vote, std::string& out)
   out[0] = static_cast<char>(k_relay_vote_version);
   std::memcpy(out.data() + 1, hdr.data(), hdr.size());
   std::memcpy(out.data() + 1 + hdr.size(), vote.prev_id.data, crypto::HASH_SIZE);
-  std::memcpy(out.data() + 1 + hdr.size() + crypto::HASH_SIZE, &vote.signature, sizeof(vote.signature));
+  std::memcpy(out.data() + 1 + hdr.size() + crypto::HASH_SIZE, vote.payload_hash.data, crypto::HASH_SIZE);
+  std::memcpy(out.data() + 1 + hdr.size() + 2 * crypto::HASH_SIZE, &vote.signature, sizeof(vote.signature));
   return true;
 }
 
@@ -292,6 +315,8 @@ bool decode_relay_vote(const std::string_view blob, RelayVote& out)
   std::memcpy(&vote.validator_index, blob.data() + off, sizeof(vote.validator_index));
   off += sizeof(vote.validator_index);
   std::memcpy(vote.prev_id.data, blob.data() + off, crypto::HASH_SIZE);
+  off += crypto::HASH_SIZE;
+  std::memcpy(vote.payload_hash.data, blob.data() + off, crypto::HASH_SIZE);
   off += crypto::HASH_SIZE;
   std::memcpy(&vote.signature, blob.data() + off, sizeof(vote.signature));
   if constexpr (boost::endian::order::native != boost::endian::order::little)
@@ -327,6 +352,7 @@ void RoundCollector::prepare(const uint64_t height, const crypto::hash& prev_id,
   m_extra.round = round;
   m_extra.leader_index = leader_index;
   m_prev_id = prev_id;
+  m_payload_hash = {};
   m_quorum_size = 0;
 }
 
@@ -341,15 +367,26 @@ bool RoundCollector::add_vote(const RelayVote& vote, const std::vector<crypto::p
     const bool same_block = m_extra.height == vote.height && m_prev_id == vote.prev_id;
     if (same_block && vote.round < m_extra.round)
       return false;
-    if (m_extra.height != vote.height || m_extra.round != vote.round || m_prev_id != vote.prev_id)
+    const bool same_round = same_block && m_extra.round == vote.round;
+    if (!same_round || m_payload_hash != vote.payload_hash)
     {
+      // Idle (null) votes must not wipe a payload certificate. A different
+      // non-null payload is frozen out for this round so competing miner
+      // templates cannot reset a majority already in flight.
+      if (same_round && vote.payload_hash == crypto::null_hash && m_payload_hash != crypto::null_hash)
+        return false;
+      if (same_round && m_payload_hash != crypto::null_hash && vote.payload_hash != m_payload_hash)
+        return false;
       m_extra = {};
       m_extra.height = vote.height;
       m_extra.round = vote.round;
       m_extra.leader_index = vote.leader_index;
+      m_extra.payload_hash = vote.payload_hash;
       m_prev_id = vote.prev_id;
+      m_payload_hash = vote.payload_hash;
     }
     m_quorum_size = quorum_keys.size();
+    m_extra.payload_hash = vote.payload_hash;
     if (m_extra.leader_index != vote.leader_index)
       return false;
     for (const auto& existing : m_extra.votes)
@@ -374,7 +411,7 @@ bool RoundCollector::snapshot(cryptonote::tx_extra_pulse_round& out) const
 {
   std::lock_guard lock{m_mu};
   const size_t q = m_quorum_size != 0 ? m_quorum_size : k_quorum_size;
-  if (!majority_reached(m_extra.votes.size(), q))
+  if (m_extra.payload_hash == crypto::null_hash || !majority_reached(m_extra.votes.size(), q))
     return false;
   out = m_extra;
   const size_t keep = min_signatures_for_quorum(q);
@@ -392,6 +429,12 @@ bool RoundCollector::has_vote(const uint32_t validator_index) const
       return true;
   }
   return false;
+}
+
+crypto::hash RoundCollector::payload_hash() const
+{
+  std::lock_guard lock{m_mu};
+  return m_payload_hash;
 }
 
 uint64_t RoundCollector::height() const
@@ -432,6 +475,7 @@ void RoundCollector::discard_below(const uint64_t height)
   {
     m_extra = {};
     m_prev_id = {};
+    m_payload_hash = {};
     m_quorum_size = 0;
   }
 }
@@ -441,6 +485,7 @@ void RoundCollector::clear()
   std::lock_guard lock{m_mu};
   m_extra = {};
   m_prev_id = {};
+  m_payload_hash = {};
   m_quorum_size = 0;
 }
 

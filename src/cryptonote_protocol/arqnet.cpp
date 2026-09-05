@@ -681,8 +681,20 @@ bool apply_pulse_vote(SNNWrapper &snw, const service_nodes::pulse::RelayVote &vo
   if (now_round > 0 && vote.round + 1 < now_round)
     return false;
   const auto active = snw.core.get_service_node_list().get_active_service_node_pubkeys();
-  return service_nodes::pulse::collector().add_vote(
+  const bool added = service_nodes::pulse::collector().add_vote(
       vote, service_nodes::pulse::quorum_pubkeys(vote.height, active, vote.round), active.size(), relay_if_new);
+  if (!added)
+    return false;
+  if (vote.payload_hash != crypto::null_hash)
+  {
+    if (const auto *keys = snw.core.get_service_node_keys())
+    {
+      if (snw.core.is_service_node(keys->pub, true))
+        service_nodes::pulse::participate_round(vote.height, vote.prev_id, vote.round, keys->pub, keys->key,
+                                                active, relay_if_new, vote.payload_hash);
+    }
+  }
+  return true;
 }
 
 void handle_pulse_round(SNNetwork::message &m, void *self)

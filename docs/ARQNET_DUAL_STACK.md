@@ -82,6 +82,7 @@ Alias: `HF_VERSION_NATIVE_ARQNET_MESH` → `network_version_20`.
 - [x] Pulse `pulse_rnd` Arq-Net collector (hybrid PoW; no PoW-off scheduled)
 - [x] Pulse wait-windows (15s) + leader rotation (`round` 0–7); RandomARQ still required
 - [x] Pulse majority certificate extra (fixed 7/11, canonical order, round bound to timestamps)
+- [x] Pulse extra payload binding (`pulse_rnd` v2; idle null payload; miner extra requires signed template hash)
 - [x] Pulse idle-loop participation (`pulse_rnd` without mining); hybrid PoW
 - [x] Pulse vote retransmit + collector drop on new block / reorg
 - [ ] Re-run stagenet soak; default `--arqnet-backend` flip later

@@ -13,7 +13,8 @@ info:
     `sn_operating_mode`, and Pulse PoW gates.
     `get_pulse_status` reports hybrid/exclusive SN mode, wait-window `round`,
     leader, quorum, collector signature count, `majority_ok`, and local signature
-    slot. Block production is hybrid: RandomARQ stays required
+    slot. Miner Pulse extra is a majority certificate bound to the miner payload
+    hash. Block production is hybrid: RandomARQ stays required
     (`pulse-pow-replacement-not-ready`; `pow_replacement_ready` stays false).
     Privileged wallet-rpc methods
     are documented under the separate `arqma-wallet-rpc` surface; daemon

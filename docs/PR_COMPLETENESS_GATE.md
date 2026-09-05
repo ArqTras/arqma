@@ -6,7 +6,8 @@ macOS**.
 
 It does **not** claim that full Oxen Storage Server, Lokinet-class routing,
 Session messenger clients, or Blink are shipped. Pulse SN **hybrid (HF20) /
-exclusive (HF21)** gates, Pulse `pulse_rnd` collector, wait-windows, and `get_pulse_status` are
+exclusive (HF21)** gates, Pulse `pulse_rnd` collector, wait-windows, payload-bound
+majority extra, and `get_pulse_status` are
 started; RandomARQ stays required (hybrid PoW — Pulse does not replace mining). See
 https://github.com/ArqTras/arqma/pull/3.
 

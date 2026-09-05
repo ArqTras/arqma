@@ -117,9 +117,33 @@ TEST(pulse, round_hash_is_deterministic)
   const crypto::hash b = service_nodes::pulse::round_hash(100, prev, 0);
   const crypto::hash c = service_nodes::pulse::round_hash(101, prev, 0);
   const crypto::hash d = service_nodes::pulse::round_hash(100, prev, 1);
+  crypto::hash payload{};
+  payload.data[0] = 3;
+  const crypto::hash e = service_nodes::pulse::round_hash(100, prev, 0, payload);
   EXPECT_TRUE(a == b);
   EXPECT_FALSE(a == c);
   EXPECT_FALSE(a == d);
+  EXPECT_FALSE(a == e);
+}
+
+TEST(pulse, miner_payload_hash_is_deterministic)
+{
+  crypto::public_key miner{};
+  crypto::secret_key sec{};
+  crypto::generate_keys(miner, sec);
+  std::vector<crypto::hash> txs(2);
+  txs[0].data[0] = 1;
+  txs[1].data[1] = 2;
+  const crypto::hash a = service_nodes::pulse::miner_payload_hash(100, txs, miner);
+  const crypto::hash b = service_nodes::pulse::miner_payload_hash(100, txs, miner);
+  EXPECT_TRUE(a == b);
+  EXPECT_FALSE(a == service_nodes::pulse::miner_payload_hash(101, txs, miner));
+  EXPECT_FALSE(a == service_nodes::pulse::miner_payload_hash(100, {}, miner));
+  crypto::public_key other{};
+  crypto::secret_key other_sec{};
+  crypto::generate_keys(other, other_sec);
+  EXPECT_FALSE(a == service_nodes::pulse::miner_payload_hash(100, txs, other));
+  EXPECT_FALSE(a == crypto::null_hash);
 }
 
 namespace
@@ -147,6 +171,30 @@ std::vector<crypto::public_key> pubs_of(const std::vector<pulse_keys> &keys)
   return out;
 }
 
+crypto::hash sample_payload()
+{
+  crypto::hash hashed{};
+  hashed.data[0] = static_cast<char>(0xA5);
+  return hashed;
+}
+
+service_nodes::pulse::RelayVote make_relay_vote(const uint64_t height, const crypto::hash &prev,
+                                                const uint8_t round, const uint32_t lead,
+                                                const uint32_t validator_index, const crypto::hash &payload,
+                                                const pulse_keys &keys)
+{
+  service_nodes::pulse::RelayVote vote{};
+  vote.height = height;
+  vote.round = round;
+  vote.leader_index = lead;
+  vote.validator_index = validator_index;
+  vote.prev_id = prev;
+  vote.payload_hash = payload;
+  vote.signature = service_nodes::pulse::sign_round(
+      service_nodes::pulse::round_hash(height, prev, round, payload), keys.pub, keys.sec);
+  return vote;
+}
+
 int g_pulse_relay_count = 0;
 void count_pulse_relay(const service_nodes::pulse::RelayVote &)
 {
@@ -171,7 +219,8 @@ TEST(pulse, local_round_and_majority_verify)
   extra.height = height;
   extra.round = round;
   extra.leader_index = static_cast<uint32_t>(service_nodes::pulse::leader_index(height, pubs.size()));
-  const crypto::hash hashed = service_nodes::pulse::round_hash(height, prev, round);
+  extra.payload_hash = sample_payload();
+  const crypto::hash hashed = service_nodes::pulse::round_hash(height, prev, round, extra.payload_hash);
   for (size_t i = 0; i < 7; ++i)
   {
     const size_t sn = q[i];
@@ -191,6 +240,13 @@ TEST(pulse, local_round_and_majority_verify)
   EXPECT_FALSE(service_nodes::pulse::verify_round(too_few, height, prev, pubs.size(), qpubs, 7));
   EXPECT_FALSE(service_nodes::pulse::verify_majority_certificate(too_few, height, prev, pubs.size(), qpubs));
   EXPECT_TRUE(service_nodes::pulse::verify_round(too_few, height, prev, pubs.size(), qpubs, 1));
+
+  auto unbound = extra;
+  unbound.payload_hash = crypto::null_hash;
+  EXPECT_FALSE(service_nodes::pulse::verify_majority_certificate(unbound, height, prev, pubs.size(), qpubs));
+  auto wrong_payload = extra;
+  wrong_payload.payload_hash.data[1] = 0x11;
+  EXPECT_FALSE(service_nodes::pulse::verify_majority_certificate(wrong_payload, height, prev, pubs.size(), qpubs));
 
   auto bad_height = extra;
   EXPECT_FALSE(service_nodes::pulse::verify_round(bad_height, height + 1, prev, pubs.size(), qpubs, 1));
@@ -255,6 +311,7 @@ TEST(pulse, extra_roundtrip_survives_sort)
   extra.height = 12;
   extra.round = 3;
   extra.leader_index = 4;
+  extra.payload_hash = sample_payload();
   extra.votes.push_back({crypto::signature{}, 2});
   std::vector<uint8_t> blob;
   ASSERT_TRUE(cryptonote::add_pulse_round_to_tx_extra(blob, extra));
@@ -265,6 +322,7 @@ TEST(pulse, extra_roundtrip_survives_sort)
   EXPECT_EQ(extra.height, parsed.height);
   EXPECT_EQ(extra.round, parsed.round);
   EXPECT_EQ(extra.leader_index, parsed.leader_index);
+  EXPECT_TRUE(extra.payload_hash == parsed.payload_hash);
   ASSERT_EQ(1u, parsed.votes.size());
   EXPECT_EQ(2u, parsed.votes[0].validator_index);
 }
@@ -279,24 +337,20 @@ TEST(pulse, relay_vote_roundtrip_and_collector)
   const auto pubs = pubs_of(keys);
   const auto q = service_nodes::pulse::quorum_indices(height, pubs.size());
   const auto qpubs = service_nodes::pulse::quorum_pubkeys(height, pubs);
-  const crypto::hash hashed = service_nodes::pulse::round_hash(height, prev, 0);
+  const auto payload = sample_payload();
   const uint32_t lead = static_cast<uint32_t>(service_nodes::pulse::leader_index(height, pubs.size()));
 
-  service_nodes::pulse::RelayVote first{};
-  first.height = height;
-  first.round = 0;
-  first.leader_index = lead;
-  first.validator_index = 0;
-  first.prev_id = prev;
-  first.signature = service_nodes::pulse::sign_round(hashed, keys[q[0]].pub, keys[q[0]].sec);
+  const auto first = make_relay_vote(height, prev, 0, lead, 0, payload, keys[q[0]]);
 
   std::string blob;
   ASSERT_TRUE(service_nodes::pulse::encode_relay_vote(first, blob));
   EXPECT_EQ(service_nodes::pulse::k_relay_vote_bytes, blob.size());
+  EXPECT_EQ(146u, blob.size());
   service_nodes::pulse::RelayVote decoded{};
   ASSERT_TRUE(service_nodes::pulse::decode_relay_vote(blob, decoded));
   EXPECT_EQ(first.height, decoded.height);
   EXPECT_EQ(first.validator_index, decoded.validator_index);
+  EXPECT_TRUE(first.payload_hash == decoded.payload_hash);
 
   auto &collector = service_nodes::pulse::collector();
   collector.prepare(height, prev, 0, lead);
@@ -309,20 +363,16 @@ TEST(pulse, relay_vote_roundtrip_and_collector)
 
   for (size_t i = 1; i < 7; ++i)
   {
-    service_nodes::pulse::RelayVote v{};
-    v.height = height;
-    v.round = 0;
-    v.leader_index = lead;
-    v.validator_index = static_cast<uint32_t>(i);
-    v.prev_id = prev;
-    v.signature = service_nodes::pulse::sign_round(hashed, keys[q[i]].pub, keys[q[i]].sec);
+    const auto v = make_relay_vote(height, prev, 0, lead, static_cast<uint32_t>(i), payload, keys[q[i]]);
     EXPECT_TRUE(collector.add_vote(v, qpubs, pubs.size(), false));
   }
   EXPECT_EQ(7u, collector.signature_count());
   EXPECT_TRUE(collector.majority_ok());
   cryptonote::tx_extra_pulse_round extra{};
   ASSERT_TRUE(collector.snapshot(extra));
+  EXPECT_TRUE(extra.payload_hash == payload);
   EXPECT_TRUE(service_nodes::pulse::verify_round(extra, height, prev, pubs.size(), qpubs, 7));
+  EXPECT_TRUE(service_nodes::pulse::verify_majority_certificate(extra, height, prev, pubs.size(), qpubs));
 
   auto unsorted = extra;
   ASSERT_GE(unsorted.votes.size(), 2u);
@@ -343,7 +393,7 @@ TEST(pulse, collector_canonicalizes_vote_order)
   const auto pubs = pubs_of(keys);
   const auto q = service_nodes::pulse::quorum_indices(height, pubs.size());
   const auto qpubs = service_nodes::pulse::quorum_pubkeys(height, pubs);
-  const crypto::hash hashed = service_nodes::pulse::round_hash(height, prev, 0);
+  const auto payload = sample_payload();
   const uint32_t lead = static_cast<uint32_t>(service_nodes::pulse::leader_index(height, pubs.size()));
   auto &collector = service_nodes::pulse::collector();
   collector.prepare(height, prev, 0, lead);
@@ -351,13 +401,7 @@ TEST(pulse, collector_canonicalizes_vote_order)
   const uint32_t order[] = {6, 0, 4, 2, 1, 5, 3};
   for (const uint32_t i : order)
   {
-    service_nodes::pulse::RelayVote v{};
-    v.height = height;
-    v.round = 0;
-    v.leader_index = lead;
-    v.validator_index = i;
-    v.prev_id = prev;
-    v.signature = service_nodes::pulse::sign_round(hashed, keys[q[i]].pub, keys[q[i]].sec);
+    const auto v = make_relay_vote(height, prev, 0, lead, i, payload, keys[q[i]]);
     EXPECT_TRUE(collector.add_vote(v, qpubs, pubs.size(), false));
   }
   cryptonote::tx_extra_pulse_round extra{};
@@ -365,17 +409,12 @@ TEST(pulse, collector_canonicalizes_vote_order)
   ASSERT_EQ(7u, extra.votes.size());
   for (uint32_t i = 0; i < extra.votes.size(); ++i)
     EXPECT_EQ(i, extra.votes[i].validator_index);
+  EXPECT_TRUE(extra.payload_hash == payload);
   EXPECT_TRUE(service_nodes::pulse::verify_majority_certificate(extra, height, prev, pubs.size(), qpubs));
 
   for (const uint32_t i : {7u, 8u})
   {
-    service_nodes::pulse::RelayVote v{};
-    v.height = height;
-    v.round = 0;
-    v.leader_index = lead;
-    v.validator_index = i;
-    v.prev_id = prev;
-    v.signature = service_nodes::pulse::sign_round(hashed, keys[q[i]].pub, keys[q[i]].sec);
+    const auto v = make_relay_vote(height, prev, 0, lead, i, payload, keys[q[i]]);
     EXPECT_TRUE(collector.add_vote(v, qpubs, pubs.size(), false));
   }
   EXPECT_EQ(9u, collector.signature_count());
@@ -385,6 +424,55 @@ TEST(pulse, collector_canonicalizes_vote_order)
   for (uint32_t i = 0; i < trimmed.votes.size(); ++i)
     EXPECT_EQ(i, trimmed.votes[i].validator_index);
   EXPECT_TRUE(service_nodes::pulse::verify_majority_certificate(trimmed, height, prev, pubs.size(), qpubs));
+  collector.clear();
+}
+
+TEST(pulse, idle_majority_does_not_snapshot_and_cannot_wipe_payload)
+{
+  service_nodes::pulse::collector().clear();
+  constexpr uint64_t height = 779;
+  crypto::hash prev{};
+  prev.data[7] = 3;
+  const auto keys = make_pulse_keys(11);
+  const auto pubs = pubs_of(keys);
+  const auto q = service_nodes::pulse::quorum_indices(height, pubs.size());
+  const auto qpubs = service_nodes::pulse::quorum_pubkeys(height, pubs);
+  const uint32_t lead = static_cast<uint32_t>(service_nodes::pulse::leader_index(height, pubs.size()));
+  auto &collector = service_nodes::pulse::collector();
+  collector.prepare(height, prev, 0, lead);
+
+  for (uint32_t i = 0; i < 7; ++i)
+  {
+    const auto v = make_relay_vote(height, prev, 0, lead, i, crypto::null_hash, keys[q[i]]);
+    EXPECT_TRUE(collector.add_vote(v, qpubs, pubs.size(), false));
+  }
+  EXPECT_TRUE(collector.majority_ok());
+  cryptonote::tx_extra_pulse_round idle{};
+  EXPECT_FALSE(collector.snapshot(idle));
+
+  const auto payload = sample_payload();
+  const auto first_payload = make_relay_vote(height, prev, 0, lead, 0, payload, keys[q[0]]);
+  EXPECT_TRUE(collector.add_vote(first_payload, qpubs, pubs.size(), false));
+  EXPECT_TRUE(collector.payload_hash() == payload);
+  EXPECT_EQ(1u, collector.signature_count());
+
+  const auto idle_again = make_relay_vote(height, prev, 0, lead, 1, crypto::null_hash, keys[q[1]]);
+  EXPECT_FALSE(collector.add_vote(idle_again, qpubs, pubs.size(), false));
+
+  crypto::hash other = payload;
+  other.data[2] = 0x22;
+  const auto rival = make_relay_vote(height, prev, 0, lead, 1, other, keys[q[1]]);
+  EXPECT_FALSE(collector.add_vote(rival, qpubs, pubs.size(), false));
+
+  for (uint32_t i = 1; i < 7; ++i)
+  {
+    const auto v = make_relay_vote(height, prev, 0, lead, i, payload, keys[q[i]]);
+    EXPECT_TRUE(collector.add_vote(v, qpubs, pubs.size(), false));
+  }
+  cryptonote::tx_extra_pulse_round extra{};
+  ASSERT_TRUE(collector.snapshot(extra));
+  EXPECT_TRUE(extra.payload_hash == payload);
+  EXPECT_TRUE(service_nodes::pulse::verify_majority_certificate(extra, height, prev, pubs.size(), qpubs));
   collector.clear();
 }
 

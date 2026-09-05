@@ -373,12 +373,16 @@ namespace cryptonote
     uint64_t height = 0;
     uint8_t round = 0;
     uint32_t leader_index = 0;
+    /// Hash of (timestamp || tx hashes || miner vout[0] key). Null means round-only
+    /// votes that must not be attached as miner extra.
+    crypto::hash payload_hash{};
     std::vector<vote> votes;
 
     BEGIN_SERIALIZE()
       VARINT_FIELD(height)
       FIELD(round)
       VARINT_FIELD(leader_index)
+      FIELD(payload_hash)
       FIELD(votes)
     END_SERIALIZE()
   };

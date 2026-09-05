@@ -81,8 +81,14 @@ std::vector<crypto::public_key> quorum_pubkeys(uint64_t height,
                                                const std::vector<crypto::public_key>& active_pubs,
                                                uint8_t round = 0);
 
-/// Hash signed by quorum members: little-endian height || round || prev_id.
-crypto::hash round_hash(uint64_t height, const crypto::hash& prev_id, uint8_t round);
+/// Hash signed by quorum members: LE height || round || prev_id || payload_hash.
+/// `payload_hash` is null for round-only idle votes; miner extra requires a real payload.
+crypto::hash round_hash(uint64_t height, const crypto::hash& prev_id, uint8_t round,
+                        const crypto::hash& payload_hash = crypto::null_hash);
+
+/// Commitment the extra binds to: block timestamp, non-coinbase tx hashes, miner vout[0] key.
+crypto::hash miner_payload_hash(uint64_t timestamp, const std::vector<crypto::hash>& tx_hashes,
+                                const crypto::public_key& miner_out_key);
 
 crypto::signature sign_round(const crypto::hash& hashed, const crypto::public_key& pub,
                              const crypto::secret_key& sec);
@@ -94,15 +100,18 @@ bool check_round_signature(const crypto::hash& hashed, const crypto::public_key&
 bool try_local_round(uint64_t height, const crypto::hash& prev_id, uint8_t round,
                      const crypto::public_key& pub, const crypto::secret_key& sec,
                      const std::vector<crypto::public_key>& active_pubs,
-                     cryptonote::tx_extra_pulse_round& out);
+                     cryptonote::tx_extra_pulse_round& out,
+                     const crypto::hash& payload_hash = crypto::null_hash);
 
 /// Prepare the in-memory collector for this window and, if `pub` is in the
 /// quorum, add a local vote. When `relay` is true, gossip even if the vote was
 /// already collected (retransmit for late quorum peers). Does not waive RandomARQ.
+/// Non-null `payload_hash` binds the vote to a miner template (Oxen-style).
 bool participate_round(uint64_t height, const crypto::hash& prev_id, uint8_t round,
                        const crypto::public_key& pub, const crypto::secret_key& sec,
                        const std::vector<crypto::public_key>& active_pubs,
-                       bool relay = true);
+                       bool relay = true,
+                       const crypto::hash& payload_hash = crypto::null_hash);
 
 /// Structural + signature checks. Votes must be unique and strictly increasing
 /// by `validator_index`. `min_signatures` is a lower bound (collector probes use
@@ -122,7 +131,8 @@ bool verify_majority_certificate(const cryptonote::tx_extra_pulse_round& extra, 
                                  const crypto::hash& prev_id, size_t active_sn_count,
                                  const std::vector<crypto::public_key>& quorum_keys);
 
-/// Packed vote used on Arq-Net `pulse_rnd` (version || height || round || leader || index || prev || sig).
+/// Packed vote used on Arq-Net `pulse_rnd` (v2: version || height || round || leader ||
+/// index || prev || payload_hash || sig).
 struct RelayVote
 {
   uint64_t height = 0;
@@ -130,13 +140,14 @@ struct RelayVote
   uint32_t leader_index = 0;
   uint32_t validator_index = 0;
   crypto::hash prev_id{};
+  crypto::hash payload_hash{};
   crypto::signature signature{};
 };
 
-inline constexpr uint8_t k_relay_vote_version = 1;
+inline constexpr uint8_t k_relay_vote_version = 2;
 inline constexpr size_t k_relay_vote_bytes =
     1 + sizeof(uint64_t) + sizeof(uint8_t) + sizeof(uint32_t) + sizeof(uint32_t) + crypto::HASH_SIZE +
-    sizeof(crypto::signature);
+    crypto::HASH_SIZE + sizeof(crypto::signature);
 
 bool encode_relay_vote(const RelayVote& vote, std::string& out);
 bool decode_relay_vote(std::string_view blob, RelayVote& out);
@@ -151,10 +162,11 @@ public:
   bool add_vote(const RelayVote& vote, const std::vector<crypto::public_key>& quorum_keys,
                 size_t active_sn_count, bool relay_if_new = true);
   /// Snapshot a canonical majority certificate (lowest `validator_index` slots).
-  /// False until 2/3 of the quorum have signed. Extra vote count is capped at
-  /// `min_signatures_for_quorum` so miner templates converge after majority.
+  /// False until a non-null payload has 2/3 of the quorum. Extra vote count is
+  /// capped at `min_signatures_for_quorum` so miner templates converge after majority.
   bool snapshot(cryptonote::tx_extra_pulse_round& out) const;
   bool has_vote(uint32_t validator_index) const;
+  crypto::hash payload_hash() const;
   uint64_t height() const;
   uint8_t round() const;
   size_t signature_count() const;
@@ -169,6 +181,7 @@ private:
   mutable std::mutex m_mu;
   cryptonote::tx_extra_pulse_round m_extra{};
   crypto::hash m_prev_id{};
+  crypto::hash m_payload_hash{};
   size_t m_quorum_size = 0;
 };
 

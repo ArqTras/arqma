@@ -69,7 +69,8 @@ Platform matrix: [`docs/PLATFORM.md`](PLATFORM.md).
 
 - Full Storage Server + swarm replication for messaging
 - Pulse-like PoS block production (**started:** HF20 hybrid / HF21 exclusive mesh +
-  leader/quorum + miner extra + `pulse_rnd` collector + wait-windows + `get_pulse_status`;
+  leader/quorum + miner extra + `pulse_rnd` collector + wait-windows + payload-bound extra +
+  `get_pulse_status`;
   RandomARQ stays required — hybrid PoW, no PoW-off; SN idle `pulse_rnd`)
 - Blink-like instant tx quorums
 - Lokinet-class onion routing network

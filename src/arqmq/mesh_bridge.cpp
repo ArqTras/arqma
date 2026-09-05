@@ -106,11 +106,12 @@ bool is_pulse_rnd(const std::string_view command) noexcept
   return command == "pulse_rnd";
 }
 
-/// Packed Pulse vote: version(1) || height(8) || round(1) || leader(4) || index(4) || prev(32) || sig(64).
+/// Packed Pulse vote v2: version(1) || height(8) || round(1) || leader(4) || index(4) ||
+/// prev(32) || payload_hash(32) || sig(64). Must match pulse::k_relay_vote_bytes.
 bool pulse_rnd_wire_shape_ok(const std::string_view payload) noexcept
 {
-  constexpr size_t k_pulse_rnd_wire_bytes = 114;
-  constexpr uint8_t k_pulse_rnd_wire_version = 1;
+  constexpr size_t k_pulse_rnd_wire_bytes = 146;
+  constexpr uint8_t k_pulse_rnd_wire_version = 2;
   return payload.size() == k_pulse_rnd_wire_bytes && static_cast<uint8_t>(payload[0]) == k_pulse_rnd_wire_version;
 }
 
