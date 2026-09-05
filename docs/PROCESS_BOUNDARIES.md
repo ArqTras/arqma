@@ -18,12 +18,12 @@ repository** ([`docs/PRODUCT.md`](PRODUCT.md)); they are still separate PIDs.
 
 | Component | Binary | Why |
 |-----------|--------|-----|
-| Storage Server | `arqma-storage` | Replication/IO isolation; HTTP KV for messaging |
+| Storage Server | `arqma-storage` | Replication/IO isolation; HTTP KV + TTL for messaging |
 | Privacy router | `arqma-router` | Network stack lifecycle separate from consensus |
 | Messenger CLI | `arqma-msg` | UX surface over storage + envelopes |
 
-`utils/arqma-stack.sh` starts storage + router. Point `arqmad` at them with
-`--storage-client-url` and `--arq-router`.
+`utils/arqma-stack.sh` starts storage (`--data-dir`) + router (`--storage-url`).
+Point `arqmad` at them with `--storage-client-url` and `--arq-router`.
 
 ## Reachability vs full APIs
 

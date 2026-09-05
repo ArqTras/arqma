@@ -137,8 +137,10 @@ std::error_code StorageClient::store(const StoreRequest& request) noexcept
   }
   if (!endpoint_ || endpoint_.tls)
     return not_connected();
-  const auto result = http_exchange(endpoint_, "PUT", kv_path(request.namespace_name, request.key), request.value,
-                                    config_.connect_timeout);
+  auto path = kv_path(request.namespace_name, request.key);
+  if (request.ttl_seconds != 0)
+    path += "&ttl=" + std::to_string(request.ttl_seconds);
+  const auto result = http_exchange(endpoint_, "PUT", path, request.value, config_.connect_timeout);
   if (!result)
     return result.error ? result.error : not_connected();
   return {};

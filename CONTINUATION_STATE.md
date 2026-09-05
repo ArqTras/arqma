@@ -38,9 +38,10 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - [x] In-repo companions: `arqma-storage`, `arqma-router`, `arqma-msg` + Blink collector/`get_blink_status`
 - [x] Storage `--data-dir` volume + router `POST /v1/peel` + `arqma-msg inbox`
 - [x] Storage `--peer` replica fan-out + router `POST /v1/store` + `arqma-msg open`
+- [x] Storage TTL (`?ttl=`) + inbox swarm fan-out (`/v1/snodes` members) + `GET /v1/swarm`
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 
 ## Quality
 
-- Local `unit_tests` → **605** passed (storage `--peer` replica + router onion store)
+- Local `unit_tests` → **609** passed (storage TTL + inbox swarm fan-out)

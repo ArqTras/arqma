@@ -54,6 +54,7 @@ struct StoreRequest
   std::string namespace_name;
   std::string key;
   std::string value;
+  std::uint32_t ttl_seconds = 0;
 };
 
 /// Remote talks to an external Storage Server. InMemory is for tests only.

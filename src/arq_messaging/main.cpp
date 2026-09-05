@@ -142,8 +142,10 @@ int main(int argc, char** argv)
         std::cerr << "onion wrap failed\n";
         return 1;
       }
-      const auto put = arq_storage::http_exchange(ep, "POST", "/v1/store?ns=inbox-" + to + "&key=" + store_key,
-                                                  std::string(onion.begin(), onion.end()));
+      std::string rpath = "/v1/store?ns=inbox-" + to + "&key=" + store_key;
+      if (env.ttl_seconds != 0)
+        rpath += "&ttl=" + std::to_string(env.ttl_seconds);
+      const auto put = arq_storage::http_exchange(ep, "POST", rpath, std::string(onion.begin(), onion.end()));
       if (!put) {
         std::cerr << "router store failed\n";
         return 1;
@@ -152,6 +154,7 @@ int main(int argc, char** argv)
       return 0;
     }
     arq_storage::StoreRequest req{"inbox-" + to, store_key, std::string(blob.begin(), blob.end())};
+    req.ttl_seconds = env.ttl_seconds;
     if (const auto ec = client.store(req)) {
       std::cerr << "store failed: " << ec.message() << "\n";
       return 1;

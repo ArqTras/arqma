@@ -143,7 +143,13 @@ arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
 arqma-msg gen
 arqma-storage --listen 127.0.0.1:22021 --data-dir ~/.arqma/storage --peer http://127.0.0.1:22022
 arqma-router --listen 127.0.0.1:1090 --data-dir ~/.arqma/arq-router --storage-url http://127.0.0.1:22021
+arqma-msg send --router http://127.0.0.1:1090 --to <64-hex> --text hello
+arqma-msg inbox --url http://127.0.0.1:22021 --to <64-hex>
 ```
+
+`arqma-storage` honors `PUT /v1/kv?ttl=` (max 14 days). Inbox keys also copy to
+URLs listed in `PUT /v1/snodes?pubkey=`. `GET /v1/swarm?pubkey=` returns swarm id
+plus those members.
 
 ## Compatibility
 

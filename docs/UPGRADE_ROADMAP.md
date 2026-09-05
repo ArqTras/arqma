@@ -15,7 +15,7 @@ Platform matrix: [`docs/PLATFORM.md`](PLATFORM.md).
 | 2 Core modernization | **Done** | C++20, CI, CLSAG tests, HF/Arq-Net fixes |
 | 3 Oxen feature parity (selective) | **Foundation + native transport** | ArqMQ facade + `SocketStack` behind `--arqnet-backend=arqmq` |
 | 4 Arq-Net evolution | **Foundation done** | Auth harden, ping, dual-stack plan |
-| 5 Storage Server | **In-repo binary** | `arqma-storage` HTTP KV; daemon still probes, does not embed the server |
+| 5 Storage Server | **In-repo binary** | `arqma-storage` HTTP KV + TTL + swarm member fan-out; daemon still probes |
 | 6 Session-like modules | **In-repo CLI** | Envelope, onion peel, swarm, sealed-box, `arqma-msg` |
 | 7 RPC modernization | **Foundation done** | Validation, wallet caps/auth, OpenAPI 0.2.0 |
 | 8 P2P improvements | **Foundation done** | Limits + Levin/preauth lock |
@@ -67,7 +67,7 @@ Platform matrix: [`docs/PLATFORM.md`](PLATFORM.md).
 
 ## Requires SN economics / product decision (Milestone C)
 
-- Storage swarm replication for messaging (`arqma-storage` HTTP KV is in-tree)
+- Storage swarm replication for messaging (`arqma-storage` KV + TTL + inbox swarm fan-out is in-tree)
 - Pulse-like PoS block production (**started:** HF20 hybrid / HF21 exclusive mesh +
   leader/quorum + miner extra + `pulse_rnd` collector + wait-windows + payload-bound extra +
   `get_pulse_status`;
@@ -132,13 +132,13 @@ Remaining before default flip (not blocking Milestone B; preserves compatibility
 
 **Requires human product decision.** Choose one primary value-add:
 
-1. Storage swarm replication (HTTP KV binary is in-tree: `arqma-storage`)
+1. Storage swarm replication (HTTP KV + TTL + inbox `/v1/snodes` fan-out is in-tree)
 2. Blink-like fast confirmation (collector/RPC in-tree; not a Pulse/PoW replacement)
 3. Pulse-like consensus change (hybrid producer started; PoW stays)
 4. Privacy routing daemon (HTTP companion is in-tree: `arqma-router`)
 
-See [`docs/PRODUCT.md`](PRODUCT.md). Swarm replication and Session-class clients
-remain follow-ups (`docs/PR_COMPLETENESS_GATE.md`).
+See [`docs/PRODUCT.md`](PRODUCT.md). Full swarm gossip protocol and Session-class
+clients remain follow-ups (`docs/PR_COMPLETENESS_GATE.md`).
 
 ## Explicit non-goals (near term)
 

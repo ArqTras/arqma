@@ -4,6 +4,7 @@
 
 #include "storage_server.h"
 #include "http_io.h"
+#include "arq_messaging/swarm_map.hpp"
 
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -13,13 +14,17 @@
 #include <boost/asio/write.hpp>
 #include <atomic>
 #include <cctype>
+#include <cstdint>
 #include <cstdlib>
+#include <cstring>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <map>
 #include <mutex>
 #include <sstream>
+#include <string>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -36,8 +41,54 @@ struct StorageServer::Impl
   std::string data_dir;
   std::vector<std::string> peers;
   std::mutex mu;
-  std::map<std::pair<std::string, std::string>, std::string> values;
+  struct Stored
+  {
+    std::string value;
+    std::uint64_t expiry = 0;
+  };
+  std::map<std::pair<std::string, std::string>, Stored> values;
   std::map<std::string, std::string> snodes;
+
+  static constexpr char k_magic[4] = {'A', 'R', 'Q', '1'};
+  static constexpr std::uint32_t k_max_ttl = 14 * 24 * 60 * 60;
+
+  static std::uint64_t now_unix() { return static_cast<std::uint64_t>(std::time(nullptr)); }
+
+  static void write_u64_le(std::ostream& out, std::uint64_t v)
+  {
+    for (int i = 0; i < 8; ++i)
+      out.put(static_cast<char>((v >> (8 * i)) & 0xff));
+  }
+
+  static std::uint64_t read_u64_le(const std::string& raw, std::size_t off)
+  {
+    std::uint64_t v = 0;
+    for (int i = 0; i < 8; ++i)
+      v |= static_cast<std::uint64_t>(static_cast<unsigned char>(raw[off + static_cast<std::size_t>(i)])) << (8 * i);
+    return v;
+  }
+
+  static std::vector<std::string> split_lines(const std::string& body)
+  {
+    std::vector<std::string> out;
+    std::string line;
+    std::istringstream iss{body};
+    while (std::getline(iss, line)) {
+      if (!line.empty() && line.back() == '\r')
+        line.pop_back();
+      if (!line.empty())
+        out.push_back(std::move(line));
+    }
+    return out;
+  }
+
+  static std::string inbox_pubkey(const std::string& ns)
+  {
+    static const std::string prefix = "inbox-";
+    if (ns.size() <= prefix.size() || ns.compare(0, prefix.size(), prefix) != 0)
+      return {};
+    return ns.substr(prefix.size());
+  }
 
   std::filesystem::path kv_path_on_disk(const std::string& ns, const std::string& key) const
   {
@@ -49,7 +100,7 @@ struct StorageServer::Impl
     return std::filesystem::path{data_dir} / "snodes" / url_encode(pub);
   }
 
-  void persist_kv(const std::string& ns, const std::string& key, const std::string& value)
+  void persist_kv(const std::string& ns, const std::string& key, const Stored& stored)
   {
     if (data_dir.empty())
       return;
@@ -57,9 +108,34 @@ struct StorageServer::Impl
     std::error_code ec;
     std::filesystem::create_directories(path.parent_path(), ec);
     std::ofstream out{path, std::ios::binary | std::ios::trunc};
-    if (out)
-      out.write(value.data(), static_cast<std::streamsize>(value.size()));
+    if (!out)
+      return;
+    out.write(k_magic, 4);
+    write_u64_le(out, stored.expiry);
+    out.write(stored.value.data(), static_cast<std::streamsize>(stored.value.size()));
   }
+
+  void erase_kv_file(const std::string& ns, const std::string& key)
+  {
+    if (data_dir.empty())
+      return;
+    std::error_code ec;
+    std::filesystem::remove(kv_path_on_disk(ns, key), ec);
+  }
+
+  static Stored decode_stored(std::string raw)
+  {
+    Stored stored;
+    if (raw.size() >= 12 && std::memcmp(raw.data(), k_magic, 4) == 0) {
+      stored.expiry = read_u64_le(raw, 4);
+      stored.value = raw.substr(12);
+    } else {
+      stored.value = std::move(raw);
+    }
+    return stored;
+  }
+
+  bool expired(const Stored& stored) const { return stored.expiry != 0 && now_unix() >= stored.expiry; }
 
   void persist_snodes(const std::string& pub, const std::string& body)
   {
@@ -73,14 +149,18 @@ struct StorageServer::Impl
       out.write(body.data(), static_cast<std::streamsize>(body.size()));
   }
 
-  void replicate(const std::string& path, const std::string& body)
+  void replicate(const std::string& path, const std::string& body, std::vector<std::string> extra = {})
   {
     std::vector<std::string> urls;
     {
       std::lock_guard<std::mutex> lock{mu};
       urls = peers;
     }
+    urls.insert(urls.end(), extra.begin(), extra.end());
+    const auto self = "http://" + host + ":" + std::to_string(port.load());
     for (const auto& url : urls) {
+      if (url.empty() || url == self)
+        continue;
       const auto ep = parse_endpoint(url);
       http_exchange(ep, "PUT", path, body);
     }
@@ -102,7 +182,13 @@ struct StorageServer::Impl
             continue;
           std::ifstream in{key_ent.path(), std::ios::binary};
           std::string value((std::istreambuf_iterator<char>(in)), {});
-          values[{ns, url_decode(key_ent.path().filename().string())}] = std::move(value);
+          const auto key = url_decode(key_ent.path().filename().string());
+          auto stored = decode_stored(std::move(value));
+          if (expired(stored)) {
+            std::filesystem::remove(key_ent.path(), ec);
+            continue;
+          }
+          values[{ns, key}] = std::move(stored);
         }
       }
     }
@@ -131,13 +217,35 @@ struct StorageServer::Impl
       if (ns.empty() || key.empty())
         return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
       if (method == "PUT") {
+        Stored stored;
+        stored.value = body;
+        std::uint32_t ttl = 0;
+        const auto ttl_raw = query_get(path, "ttl");
+        if (!ttl_raw.empty()) {
+          ttl = static_cast<std::uint32_t>(std::strtoul(ttl_raw.c_str(), nullptr, 10));
+          if (ttl > k_max_ttl)
+            ttl = k_max_ttl;
+          if (ttl != 0)
+            stored.expiry = now_unix() + ttl;
+        }
+        std::vector<std::string> swarm_urls;
         {
           std::lock_guard<std::mutex> lock{mu};
-          values[{ns, key}] = body;
-          persist_kv(ns, key, body);
+          values[{ns, key}] = stored;
+          persist_kv(ns, key, stored);
+          const auto pub = inbox_pubkey(ns);
+          if (!pub.empty()) {
+            const auto it = snodes.find(pub);
+            if (it != snodes.end())
+              swarm_urls = split_lines(it->second);
+          }
         }
-        if (query_get(path, "replicate") != "0")
-          replicate(kv_path(ns, key) + "&replicate=0", body);
+        if (query_get(path, "replicate") != "0") {
+          auto replica_path = kv_path(ns, key) + "&replicate=0";
+          if (ttl != 0)
+            replica_path += "&ttl=" + std::to_string(ttl);
+          replicate(replica_path, body, swarm_urls);
+        }
         return "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
       }
       if (method == "GET") {
@@ -145,9 +253,14 @@ struct StorageServer::Impl
         const auto it = values.find({ns, key});
         if (it == values.end())
           return "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+        if (expired(it->second)) {
+          erase_kv_file(ns, key);
+          values.erase(it);
+          return "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+        }
         std::ostringstream oss;
-        oss << "HTTP/1.1 200 OK\r\nContent-Length: " << it->second.size() << "\r\nConnection: close\r\n\r\n"
-            << it->second;
+        oss << "HTTP/1.1 200 OK\r\nContent-Length: " << it->second.value.size() << "\r\nConnection: close\r\n\r\n"
+            << it->second.value;
         return oss.str();
       }
     }
@@ -181,18 +294,46 @@ struct StorageServer::Impl
       if (ns.empty())
         return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
       std::string payload;
+      std::vector<std::pair<std::string, std::string>> drop;
       {
         std::lock_guard<std::mutex> lock{mu};
         for (const auto& kv : values) {
-          if (kv.first.first == ns) {
-            payload.append(kv.first.second);
-            payload.push_back('\n');
+          if (kv.first.first != ns)
+            continue;
+          if (expired(kv.second)) {
+            drop.push_back(kv.first);
+            continue;
           }
+          payload.append(kv.first.second);
+          payload.push_back('\n');
+        }
+        for (const auto& item : drop) {
+          erase_kv_file(item.first, item.second);
+          values.erase(item);
         }
       }
       std::ostringstream oss;
       oss << "HTTP/1.1 200 OK\r\nContent-Length: " << payload.size() << "\r\nConnection: close\r\n\r\n" << payload;
       return oss.str();
+    }
+
+    if (path_only == "/v1/swarm" && method == "GET") {
+      const auto pub = query_get(path, "pubkey");
+      if (pub.empty())
+        return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+      std::string members;
+      {
+        std::lock_guard<std::mutex> lock{mu};
+        const auto it = snodes.find(pub);
+        if (it != snodes.end())
+          members = it->second;
+      }
+      std::ostringstream oss;
+      oss << arq_messaging::hash_pubkey_to_swarm(pub) << '\n' << members;
+      const auto payload = oss.str();
+      std::ostringstream http;
+      http << "HTTP/1.1 200 OK\r\nContent-Length: " << payload.size() << "\r\nConnection: close\r\n\r\n" << payload;
+      return http.str();
     }
 
     return "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";

@@ -11,7 +11,7 @@ across other repositories.
 |--------|------|
 | `arqmad` | Consensus daemon (RandomARQ + hybrid Pulse, Arq-Net, RPC) |
 | `arqma-wallet-rpc` / `arqma-wallet-cli` | Wallet processes |
-| `arqma-storage` | HTTP Storage Server (KV + `--data-dir` + `--peer` replicas) |
+| `arqma-storage` | HTTP Storage Server (KV + TTL + `--data-dir` + `--peer` / swarm replicas) |
 | `arqma-router` | Privacy-router (`POST /v1/peel`, `POST /v1/store` into storage) |
 | `arqma-msg` | CLI: `gen` / `send` / `get` / `inbox` / `open` (optional `--router`) |
 
@@ -26,8 +26,13 @@ arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
 arqma-msg gen
 arqma-msg send --url http://127.0.0.1:22021 --to <64-hex> --text hello
 arqma-msg send --router http://127.0.0.1:1090 --to <64-hex> --text hello
+arqma-msg inbox --url http://127.0.0.1:22021 --to <64-hex>
 arqma-msg open --to <pub> --secret <priv> --key <id>
 ```
+
+`PUT /v1/kv?ttl=` expires values (cap 14 days; `0` means keep). Inbox namespaces
+`inbox-<pubkey>` also fan out to URLs in `PUT /v1/snodes`. `GET /v1/swarm?pubkey=`
+returns the FNV swarm id plus those member URLs.
 
 `get_storage_status` / `storage_server_ping` talk to `arqma-storage`.
 `get_blink_status` / `print_blink` report the in-daemon Blink collector.

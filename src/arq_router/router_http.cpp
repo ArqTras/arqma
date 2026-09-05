@@ -69,8 +69,12 @@ std::string handle_http(const std::string& method, const std::string& path, cons
     std::string inner;
     if (!peel(hop, body, inner))
       return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+    auto put_path = arq_storage::kv_path(ns, key);
+    const auto ttl = arq_storage::query_get(path, "ttl");
+    if (!ttl.empty())
+      put_path += "&ttl=" + ttl;
     const auto ep = arq_storage::parse_endpoint(storage_url);
-    const auto put = arq_storage::http_exchange(ep, "PUT", arq_storage::kv_path(ns, key), inner);
+    const auto put = arq_storage::http_exchange(ep, "PUT", put_path, inner);
     if (!put)
       return "HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
     return "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";

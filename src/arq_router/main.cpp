@@ -115,7 +115,7 @@ int main(int argc, char** argv)
   if (vm.count("help")) {
     std::cout << desc
               << "\nPrivacy-router process (separate from arqmad). POST /v1/peel peels one onion hop.\n"
-                 "POST /v1/store?ns=&key= peels then PUTs into --storage-url.\n";
+                 "POST /v1/store?ns=&key=&ttl= peels then PUTs into --storage-url.\n";
     return 0;
   }
 

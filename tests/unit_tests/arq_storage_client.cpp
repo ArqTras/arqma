@@ -28,12 +28,16 @@
 
 #include "gtest/gtest.h"
 
+#include "arq_messaging/swarm_map.hpp"
+#include "arq_storage/http_io.h"
 #include "arq_storage/storage_client.h"
 #include "arq_storage/storage_endpoint.h"
 #include "arq_storage/storage_server.h"
 
 #include <chrono>
 #include <filesystem>
+#include <fstream>
+#include <thread>
 
 TEST(arq_storage_endpoint, parses_http_and_https_urls)
 {
@@ -141,8 +145,8 @@ TEST(arq_storage_server, remote_client_http_roundtrip)
 
 TEST(arq_storage_server, persists_kv_across_restart)
 {
-  const auto dir =
-      std::filesystem::temp_directory_path() / ("arq-storage-ut-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+  const auto dir = std::filesystem::temp_directory_path() /
+                   ("arq-storage-ut-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
   std::filesystem::create_directories(dir);
   {
     arq_storage::StorageServer server;
@@ -184,4 +188,82 @@ TEST(arq_storage_server, replicates_put_to_peer)
   EXPECT_EQ("copy", got.value);
   primary.stop();
   replica.stop();
+}
+
+TEST(arq_storage_server, honors_ttl)
+{
+  arq_storage::StorageServer server;
+  ASSERT_FALSE(server.listen("127.0.0.1", 0));
+  arq_storage::Config cfg{arq_storage::Backend::Remote, server.base_url(), std::chrono::milliseconds{2000}};
+  arq_storage::StorageClient client{cfg};
+  arq_storage::StoreRequest req{"messages", "ephemeral", "gone"};
+  req.ttl_seconds = 1;
+  ASSERT_FALSE(client.store(req));
+  const auto got = client.retrieve("messages", "ephemeral");
+  EXPECT_FALSE(got.error);
+  EXPECT_EQ("gone", got.value);
+  std::this_thread::sleep_for(std::chrono::seconds{2});
+  const auto expired = client.retrieve("messages", "ephemeral");
+  EXPECT_TRUE(expired.error);
+  const auto keys = client.list_keys("messages");
+  ASSERT_FALSE(keys.error);
+  EXPECT_TRUE(keys.value.empty());
+  server.stop();
+}
+
+TEST(arq_storage_server, loads_legacy_kv_without_magic)
+{
+  const auto dir =
+      std::filesystem::temp_directory_path() /
+      ("arq-storage-legacy-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+  std::filesystem::create_directories(dir / "kv" / "ns");
+  {
+    std::ofstream out{dir / "kv" / "ns" / "k", std::ios::binary};
+    out << "legacy";
+  }
+  arq_storage::StorageServer server;
+  server.set_data_dir(dir.string());
+  ASSERT_FALSE(server.listen("127.0.0.1", 0));
+  arq_storage::Config cfg{arq_storage::Backend::Remote, server.base_url(), std::chrono::milliseconds{2000}};
+  arq_storage::StorageClient client{cfg};
+  const auto got = client.retrieve("ns", "k");
+  EXPECT_FALSE(got.error);
+  EXPECT_EQ("legacy", got.value);
+  server.stop();
+  std::filesystem::remove_all(dir);
+}
+
+TEST(arq_storage_server, fans_inbox_put_to_swarm_members)
+{
+  arq_storage::StorageServer primary;
+  arq_storage::StorageServer replica;
+  ASSERT_FALSE(primary.listen("127.0.0.1", 0));
+  ASSERT_FALSE(replica.listen("127.0.0.1", 0));
+  arq_storage::Config cfg{arq_storage::Backend::Remote, primary.base_url(), std::chrono::milliseconds{2000}};
+  arq_storage::StorageClient writer{cfg};
+  writer.set_snodes_for_pubkey("pk", {replica.base_url()});
+  ASSERT_FALSE(writer.store({"inbox-pk", "k", "copy"}));
+  arq_storage::Config replica_cfg{arq_storage::Backend::Remote, replica.base_url(), std::chrono::milliseconds{2000}};
+  arq_storage::StorageClient reader{replica_cfg};
+  const auto got = reader.retrieve("inbox-pk", "k");
+  EXPECT_FALSE(got.error);
+  EXPECT_EQ("copy", got.value);
+  primary.stop();
+  replica.stop();
+}
+
+TEST(arq_storage_server, swarm_status_lists_members)
+{
+  arq_storage::StorageServer server;
+  ASSERT_FALSE(server.listen("127.0.0.1", 0));
+  arq_storage::Config cfg{arq_storage::Backend::Remote, server.base_url(), std::chrono::milliseconds{2000}};
+  arq_storage::StorageClient client{cfg};
+  client.set_snodes_for_pubkey("alice", {"http://127.0.0.1:1"});
+  const auto ep = arq_storage::parse_endpoint(server.base_url());
+  const auto got = arq_storage::http_exchange(ep, "GET", "/v1/swarm?pubkey=alice", {});
+  ASSERT_TRUE(got);
+  const auto expected = std::to_string(arq_messaging::hash_pubkey_to_swarm("alice"));
+  EXPECT_EQ(0u, got.body.find(expected + "\n"));
+  EXPECT_NE(std::string::npos, got.body.find("http://127.0.0.1:1"));
+  server.stop();
 }
