@@ -130,16 +130,15 @@ std::error_code StorageClient::store(const StoreRequest& request) noexcept
 {
   if (request.namespace_name.empty() || request.key.empty())
     return invalid_argument();
-  if (config_.backend == Backend::InMemory)
-  {
+  if (config_.backend == Backend::InMemory) {
     std::lock_guard<std::mutex> lock{mutex_};
     values_[{request.namespace_name, request.key}] = request.value;
     return {};
   }
   if (!endpoint_ || endpoint_.tls)
     return not_connected();
-  const auto result =
-      http_exchange(endpoint_, "PUT", kv_path(request.namespace_name, request.key), request.value, config_.connect_timeout);
+  const auto result = http_exchange(endpoint_, "PUT", kv_path(request.namespace_name, request.key), request.value,
+                                    config_.connect_timeout);
   if (!result)
     return result.error ? result.error : not_connected();
   return {};
@@ -149,8 +148,7 @@ Result<std::string> StorageClient::retrieve(std::string namespace_name, std::str
 {
   if (namespace_name.empty() || key.empty())
     return {{}, invalid_argument()};
-  if (config_.backend == Backend::InMemory)
-  {
+  if (config_.backend == Backend::InMemory) {
     std::lock_guard<std::mutex> lock{mutex_};
     const auto it = values_.find({namespace_name, key});
     if (it == values_.end())
@@ -171,12 +169,10 @@ Result<std::vector<std::string>> StorageClient::list_keys(std::string namespace_
 {
   if (namespace_name.empty())
     return {{}, invalid_argument()};
-  if (config_.backend == Backend::InMemory)
-  {
+  if (config_.backend == Backend::InMemory) {
     std::vector<std::string> keys;
     std::lock_guard<std::mutex> lock{mutex_};
-    for (const auto& kv : values_)
-    {
+    for (const auto& kv : values_) {
       if (kv.first.first == namespace_name)
         keys.push_back(kv.first.second);
     }
@@ -191,8 +187,7 @@ Result<std::vector<std::string>> StorageClient::list_keys(std::string namespace_
   std::vector<std::string> keys;
   std::string line;
   std::istringstream iss{result.body};
-  while (std::getline(iss, line))
-  {
+  while (std::getline(iss, line)) {
     if (!line.empty() && line.back() == '\r')
       line.pop_back();
     if (!line.empty())
@@ -205,8 +200,7 @@ Result<std::vector<std::string>> StorageClient::get_snodes_for_pubkey(std::strin
 {
   if (pubkey.empty())
     return {{}, invalid_argument()};
-  if (config_.backend == Backend::InMemory)
-  {
+  if (config_.backend == Backend::InMemory) {
     std::lock_guard<std::mutex> lock{mutex_};
     const auto it = snodes_.find(pubkey);
     if (it == snodes_.end())
@@ -221,8 +215,7 @@ Result<std::vector<std::string>> StorageClient::get_snodes_for_pubkey(std::strin
   std::vector<std::string> snodes;
   std::string line;
   std::istringstream iss{result.body};
-  while (std::getline(iss, line))
-  {
+  while (std::getline(iss, line)) {
     if (!line.empty() && line.back() == '\r')
       line.pop_back();
     if (!line.empty())
@@ -233,8 +226,7 @@ Result<std::vector<std::string>> StorageClient::get_snodes_for_pubkey(std::strin
 
 void StorageClient::set_snodes_for_pubkey(std::string pubkey, std::vector<std::string> snodes)
 {
-  if (config_.backend == Backend::InMemory)
-  {
+  if (config_.backend == Backend::InMemory) {
     std::lock_guard<std::mutex> lock{mutex_};
     snodes_[std::move(pubkey)] = std::move(snodes);
     return;
@@ -242,8 +234,7 @@ void StorageClient::set_snodes_for_pubkey(std::string pubkey, std::vector<std::s
   if (!endpoint_ || endpoint_.tls)
     return;
   std::string body;
-  for (const auto& sn : snodes)
-  {
+  for (const auto& sn : snodes) {
     body.append(sn);
     body.push_back('\n');
   }

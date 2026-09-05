@@ -39,12 +39,10 @@ std::string url_encode(const std::string_view raw)
 {
   std::string out;
   out.reserve(raw.size() * 3);
-  for (unsigned char c : raw)
-  {
+  for (unsigned char c : raw) {
     if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~')
       out.push_back(static_cast<char>(c));
-    else
-    {
+    else {
       out.push_back('%');
       out.push_back(hex_nibble(c >> 4));
       out.push_back(hex_nibble(c & 0xf));
@@ -57,14 +55,11 @@ std::string url_decode(const std::string_view raw)
 {
   std::string out;
   out.reserve(raw.size());
-  for (std::size_t i = 0; i < raw.size(); ++i)
-  {
-    if (raw[i] == '%' && i + 2 < raw.size())
-    {
+  for (std::size_t i = 0; i < raw.size(); ++i) {
+    if (raw[i] == '%' && i + 2 < raw.size()) {
       const int hi = from_hex(raw[i + 1]);
       const int lo = from_hex(raw[i + 2]);
-      if (hi >= 0 && lo >= 0)
-      {
+      if (hi >= 0 && lo >= 0) {
         out.push_back(static_cast<char>((hi << 4) | lo));
         i += 2;
         continue;
@@ -81,8 +76,7 @@ std::string query_get(const std::string_view path, const std::string_view key)
   if (q == std::string_view::npos)
     return {};
   auto rest = path.substr(q + 1);
-  while (!rest.empty())
-  {
+  while (!rest.empty()) {
     const auto amp = rest.find('&');
     const auto pair = amp == std::string_view::npos ? rest : rest.substr(0, amp);
     const auto eq = pair.find('=');
@@ -107,8 +101,8 @@ std::string snodes_path(const std::string_view pubkey)
   return "/v1/snodes?pubkey=" + url_encode(pubkey);
 }
 
-std::string format_http_request(const std::string_view method, const std::string_view path,
-                                const std::string_view host, const std::string_view body)
+std::string format_http_request(const std::string_view method, const std::string_view path, const std::string_view host,
+                                const std::string_view body)
 {
   std::ostringstream oss;
   oss << method << ' ' << path << " HTTP/1.1\r\nHost: " << host << "\r\nConnection: close\r\n";
@@ -122,37 +116,32 @@ HttpResult http_exchange(const Endpoint& endpoint, const std::string_view method
                          const std::string_view body, const std::chrono::milliseconds timeout)
 {
   HttpResult out;
-  if (!endpoint || endpoint.tls)
-  {
+  if (!endpoint || endpoint.tls) {
     out.error = std::make_error_code(std::errc::not_connected);
     return out;
   }
-  try
-  {
+  try {
     boost::asio::io_context io;
     boost::asio::ip::tcp::resolver resolver{io};
     const auto results = resolver.resolve(endpoint.host, std::to_string(endpoint.port));
     boost::asio::ip::tcp::socket socket{io};
     boost::system::error_code ec;
     boost::asio::connect(socket, results, ec);
-    if (ec)
-    {
+    if (ec) {
       out.error = std::make_error_code(std::errc::not_connected);
       return out;
     }
     (void)timeout;
     const auto req = format_http_request(method, path, endpoint.host, body);
     boost::asio::write(socket, boost::asio::buffer(req), ec);
-    if (ec)
-    {
+    if (ec) {
       out.error = std::make_error_code(std::errc::io_error);
       return out;
     }
 
     boost::asio::streambuf buf;
     boost::asio::read_until(socket, buf, "\r\n\r\n", ec);
-    if (ec && ec != boost::asio::error::eof)
-    {
+    if (ec && ec != boost::asio::error::eof) {
       out.error = std::make_error_code(std::errc::io_error);
       return out;
     }
@@ -168,8 +157,7 @@ HttpResult http_exchange(const Endpoint& endpoint, const std::string_view method
     }
     std::size_t content_length = 0;
     std::string header;
-    while (std::getline(is, header))
-    {
+    while (std::getline(is, header)) {
       if (!header.empty() && header.back() == '\r')
         header.pop_back();
       if (header.empty())
@@ -184,8 +172,7 @@ HttpResult http_exchange(const Endpoint& endpoint, const std::string_view method
         content_length = static_cast<std::size_t>(std::strtoul(header.c_str() + colon + 1, nullptr, 10));
     }
     out.body.assign(std::istreambuf_iterator<char>(is), {});
-    if (content_length > out.body.size())
-    {
+    if (content_length > out.body.size()) {
       const auto need = content_length - out.body.size();
       std::string rest(need, '\0');
       boost::asio::read(socket, boost::asio::buffer(rest), boost::asio::transfer_exactly(need), ec);
@@ -194,9 +181,7 @@ HttpResult http_exchange(const Endpoint& endpoint, const std::string_view method
     }
     socket.close();
     return out;
-  }
-  catch (...)
-  {
+  } catch (...) {
     out.error = std::make_error_code(std::errc::io_error);
     return out;
   }

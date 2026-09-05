@@ -30,7 +30,7 @@
 
 #include <sodium/crypto_box.h>
 
-#include <cstring>
+#include <fstream>
 
 namespace arq_messaging {
 std::error_code generate_identity(Identity& out) noexcept
@@ -42,6 +42,34 @@ std::error_code generate_identity(Identity& out) noexcept
     return std::make_error_code(std::errc::io_error);
 
   if (out.public_key.is_null())
+    return std::make_error_code(std::errc::io_error);
+  return {};
+}
+
+std::error_code save_identity(const std::string& path, const Identity& id)
+{
+  std::ofstream out{path, std::ios::binary | std::ios::trunc};
+  if (!out)
+    return std::make_error_code(std::errc::io_error);
+  out.write(reinterpret_cast<const char*>(id.public_key.data.data()),
+            static_cast<std::streamsize>(X25519PublicKey::bytes));
+  out.write(reinterpret_cast<const char*>(id.private_key.data.data()),
+            static_cast<std::streamsize>(X25519PrivateKey::bytes));
+  if (!out)
+    return std::make_error_code(std::errc::io_error);
+  return {};
+}
+
+std::error_code load_identity(const std::string& path, Identity& out)
+{
+  std::ifstream in{path, std::ios::binary};
+  if (!in)
+    return std::make_error_code(std::errc::no_such_file_or_directory);
+  in.read(reinterpret_cast<char*>(out.public_key.data.data()), static_cast<std::streamsize>(X25519PublicKey::bytes));
+  if (!in || in.gcount() != static_cast<std::streamsize>(X25519PublicKey::bytes))
+    return std::make_error_code(std::errc::io_error);
+  in.read(reinterpret_cast<char*>(out.private_key.data.data()), static_cast<std::streamsize>(X25519PrivateKey::bytes));
+  if (!in || in.gcount() != static_cast<std::streamsize>(X25519PrivateKey::bytes) || out.public_key.is_null())
     return std::make_error_code(std::errc::io_error);
   return {};
 }

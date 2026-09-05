@@ -32,6 +32,5 @@ std::string format_http_request(std::string_view method, std::string_view path, 
                                 std::string_view body);
 
 HttpResult http_exchange(const Endpoint& endpoint, std::string_view method, std::string_view path,
-                         std::string_view body,
-                         std::chrono::milliseconds timeout = std::chrono::milliseconds{2000});
+                         std::string_view body, std::chrono::milliseconds timeout = std::chrono::milliseconds{2000});
 } // namespace arq_storage

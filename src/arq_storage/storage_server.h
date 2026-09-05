@@ -26,6 +26,10 @@ public:
   std::error_code listen(const std::string& host, std::uint16_t port);
   void stop();
 
+  /// Optional on-disk volume (`kv/` + `snodes/`). Empty keeps RAM-only.
+  void set_data_dir(std::string path);
+  const std::string& data_dir() const noexcept;
+
   std::uint16_t port() const noexcept;
   bool running() const noexcept;
   std::string base_url() const;

@@ -141,6 +141,8 @@ Companion processes (same repo, separate PIDs — [`docs/PRODUCT.md`](PRODUCT.md
 utils/arqma-stack.sh
 arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
 arqma-msg gen
+arqma-storage --listen 127.0.0.1:22021 --data-dir ~/.arqma/storage
+arqma-router --listen 127.0.0.1:1090 --data-dir ~/.arqma/arq-router
 ```
 
 ## Compatibility

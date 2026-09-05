@@ -80,15 +80,13 @@ bool Collector::add_vote(const Vote& vote, const crypto::hash& hashed)
   if (!check_tx_signature(hashed, vote.pub, vote.signature))
     return false;
   std::lock_guard<std::mutex> lock{mu_};
-  for (const auto& existing : votes_)
-  {
+  for (const auto& existing : votes_) {
     if (existing.validator_index == vote.validator_index)
       return std::memcmp(&existing.signature, &vote.signature, sizeof(crypto::signature)) == 0;
   }
   votes_.push_back(vote);
-  std::sort(votes_.begin(), votes_.end(), [](const Vote& a, const Vote& b) {
-    return a.validator_index < b.validator_index;
-  });
+  std::sort(votes_.begin(), votes_.end(),
+            [](const Vote& a, const Vote& b) { return a.validator_index < b.validator_index; });
   return true;
 }
 

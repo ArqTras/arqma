@@ -15,14 +15,15 @@ int main(int argc, char** argv)
 {
   namespace po = boost::program_options;
   std::string listen = "127.0.0.1:22021";
+  std::string data_dir;
   po::options_description desc{"arqma-storage"};
-  desc.add_options()("help,h", "show help")(
-      "listen", po::value<std::string>(&listen)->default_value(listen), "host:port (HTTP Storage Server)");
+  desc.add_options()("help,h", "show help")("listen", po::value<std::string>(&listen)->default_value(listen),
+                                            "host:port (HTTP Storage Server)")(
+      "data-dir", po::value<std::string>(&data_dir), "optional on-disk volume for KV / snodes");
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
   po::notify(vm);
-  if (vm.count("help"))
-  {
+  if (vm.count("help")) {
     std::cout << desc
               << "\nCompanion binary for arqmad. Probe with:\n"
                  "  arqmad --storage-client-url=http://"
@@ -30,16 +31,16 @@ int main(int argc, char** argv)
     return 0;
   }
   const auto colon = listen.rfind(':');
-  if (colon == std::string::npos)
-  {
+  if (colon == std::string::npos) {
     std::cerr << "listen must be host:port\n";
     return 1;
   }
   const auto host = listen.substr(0, colon);
   const auto port = static_cast<std::uint16_t>(std::stoi(listen.substr(colon + 1)));
   arq_storage::StorageServer server;
-  if (const auto ec = server.listen(host, port))
-  {
+  if (!data_dir.empty())
+    server.set_data_dir(data_dir);
+  if (const auto ec = server.listen(host, port)) {
     std::cerr << "bind failed: " << ec.message() << "\n";
     return 1;
   }

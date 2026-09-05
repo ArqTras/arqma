@@ -32,6 +32,9 @@
 #include "arq_storage/storage_endpoint.h"
 #include "arq_storage/storage_server.h"
 
+#include <chrono>
+#include <filesystem>
+
 TEST(arq_storage_endpoint, parses_http_and_https_urls)
 {
   const auto http = arq_storage::parse_endpoint("http://127.0.0.1:22021/status");
@@ -134,4 +137,32 @@ TEST(arq_storage_server, remote_client_http_roundtrip)
   EXPECT_EQ("sn-a", snodes.value[0]);
   server.stop();
   EXPECT_FALSE(server.running());
+}
+
+TEST(arq_storage_server, persists_kv_across_restart)
+{
+  const auto dir =
+      std::filesystem::temp_directory_path() / ("arq-storage-ut-" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+  std::filesystem::create_directories(dir);
+  {
+    arq_storage::StorageServer server;
+    server.set_data_dir(dir.string());
+    ASSERT_FALSE(server.listen("127.0.0.1", 0));
+    arq_storage::Config cfg{arq_storage::Backend::Remote, server.base_url(), std::chrono::milliseconds{2000}};
+    arq_storage::StorageClient client{cfg};
+    ASSERT_FALSE(client.store({"ns", "k", "durable"}));
+    server.stop();
+  }
+  {
+    arq_storage::StorageServer server;
+    server.set_data_dir(dir.string());
+    ASSERT_FALSE(server.listen("127.0.0.1", 0));
+    arq_storage::Config cfg{arq_storage::Backend::Remote, server.base_url(), std::chrono::milliseconds{2000}};
+    arq_storage::StorageClient client{cfg};
+    const auto got = client.retrieve("ns", "k");
+    EXPECT_FALSE(got.error);
+    EXPECT_EQ("durable", got.value);
+    server.stop();
+  }
+  std::filesystem::remove_all(dir);
 }

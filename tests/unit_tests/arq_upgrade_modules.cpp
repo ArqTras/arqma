@@ -29,11 +29,15 @@
 #include "gtest/gtest.h"
 
 #include "arq_messaging/identity.hpp"
+#include "arq_messaging/onion_layer.hpp"
 #include "arq_messaging/onion_request.hpp"
 #include "arq_messaging/sealed_sender.hpp"
 #include "arq_messaging/swarm_map.hpp"
+#include "arq_router/router_http.h"
 #include "arq_router/router_service.h"
 #include "rpc/rpc_auth.h"
+
+#include <filesystem>
 
 TEST(arq_messaging_swarm, in_memory_mapping_roundtrip)
 {
@@ -93,6 +97,12 @@ TEST(arq_messaging_identity, generate_curve25519_keypair)
   EXPECT_FALSE(arq_messaging::generate_identity(b));
   EXPECT_FALSE(a.public_key.is_null());
   EXPECT_NE(a.public_key.data, b.public_key.data);
+  const auto path = (std::filesystem::temp_directory_path() / "arq-identity-ut.bin").string();
+  ASSERT_FALSE(arq_messaging::save_identity(path, a));
+  arq_messaging::Identity loaded{};
+  ASSERT_FALSE(arq_messaging::load_identity(path, loaded));
+  EXPECT_EQ(a.public_key.data, loaded.public_key.data);
+  std::filesystem::remove(path);
 }
 
 TEST(arq_messaging_sealed_box, seal_open_roundtrip)
@@ -151,6 +161,20 @@ TEST(arq_router, enabled_requires_data_dir_and_sane_listen)
 
   arq_router::RouterService router{cfg};
   EXPECT_EQ(std::make_error_code(std::errc::not_connected), router.start());
+}
+
+TEST(arq_router, peels_one_onion_hop_over_http_handler)
+{
+  arq_messaging::Identity hop{};
+  ASSERT_FALSE(arq_messaging::generate_identity(hop));
+  const std::vector<std::uint8_t> inner{0xca, 0xfe, 0x01};
+  std::vector<std::uint8_t> outer;
+  ASSERT_FALSE(arq_messaging::wrap_onion_layer(hop.public_key, inner, outer));
+  const auto res = arq_router::handle_http("POST", "/v1/peel", std::string(outer.begin(), outer.end()), hop);
+  EXPECT_NE(std::string::npos, res.find("HTTP/1.1 200 OK"));
+  EXPECT_NE(std::string::npos, res.find(std::string(inner.begin(), inner.end())));
+  const auto status = arq_router::handle_http("GET", "/", "", hop);
+  EXPECT_NE(std::string::npos, status.find("arqma-router"));
 }
 
 TEST(rpc_auth, access_levels_and_operator_methods)

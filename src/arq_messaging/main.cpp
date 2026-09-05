@@ -9,6 +9,7 @@
 
 #include <boost/program_options.hpp>
 #include <algorithm>
+#include <chrono>
 #include <cstdint>
 #include <iostream>
 #include <string>
@@ -19,8 +20,7 @@ std::string to_hex(const std::uint8_t* data, std::size_t n)
 {
   static const char* digits = "0123456789abcdef";
   std::string out(n * 2, '0');
-  for (std::size_t i = 0; i < n; ++i)
-  {
+  for (std::size_t i = 0; i < n; ++i) {
     out[i * 2] = digits[data[i] >> 4];
     out[i * 2 + 1] = digits[data[i] & 0xf];
   }
@@ -40,8 +40,7 @@ bool from_hex(const std::string& hex, std::uint8_t* out, std::size_t n)
       return 10 + (c - 'A');
     return -1;
   };
-  for (std::size_t i = 0; i < n; ++i)
-  {
+  for (std::size_t i = 0; i < n; ++i) {
     const int hi = nib(hex[i * 2]);
     const int lo = nib(hex[i * 2 + 1]);
     if (hi < 0 || lo < 0)
@@ -64,8 +63,9 @@ int main(int argc, char** argv)
   po::options_description desc{"arqma-msg"};
   desc.add_options()("help,h", "show help")("url", po::value<std::string>(&url), "storage base URL")(
       "to", po::value<std::string>(&to), "recipient x25519 hex (send)")("ttl", po::value<std::uint32_t>(&ttl),
-                                                                       "envelope TTL seconds")(
-      "key", po::value<std::string>(&key), "storage key (get)")("text", po::value<std::string>(&text), "plaintext (send)");
+                                                                        "envelope TTL seconds")(
+      "key", po::value<std::string>(&key), "storage key (get)")("text", po::value<std::string>(&text),
+                                                                "plaintext (send)");
   po::options_description hidden;
   hidden.add_options()("cmd", po::value<std::string>(&cmd));
   po::positional_options_description pos;
@@ -75,17 +75,17 @@ int main(int argc, char** argv)
   all.add(desc).add(hidden);
   po::store(po::command_line_parser(argc, argv).options(all).positional(pos).run(), vm);
   po::notify(vm);
-  if (vm.count("help") || cmd.empty())
-  {
-    std::cout << "Usage: arqma-msg gen|send|get [options]\n" << desc
+  if (vm.count("help") || cmd.empty()) {
+    std::cout << "Usage: arqma-msg gen|send|get|inbox [options]\n"
+              << desc
               << "\nRequires arqma-storage. Example:\n"
                  "  arqma-msg gen\n"
-                 "  arqma-msg send --to <hex> --text hello --url http://127.0.0.1:22021\n";
+                 "  arqma-msg send --to <hex> --text hello --url http://127.0.0.1:22021\n"
+                 "  arqma-msg inbox --to <hex>\n";
     return vm.count("help") ? 0 : 1;
   }
 
-  if (cmd == "gen")
-  {
+  if (cmd == "gen") {
     arq_messaging::Identity id{};
     if (arq_messaging::generate_identity(id))
       return 1;
@@ -99,10 +99,8 @@ int main(int argc, char** argv)
   cfg.connect_timeout = std::chrono::milliseconds{2000};
   arq_storage::StorageClient client{cfg};
 
-  if (cmd == "send")
-  {
-    if (to.size() != 64 || text.empty())
-    {
+  if (cmd == "send") {
+    if (to.size() != 64 || text.empty()) {
       std::cerr << "send requires --to <64 hex> and --text\n";
       return 1;
     }
@@ -111,8 +109,7 @@ int main(int argc, char** argv)
       return 1;
     std::vector<std::uint8_t> plain(text.begin(), text.end());
     std::vector<std::uint8_t> sealed;
-    if (arq_messaging::seal_payload(pub, plain, sealed))
-    {
+    if (arq_messaging::seal_payload(pub, plain, sealed)) {
       std::cerr << "seal failed\n";
       return 1;
     }
@@ -123,8 +120,7 @@ int main(int argc, char** argv)
     const auto blob = arq_messaging::encode_message_envelope(env);
     const auto store_key = to_hex(blob.data(), std::min<std::size_t>(blob.size(), 16));
     arq_storage::StoreRequest req{"inbox-" + to, store_key, std::string(blob.begin(), blob.end())};
-    if (const auto ec = client.store(req))
-    {
+    if (const auto ec = client.store(req)) {
       std::cerr << "store failed: " << ec.message() << "\n";
       return 1;
     }
@@ -132,20 +128,32 @@ int main(int argc, char** argv)
     return 0;
   }
 
-  if (cmd == "get")
-  {
-    if (to.size() != 64 || key.empty())
-    {
+  if (cmd == "get") {
+    if (to.size() != 64 || key.empty()) {
       std::cerr << "get requires --to <recipient hex> and --key\n";
       return 1;
     }
     const auto got = client.retrieve("inbox-" + to, key);
-    if (!got)
-    {
+    if (!got) {
       std::cerr << "retrieve failed: " << got.error.message() << "\n";
       return 1;
     }
     std::cout << got.value << "\n";
+    return 0;
+  }
+
+  if (cmd == "inbox") {
+    if (to.size() != 64) {
+      std::cerr << "inbox requires --to <recipient hex>\n";
+      return 1;
+    }
+    const auto keys = client.list_keys("inbox-" + to);
+    if (!keys) {
+      std::cerr << "list failed: " << keys.error.message() << "\n";
+      return 1;
+    }
+    for (const auto& k : keys.value)
+      std::cout << k << "\n";
     return 0;
   }
 

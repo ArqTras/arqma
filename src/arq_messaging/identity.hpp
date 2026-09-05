@@ -30,6 +30,7 @@
 
 #include <array>
 #include <cstdint>
+#include <string>
 #include <system_error>
 
 namespace arq_messaging {
@@ -61,4 +62,8 @@ struct Identity
 
 /// Generates a Curve25519 identity via libsodium `crypto_box_keypair`.
 std::error_code generate_identity(Identity& out) noexcept;
+
+/// 64-byte file: public key || private key.
+std::error_code save_identity(const std::string& path, const Identity& id);
+std::error_code load_identity(const std::string& path, Identity& out);
 } // namespace arq_messaging
