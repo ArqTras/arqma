@@ -19,7 +19,9 @@ by the stack — they are not steps the messenger user has to assemble.
 | `arqma-msg` | CLI messenger: `gen` / `send` / `inbox` / `open` |
 
 Blink lives **in-process** as `src/arq_blink` (quorum sign/verify + collector).
-It pre-confirms transactions. It does **not** replace Pulse or RandomARQ.
+`get_blink_status` reports that collector. There is **no** Arq-Net Blink wire yet,
+so it does **not** pre-confirm transactions on the network. It does **not** replace
+Pulse or RandomARQ.
 
 ## Local stack
 
@@ -37,7 +39,9 @@ The stack starts storage + router and writes `ARQMA_STORAGE_URL` /
 Windows `%TEMP%\arqma-stack\env`). `arqma-msg` reads that file, so send/inbox/open
 need no `--url` / `--router`. `gen` writes `~/.arqma/msg/identity` so `inbox` and
 `open` need no `--to` / `--secret` / `--key`. `send bob=<hex> hello` remembers
-`bob` in `~/.arqma/msg/contacts`; later `send bob hello`. If the router is down,
+`bob` in `~/.arqma/msg/contacts`; later `send bob hello`. `gen` prints only the
+public key. Inbox URLs use an opaque id, not the raw pubkey. The stack writes
+`ARQMA_STACK_TOKEN`; `arqma-msg` sends it without a new flag. If the router is down,
 send stores directly.
 
 Operators still have `--url`, `--router` (repeat, max 3), `swarm --snode`,

@@ -14,16 +14,19 @@ if [[ ! -x "${BIN_DIR}/arqma-storage" || ! -x "${BIN_DIR}/arqma-router" ]]; then
 fi
 
 mkdir -p "${STACK_DIR}/storage" "${STACK_DIR}/router"
+TOKEN="${ARQMA_STACK_TOKEN:-$(openssl rand -hex 16 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(16))')}"
+export ARQMA_STACK_TOKEN="${TOKEN}"
 
 cat > "${STACK_DIR}/env" <<EOF
 ARQMA_STORAGE_URL=http://${STORAGE_LISTEN}
 ARQMA_ROUTER_URL=http://${ROUTER_LISTEN}
+ARQMA_STACK_TOKEN=${TOKEN}
 EOF
 
-"${BIN_DIR}/arqma-storage" --listen "${STORAGE_LISTEN}" --data-dir "${STACK_DIR}/storage" &
+"${BIN_DIR}/arqma-storage" --listen "${STORAGE_LISTEN}" --data-dir "${STACK_DIR}/storage" --token "${TOKEN}" &
 STORAGE_PID=$!
 "${BIN_DIR}/arqma-router" --listen "${ROUTER_LISTEN}" --data-dir "${STACK_DIR}/router" \
-  --storage-url "http://${STORAGE_LISTEN}" &
+  --storage-url "http://${STORAGE_LISTEN}" --token "${TOKEN}" &
 ROUTER_PID=$!
 
 cleanup() {

@@ -11,6 +11,7 @@
 #include <boost/program_options.hpp>
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
 #include <filesystem>
 #include <iostream>
 #include <string>
@@ -39,11 +40,13 @@ int main(int argc, char** argv)
   cfg.listen = "127.0.0.1:1090";
   cfg.data_dir = "arq-router";
   std::string storage_url;
+  std::string token;
   po::options_description desc{"arqma-router"};
   desc.add_options()("help,h", "show help")("listen", po::value<std::string>(&cfg.listen)->default_value(cfg.listen),
                                             "host:port HTTP status")(
       "data-dir", po::value<std::string>(&cfg.data_dir)->default_value(cfg.data_dir), "router data directory")(
-      "storage-url", po::value<std::string>(&storage_url), "arqma-storage base URL for POST /v1/store (last hop)");
+      "storage-url", po::value<std::string>(&storage_url), "arqma-storage base URL for POST /v1/store (last hop)")(
+      "token", po::value<std::string>(&token), "optional stack token (or ARQMA_STACK_TOKEN)");
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
   po::notify(vm);
@@ -81,6 +84,12 @@ int main(int argc, char** argv)
   arq_router::RouterServer server;
   server.set_identity(hop);
   server.set_storage_url(storage_url);
+  if (token.empty()) {
+    if (const char* env = std::getenv("ARQMA_STACK_TOKEN"); env && *env)
+      token = env;
+  }
+  if (!token.empty())
+    server.set_token(token);
   if (const auto ec = server.listen(host, port)) {
     std::cerr << "bind failed: " << ec.message() << "\n";
     return 1;

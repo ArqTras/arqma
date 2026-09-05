@@ -408,3 +408,32 @@ TEST(arq_storage_server, rejects_oversized_content_length)
   EXPECT_NE(std::string::npos, line.find("413"));
   server.stop();
 }
+
+TEST(arq_storage_server, token_protects_kv_and_status_stays_open)
+{
+  arq_storage::StorageServer server;
+  server.set_token("stack-secret");
+  ASSERT_FALSE(server.listen("127.0.0.1", 0));
+  const auto ep = arq_storage::parse_endpoint(server.base_url());
+  const auto status = arq_storage::http_exchange(ep, "GET", "/status", {});
+  ASSERT_TRUE(status);
+  EXPECT_NE(std::string::npos, status.body.find("arqma-storage"));
+  const auto denied = arq_storage::http_exchange(ep, "PUT", "/v1/kv?ns=n&key=k", "x");
+  EXPECT_EQ(401, denied.status);
+  const auto ok =
+      arq_storage::http_exchange(ep, "PUT", arq_storage::with_token("/v1/kv?ns=n&key=k", "stack-secret"), "x");
+  EXPECT_TRUE(ok);
+  server.stop();
+}
+
+TEST(arq_storage_http, inbox_namespace_hides_pubkey_and_hop_allowlist)
+{
+  const std::string hex(64, 'a');
+  const auto ns = arq_storage::inbox_namespace(hex);
+  EXPECT_EQ(0u, ns.find("inbox-"));
+  EXPECT_EQ(38u, ns.size());
+  EXPECT_TRUE(ns.find(hex) == std::string::npos);
+  EXPECT_EQ(ns, arq_storage::inbox_namespace(hex));
+  EXPECT_TRUE(arq_storage::hop_host_allowed("http://127.0.0.1:1091", "http://127.0.0.1:22021"));
+  EXPECT_FALSE(arq_storage::hop_host_allowed("http://8.8.8.8:80", "http://127.0.0.1:22021"));
+}

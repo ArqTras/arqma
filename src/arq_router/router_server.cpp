@@ -31,6 +31,7 @@ struct RouterServer::Impl
   std::string host{"127.0.0.1"};
   arq_messaging::Identity hop{};
   std::string storage_url;
+  std::string token;
 
   void serve(boost::asio::ip::tcp::socket socket)
   {
@@ -80,7 +81,7 @@ struct RouterServer::Impl
         if (!ec)
           body.append(rest);
       }
-      const auto response = handle_http(method, path, body, hop, storage_url);
+      const auto response = handle_http(method, path, body, hop, storage_url, token);
       boost::asio::write(socket, boost::asio::buffer(response), ec);
     } catch (...) {
     }
@@ -116,6 +117,11 @@ void RouterServer::set_identity(arq_messaging::Identity hop)
 void RouterServer::set_storage_url(std::string url)
 {
   impl_->storage_url = std::move(url);
+}
+
+void RouterServer::set_token(std::string token)
+{
+  impl_->token = std::move(token);
 }
 
 std::error_code RouterServer::listen(const std::string& host, const std::uint16_t port)

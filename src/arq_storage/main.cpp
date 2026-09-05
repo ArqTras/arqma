@@ -8,6 +8,7 @@
 #include <boost/program_options.hpp>
 #include <chrono>
 #include <cstdint>
+#include <cstdlib>
 #include <iostream>
 #include <string>
 #include <thread>
@@ -18,11 +19,13 @@ int main(int argc, char** argv)
   namespace po = boost::program_options;
   std::string listen = "127.0.0.1:22021";
   std::string data_dir;
+  std::string token;
   std::vector<std::string> peers;
   po::options_description desc{"arqma-storage"};
   desc.add_options()("help,h", "show help")("listen", po::value<std::string>(&listen)->default_value(listen),
                                             "host:port (HTTP Storage Server)")(
       "data-dir", po::value<std::string>(&data_dir), "optional on-disk volume for KV / snodes")(
+      "token", po::value<std::string>(&token), "optional stack token (or ARQMA_STACK_TOKEN)")(
       "peer", po::value<std::vector<std::string>>(&peers)->composing(), "replica base URL (repeatable)");
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -41,6 +44,12 @@ int main(int argc, char** argv)
     return 1;
   }
   arq_storage::StorageServer server;
+  if (token.empty()) {
+    if (const char* env = std::getenv("ARQMA_STACK_TOKEN"); env && *env)
+      token = env;
+  }
+  if (!token.empty())
+    server.set_token(token);
   if (!data_dir.empty())
     server.set_data_dir(data_dir);
   for (const auto& peer : peers)

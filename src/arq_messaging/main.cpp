@@ -148,7 +148,7 @@ int main(int argc, char** argv)
       std::cerr << "identity failed: " << ec.message() << "\n";
       return 1;
     }
-    std::cout << to_hex(id.public_key.data.data(), 32) << " " << to_hex(id.private_key.data.data(), 32) << "\n";
+    std::cout << to_hex(id.public_key.data.data(), 32) << "\n";
     arq_messaging::upsert_contact(arq_messaging::default_contacts_path(), "me", to_hex(id.public_key.data.data(), 32));
     return 0;
   }
@@ -157,6 +157,7 @@ int main(int argc, char** argv)
   cfg.backend = arq_storage::Backend::Remote;
   cfg.base_url = url;
   cfg.connect_timeout = std::chrono::milliseconds{2000};
+  cfg.token = stack.token;
   arq_storage::StorageClient client{cfg};
 
   if (cmd == "send") {
@@ -182,6 +183,10 @@ int main(int argc, char** argv)
     env.recipient_x25519 = pub;
     env.ttl_seconds = ttl == 0 ? 3600 : ttl;
     env.payload = std::move(sealed);
+    if (!arq_messaging::validate_envelope_ttl(env)) {
+      std::cerr << "ttl out of range\n";
+      return 1;
+    }
     const auto blob = arq_messaging::encode_message_envelope(env);
     const auto store_key = to_hex(blob.data(), std::min<std::size_t>(blob.size(), 16));
     if (explicit_router && routers.size() > arq_messaging::OnionRequest::hop_count) {
@@ -195,7 +200,8 @@ int main(int argc, char** argv)
       pubs.reserve(routers.size());
       for (const auto& router : routers) {
         const auto ep = arq_storage::parse_endpoint(router);
-        const auto pubget = arq_storage::http_exchange(ep, "GET", "/v1/pubkey", {});
+        const auto pubget =
+            arq_storage::http_exchange(ep, "GET", arq_storage::with_token("/v1/pubkey", stack.token), {});
         if (!pubget || pubget.body.size() < 64)
           return false;
         arq_messaging::X25519PublicKey rpub{};
@@ -206,11 +212,12 @@ int main(int argc, char** argv)
       std::vector<std::uint8_t> onion;
       if (arq_messaging::compose_onion_route(pubs, routers, blob, onion))
         return false;
-      std::string rpath = "/v1/store?ns=inbox-" + hex + "&key=" + store_key;
+      std::string rpath = "/v1/store?ns=" + arq_storage::inbox_namespace(hex) + "&key=" + store_key;
       if (env.ttl_seconds != 0)
         rpath += "&ttl=" + std::to_string(env.ttl_seconds);
       const auto ep = arq_storage::parse_endpoint(routers.front());
-      return static_cast<bool>(arq_storage::http_exchange(ep, "POST", rpath, std::string(onion.begin(), onion.end())));
+      return static_cast<bool>(arq_storage::http_exchange(ep, "POST", arq_storage::with_token(rpath, stack.token),
+                                                          std::string(onion.begin(), onion.end())));
     };
     if (!routers.empty()) {
       if (send_via_router()) {
@@ -222,7 +229,7 @@ int main(int argc, char** argv)
         return 1;
       }
     }
-    arq_storage::StoreRequest req{"inbox-" + hex, store_key, std::string(blob.begin(), blob.end())};
+    arq_storage::StoreRequest req{arq_storage::inbox_namespace(hex), store_key, std::string(blob.begin(), blob.end())};
     req.ttl_seconds = env.ttl_seconds;
     if (const auto ec = client.store(req)) {
       std::cerr << "store failed: " << ec.message() << "\n";
@@ -237,7 +244,7 @@ int main(int argc, char** argv)
       std::cerr << "get requires --to <recipient hex> and --key\n";
       return 1;
     }
-    const auto got = client.retrieve("inbox-" + to, key);
+    const auto got = client.retrieve(arq_storage::inbox_namespace(to), key);
     if (!got) {
       std::cerr << "retrieve failed: " << got.error.message() << "\n";
       return 1;
@@ -252,7 +259,7 @@ int main(int argc, char** argv)
       std::cerr << "run arqma-msg gen first\n";
       return 1;
     }
-    const auto keys = client.list_keys("inbox-" + inbox_to);
+    const auto keys = client.list_keys(arq_storage::inbox_namespace(inbox_to));
     if (!keys) {
       std::cerr << "list failed: " << keys.error.message() << "\n";
       return 1;
@@ -278,7 +285,7 @@ int main(int argc, char** argv)
     if (!key.empty()) {
       keys.push_back(key);
     } else {
-      const auto listed = client.list_keys("inbox-" + inbox_to);
+      const auto listed = client.list_keys(arq_storage::inbox_namespace(inbox_to));
       if (!listed) {
         std::cerr << "list failed: " << listed.error.message() << "\n";
         return 1;
@@ -286,7 +293,7 @@ int main(int argc, char** argv)
       keys = listed.value;
     }
     for (const auto& item : keys) {
-      const auto got = client.retrieve("inbox-" + inbox_to, item);
+      const auto got = client.retrieve(arq_storage::inbox_namespace(inbox_to), item);
       if (!got) {
         std::cerr << "retrieve failed: " << got.error.message() << "\n";
         return 1;
@@ -313,9 +320,10 @@ int main(int argc, char** argv)
       std::cerr << "swarm requires --to <recipient hex>\n";
       return 1;
     }
+    const auto swarm_id = arq_storage::inbox_opaque_id(to);
     if (!snodes.empty())
-      client.set_snodes_for_pubkey(to, snodes);
-    const auto got = client.get_swarm(to);
+      client.set_snodes_for_pubkey(swarm_id, snodes);
+    const auto got = client.get_swarm(swarm_id);
     if (!got) {
       std::cerr << "swarm failed: " << got.error.message() << "\n";
       return 1;

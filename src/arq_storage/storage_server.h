@@ -32,6 +32,8 @@ public:
 
   /// Best-effort swarm replica. PUTs fan out with `replicate=0` so peers do not loop.
   void add_peer(std::string base_url);
+  /// When non-empty, `/v1/*` requires matching `token=` (status stays open).
+  void set_token(std::string token);
 
   std::uint16_t port() const noexcept;
   bool running() const noexcept;

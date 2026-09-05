@@ -8,7 +8,7 @@ covered in CI and how to reproduce builds locally.
 
 | Platform | Architecture | How validated | What you get |
 |----------|--------------|---------------|--------------|
-| **Linux** | x86_64 | Native unit CI (`ubuntu-24.04`) + depends cross | Daemon, wallet, unit suite, ASan/UBSan |
+| **Linux** | x86_64 | Native unit CI (`ubuntu-24.04`) + depends cross | Daemon, wallet, unit suite, ASan |
 | **Linux** | aarch64 / RPi | Depends (`aarch64-linux-gnu`, `NO_AES` RPi) | Release binaries via contrib/depends |
 | **macOS** | arm64 (Apple Silicon) | Native unit CI (`macos-14`) + depends `arm64-apple-darwin` | Unit suite + release binaries |
 | **macOS** | x86_64 | Depends `x86_64-apple-darwin` (clang-19 + lld) | Release binaries |
@@ -21,7 +21,7 @@ are pinned; Windows product binaries are the depends/mingw artifacts.
 
 | Workflow | File | Jobs |
 |----------|------|------|
-| Unit / format / sanitize | `.github/workflows/ci.yml` | Linux Release+Debug unit, macOS-14 unit, ASan/UBSan, clang-format, Windows depends gate |
+| Unit / format / sanitize | `.github/workflows/ci.yml` | Linux Release+Debug unit, macOS-14 unit, ASan (`-DSANITIZE=ON` = address), clang-format, Windows depends gate |
 | Cross binaries | `.github/workflows/depends.yml` | Windows x64, Linux x86_64, Linux armv8 (+ RPi), macOS x64, macOS arm64 |
 
 Default test CMake flag: `-DBUILD_INTEGRATION_TESTS=OFF` (curated `unit_tests`

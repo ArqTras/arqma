@@ -64,7 +64,7 @@ bool check_tx_signature(const crypto::hash& hashed, const crypto::public_key& pu
 
 const char* blocker() noexcept
 {
-  return "none";
+  return "blink-wire-not-connected";
 }
 
 void Collector::reset(const std::uint64_t height, const crypto::hash& txid)

@@ -166,6 +166,9 @@ TEST(arq_messaging_envelope, parse_stack_env_storage_and_router)
                                                   "OTHER=ignore\n");
   EXPECT_EQ("http://127.0.0.1:22021", env.storage_url);
   EXPECT_EQ("http://127.0.0.1:1090", env.router_url);
+  EXPECT_TRUE(env.token.empty());
+  const auto with_token = arq_messaging::parse_stack_env("ARQMA_STACK_TOKEN=secret-token\n");
+  EXPECT_EQ("secret-token", with_token.token);
   const auto empty = arq_messaging::parse_stack_env("");
   EXPECT_EQ("http://127.0.0.1:22021", empty.storage_url);
   EXPECT_TRUE(empty.router_url.empty());

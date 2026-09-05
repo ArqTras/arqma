@@ -46,9 +46,10 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - [x] Simple messenger defaults (stack env file; `send`/`inbox`/`open` without extra flags)
 - [x] Local messenger identity (`gen` saves `~/.arqma/msg/identity`; `inbox`/`open` use it)
 - [x] Everyday `send <hex> hello` (positional) + remembered names (`name=hex` → `~/.arqma/msg/contacts`)
+- [x] Mainnet HF20 prep: weight-neutral Pulse splice, stack token, opaque inbox, honest Blink/UBSan docs, CLSAG operator checklist
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 
 ## Quality
 
-- Local `unit_tests` → **624** passed (positional send + remembered contacts)
+- Local `unit_tests` → **626** passed (HF20 prep: splice, stack token, opaque inbox)

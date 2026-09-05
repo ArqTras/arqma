@@ -14,8 +14,10 @@
 #include "crypto/hash.h"
 
 namespace arq_blink {
-/// Oxen-style Blink quorum width. Signatures pre-confirm a tx; they do not
-/// replace miner inclusion, RandomARQ, or Pulse.
+/// Local collector for Blink-style quorum signatures (7 of 10). There is no
+/// Arq-Net wire command yet; `get_blink_status` reports this collector only.
+/// It does not pre-confirm transactions on the network and does not replace
+/// Pulse or RandomARQ.
 inline constexpr std::size_t k_quorum_size = 10;
 
 std::size_t min_signatures_for_quorum(std::size_t quorum_size) noexcept;

@@ -18,13 +18,17 @@ if not exist "%BIN_DIR%\arqma-storage.exe" (
 
 mkdir "%STACK_DIR%\storage" 2>nul
 mkdir "%STACK_DIR%\router" 2>nul
+if "%ARQMA_STACK_TOKEN%"=="" (
+  for /f %%I in ('powershell -NoProfile -Command "[guid]::NewGuid().ToString('N').Substring(0,32)"') do set "ARQMA_STACK_TOKEN=%%I"
+)
 (
   echo ARQMA_STORAGE_URL=http://%STORAGE_LISTEN%
   echo ARQMA_ROUTER_URL=http://%ROUTER_LISTEN%
+  echo ARQMA_STACK_TOKEN=%ARQMA_STACK_TOKEN%
 ) > "%STACK_DIR%\env"
 
-start "arqma-storage" "%BIN_DIR%\arqma-storage.exe" --listen %STORAGE_LISTEN% --data-dir "%STACK_DIR%\storage"
-start "arqma-router" "%BIN_DIR%\arqma-router.exe" --listen %ROUTER_LISTEN% --data-dir "%STACK_DIR%\router" --storage-url http://%STORAGE_LISTEN%
+start "arqma-storage" "%BIN_DIR%\arqma-storage.exe" --listen %STORAGE_LISTEN% --data-dir "%STACK_DIR%\storage" --token %ARQMA_STACK_TOKEN%
+start "arqma-router" "%BIN_DIR%\arqma-router.exe" --listen %ROUTER_LISTEN% --data-dir "%STACK_DIR%\router" --storage-url http://%STORAGE_LISTEN% --token %ARQMA_STACK_TOKEN%
 
 echo arqma-storage http://%STORAGE_LISTEN% data=%STACK_DIR%\storage
 echo arqma-router  http://%ROUTER_LISTEN% data=%STACK_DIR%\router

@@ -17,7 +17,7 @@ TEST(arq_blink, quorum_rotates_from_leader)
   const auto q = arq_blink::quorum_indices(100, 20);
   ASSERT_EQ(arq_blink::k_quorum_size, q.size());
   EXPECT_EQ(arq_blink::leader_index(100, 20), q.front());
-  EXPECT_EQ(std::string("none"), arq_blink::blocker());
+  EXPECT_EQ(std::string("blink-wire-not-connected"), arq_blink::blocker());
 }
 
 TEST(arq_blink, sign_verify_and_collector_majority)
@@ -33,8 +33,7 @@ TEST(arq_blink, sign_verify_and_collector_majority)
 
   arq_blink::Collector col;
   col.reset(42, txid);
-  for (std::uint32_t i = 0; i < 7; ++i)
-  {
+  for (std::uint32_t i = 0; i < 7; ++i) {
     arq_blink::Vote vote{};
     vote.validator_index = i;
     vote.pub = pub;

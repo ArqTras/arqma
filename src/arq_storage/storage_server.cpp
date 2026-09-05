@@ -40,6 +40,7 @@ struct StorageServer::Impl
   std::atomic<std::uint16_t> port{0};
   std::string host{"127.0.0.1"};
   std::string data_dir;
+  std::string token;
   std::vector<std::string> peers;
   std::mutex mu;
   struct Stored
@@ -145,7 +146,7 @@ struct StorageServer::Impl
       if (url.empty() || !seen.insert(url).second)
         continue;
       const auto ep = parse_endpoint(url);
-      http_exchange(ep, "PUT", path, body);
+      http_exchange(ep, "PUT", with_token(path, token), body);
     }
   }
 
@@ -201,6 +202,20 @@ struct StorageServer::Impl
     if (method == "GET" && (path_only == "/" || path_only == "/status"))
       return "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\nConnection: "
              "close\r\n\r\narqma-storage";
+    if (!request_token_ok(path, token))
+      return "HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+    {
+      std::lock_guard<std::mutex> lock{mu};
+      std::vector<std::pair<std::string, std::string>> drop;
+      for (const auto& kv : values) {
+        if (expired(kv.second))
+          drop.push_back(kv.first);
+      }
+      for (const auto& item : drop) {
+        erase_kv_file(item.first, item.second);
+        values.erase(item);
+      }
+    }
 
     if (path_only == "/v1/kv") {
       const auto ns = query_get(path, "ns");
@@ -222,6 +237,8 @@ struct StorageServer::Impl
         std::vector<std::string> swarm_urls;
         {
           std::lock_guard<std::mutex> lock{mu};
+          if (values.find({ns, key}) == values.end() && values.size() >= max_kv_entries)
+            return "HTTP/1.1 507 Insufficient Storage\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
           values[{ns, key}] = stored;
           persist_kv(ns, key, stored);
           const auto pub = inbox_pubkey(ns);
@@ -487,5 +504,10 @@ void StorageServer::add_peer(std::string base_url)
   if (std::find(impl_->peers.begin(), impl_->peers.end(), base_url) != impl_->peers.end())
     return;
   impl_->peers.push_back(std::move(base_url));
+}
+
+void StorageServer::set_token(std::string token)
+{
+  impl_->token = std::move(token);
 }
 } // namespace arq_storage

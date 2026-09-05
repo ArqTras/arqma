@@ -16,6 +16,7 @@ struct StackEnv
 {
   std::string storage_url = "http://127.0.0.1:22021";
   std::string router_url;
+  std::string token;
 };
 
 inline std::string_view trim_env_token(std::string_view raw)
@@ -52,6 +53,8 @@ inline StackEnv parse_stack_env(const std::string_view text)
       out.storage_url = value;
     else if (key == "ARQMA_ROUTER_URL")
       out.router_url = value;
+    else if (key == "ARQMA_STACK_TOKEN")
+      out.token = value;
   }
   return out;
 }
@@ -85,6 +88,8 @@ inline StackEnv load_stack_env()
     out.storage_url = url;
   if (const char* url = std::getenv("ARQMA_ROUTER_URL"); url && *url)
     out.router_url = url;
+  if (const char* token = std::getenv("ARQMA_STACK_TOKEN"); token && *token)
+    out.token = token;
   return out;
 }
 } // namespace arq_messaging

@@ -49,7 +49,7 @@ bool peel(const arq_messaging::Identity& hop, const std::string& body, std::stri
 } // namespace
 
 std::string handle_http(const std::string& method, const std::string& path, const std::string& body,
-                        const arq_messaging::Identity& hop, const std::string& storage_url)
+                        const arq_messaging::Identity& hop, const std::string& storage_url, const std::string& token)
 {
   const auto path_only = path.substr(0, path.find('?'));
   if (method == "GET" && (path_only == "/" || path_only == "/status"))
@@ -57,6 +57,9 @@ std::string handle_http(const std::string& method, const std::string& path, cons
 
   if (method == "GET" && path_only == "/v1/pubkey")
     return http_ok(hex32(hop.public_key), "text/plain");
+
+  if (!arq_storage::request_token_ok(path, token))
+    return "HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
 
   if (method == "POST" && path_only == "/v1/peel") {
     std::string inner;
@@ -86,12 +89,13 @@ std::string handle_http(const std::string& method, const std::string& path, cons
       if (fwd + 1 >= arq_messaging::OnionRequest::hop_count)
         return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
       const auto next = arq_storage::parse_endpoint(next_url);
-      if (!next || next.tls)
+      if (!next || next.tls || !arq_storage::hop_host_allowed(next_url, storage_url))
         return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
       auto fwd_path = "/v1/store?ns=" + arq_storage::url_encode(ns) + "&key=" + arq_storage::url_encode(key) +
                       "&fwd=" + std::to_string(fwd + 1);
       if (!ttl.empty())
         fwd_path += "&ttl=" + ttl;
+      fwd_path = arq_storage::with_token(fwd_path, token);
       const auto hop_put = arq_storage::http_exchange(next, "POST", fwd_path, std::string(rest.begin(), rest.end()));
       if (!hop_put)
         return "HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
@@ -102,6 +106,7 @@ std::string handle_http(const std::string& method, const std::string& path, cons
     auto put_path = arq_storage::kv_path(ns, key);
     if (!ttl.empty())
       put_path += "&ttl=" + ttl;
+    put_path = arq_storage::with_token(put_path, token);
     const auto ep = arq_storage::parse_endpoint(storage_url);
     const auto put = arq_storage::http_exchange(ep, "PUT", put_path, inner);
     if (!put)

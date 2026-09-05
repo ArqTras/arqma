@@ -78,6 +78,18 @@ inline std::error_code load_identity(const std::string& path, Identity& out)
   return load_identity(std::filesystem::path{path}, out);
 }
 
+inline std::error_code restrict_owner_file(const std::filesystem::path& path)
+{
+#if !defined(_WIN32)
+  std::error_code perm_ec;
+  std::filesystem::permissions(path.parent_path(), std::filesystem::perms::owner_all,
+                               std::filesystem::perm_options::replace, perm_ec);
+  std::filesystem::permissions(path, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write,
+                               std::filesystem::perm_options::replace, perm_ec);
+#endif
+  return {};
+}
+
 /// `$HOME/.arqma/msg` (Windows: `%USERPROFILE%\.arqma\msg`). Override with `ARQMA_MSG_IDENTITY`.
 inline std::filesystem::path default_msg_dir(const std::string_view home)
 {

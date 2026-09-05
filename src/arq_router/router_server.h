@@ -24,6 +24,7 @@ public:
 
   void set_identity(arq_messaging::Identity hop);
   void set_storage_url(std::string url);
+  void set_token(std::string token);
 
   std::error_code listen(const std::string& host, std::uint16_t port);
   void stop();

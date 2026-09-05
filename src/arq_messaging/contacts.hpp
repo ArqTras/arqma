@@ -115,6 +115,7 @@ inline std::error_code save_contacts(const std::filesystem::path& path,
   }
   if (!out)
     return std::make_error_code(std::errc::io_error);
+  restrict_owner_file(path);
   return {};
 }
 

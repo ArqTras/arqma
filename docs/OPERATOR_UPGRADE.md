@@ -81,7 +81,21 @@ utils/arqnet-mesh-soak-monitor.py 127.0.0.1:39994 --once   # exit 0 when sample_
 Until mainnet height 4 000 000, upgraded daemons still produce **major version 19**
 blocks (they only vote 20 in `minor_version`). Pre-HF20 peers accept those blocks.
 At 4 000 000, upgraded nodes require major version 20 — operators must upgrade
-before that height. At 5 000 000 they must be ready for exclusive SN operation.
+before that height. At 5 000 000 they must be ready for exclusive **mesh** (native
+Arq-Net intent). Missing CURVE still falls back to SNNetwork; HF21 is not a
+Pulse-only / PoW-off fork.
+
+Wallets must be CLSAG-ready: from major **20**, MLSAG / Bulletproof2 transfers are
+rejected. Upgrade `arqma-wallet-cli` / `arqma-wallet-rpc` with the daemon.
+
+### Mainnet HF20 checklist (height 4 000 000)
+
+1. Install this daemon **before** 4 000 000. Old v19 daemons reject v20 blocks.
+2. Ship CLSAG wallets with the daemon. Pre-CLSAG spend txs will not confirm after the fork.
+3. Keep `--arqnet-backend=legacy-arqnet` on production SNs.
+4. Pulse stays **hybrid**: RandomARQ remains required. Do not expect PoS-only blocks.
+5. `get_blink_status` is a local collector, not network pre-confirm.
+6. Optional: `--arqnet-backend=arqmq` only with `--arqnet-allow-experimental` after soak.
 
 Default `--arqnet-backend=legacy-arqnet` stays in this release. Pass `--arqnet-backend=arqmq`
 before HF21 so exclusive mesh has a CURVE stack.
@@ -149,6 +163,7 @@ arqma-msg open
 The stack writes `$ARQMA_STACK_DIR/env` so `arqma-msg` needs no `--url` / `--router`.
 `gen` saves `~/.arqma/msg/identity`; `inbox` and `open` use it.
 `send bob=<hex> hello` remembers the name in `~/.arqma/msg/contacts`.
+`gen` prints the public key only. The stack token is in `$ARQMA_STACK_DIR/env`.
 Daemon probe (separate process):
 
 ```text

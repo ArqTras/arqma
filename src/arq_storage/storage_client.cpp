@@ -113,7 +113,12 @@ arq_storage::Config g_daemon_config{};
 namespace arq_storage {
 StorageClient::StorageClient(Config config) noexcept
     : config_{std::move(config)}, endpoint_{parse_endpoint(config_.base_url)}
-{}
+{
+  if (config_.token.empty()) {
+    if (const char* token = std::getenv("ARQMA_STACK_TOKEN"); token && *token)
+      config_.token = token;
+  }
+}
 
 std::error_code StorageClient::ping() const noexcept
 {
@@ -143,7 +148,8 @@ std::error_code StorageClient::store(const StoreRequest& request) noexcept
   auto path = kv_path(request.namespace_name, request.key);
   if (request.ttl_seconds != 0)
     path += "&ttl=" + std::to_string(request.ttl_seconds);
-  const auto result = http_exchange(endpoint_, "PUT", path, request.value, config_.connect_timeout);
+  const auto result =
+      http_exchange(endpoint_, "PUT", with_token(path, config_.token), request.value, config_.connect_timeout);
   if (!result)
     return result.error ? result.error : not_connected();
   return {};
@@ -162,13 +168,15 @@ Result<std::string> StorageClient::retrieve(std::string namespace_name, std::str
   }
   if (!endpoint_ || endpoint_.tls)
     return {{}, not_connected()};
-  const auto result = http_exchange(endpoint_, "GET", kv_path(namespace_name, key), {}, config_.connect_timeout);
+  const auto result = http_exchange(endpoint_, "GET", with_token(kv_path(namespace_name, key), config_.token), {},
+                                    config_.connect_timeout);
   if (result.status != 404 && result)
     return {result.body, {}};
   if (result.status != 404 && result.error)
     return {{}, result.error};
   for (const auto& ep : inbox_swarm_endpoints(namespace_name)) {
-    const auto replica = http_exchange(ep, "GET", kv_path(namespace_name, key), {}, config_.connect_timeout);
+    const auto replica =
+        http_exchange(ep, "GET", with_token(kv_path(namespace_name, key), config_.token), {}, config_.connect_timeout);
     if (replica)
       return {replica.body, {}};
   }
@@ -193,7 +201,8 @@ Result<std::vector<std::string>> StorageClient::list_keys(std::string namespace_
   if (!endpoint_ || endpoint_.tls)
     return {{}, not_connected()};
   const auto result =
-      http_exchange(endpoint_, "GET", "/v1/list?ns=" + url_encode(namespace_name), {}, config_.connect_timeout);
+      http_exchange(endpoint_, "GET", with_token("/v1/list?ns=" + url_encode(namespace_name), config_.token), {},
+                    config_.connect_timeout);
   if (!result)
     return {{}, result.error ? result.error : not_connected()};
   std::set<std::string> unique;
@@ -206,8 +215,8 @@ Result<std::vector<std::string>> StorageClient::list_keys(std::string namespace_
       unique.insert(std::move(line));
   }
   for (const auto& ep : inbox_swarm_endpoints(namespace_name)) {
-    const auto replica =
-        http_exchange(ep, "GET", "/v1/list?ns=" + url_encode(namespace_name), {}, config_.connect_timeout);
+    const auto replica = http_exchange(
+        ep, "GET", with_token("/v1/list?ns=" + url_encode(namespace_name), config_.token), {}, config_.connect_timeout);
     if (!replica)
       continue;
     std::istringstream replica_iss{replica.body};
@@ -234,7 +243,8 @@ Result<std::vector<std::string>> StorageClient::get_snodes_for_pubkey(std::strin
   }
   if (!endpoint_ || endpoint_.tls)
     return {{}, not_connected()};
-  const auto result = http_exchange(endpoint_, "GET", snodes_path(pubkey), {}, config_.connect_timeout);
+  const auto result =
+      http_exchange(endpoint_, "GET", with_token(snodes_path(pubkey), config_.token), {}, config_.connect_timeout);
   if (!result)
     return {{}, result.error ? result.error : not_connected()};
   return {parse_url_lines(result.body), {}};
@@ -249,8 +259,8 @@ void StorageClient::set_snodes_for_pubkey(std::string pubkey, std::vector<std::s
   }
   if (!endpoint_ || endpoint_.tls)
     return;
-  http_exchange(endpoint_, "PUT", snodes_path(pubkey), join_url_lines(merge_snode_urls({}, snodes)),
-                config_.connect_timeout);
+  http_exchange(endpoint_, "PUT", with_token(snodes_path(pubkey), config_.token),
+                join_url_lines(merge_snode_urls({}, snodes)), config_.connect_timeout);
 }
 
 Result<std::pair<std::uint64_t, std::vector<std::string>>> StorageClient::get_swarm(std::string pubkey) const noexcept
@@ -268,7 +278,8 @@ Result<std::pair<std::uint64_t, std::vector<std::string>>> StorageClient::get_sw
   if (!endpoint_ || endpoint_.tls)
     return {{}, not_connected()};
   const auto result =
-      http_exchange(endpoint_, "GET", "/v1/swarm?pubkey=" + url_encode(pubkey), {}, config_.connect_timeout);
+      http_exchange(endpoint_, "GET", with_token("/v1/swarm?pubkey=" + url_encode(pubkey), config_.token), {},
+                    config_.connect_timeout);
   if (!result)
     return {{}, result.error ? result.error : not_connected()};
   std::string line;

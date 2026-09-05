@@ -23,7 +23,7 @@ cmake --build build-asan --parallel
 
 | Metric | Approx |
 |--------|--------|
-| Curated unit suite | ~2.0–2.1 s for **485** tests (Release, Apple Silicon) |
+| Curated unit suite | ~2.0–2.1 s for **626** tests (Release, Apple Silicon) |
 | `unit_tests` link | seconds-scale after incremental rebuild |
 
 Re-run and replace these numbers on CI hardware before claiming regressions.
