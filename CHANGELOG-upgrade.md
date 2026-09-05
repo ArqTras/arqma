@@ -21,8 +21,10 @@
   close gaps on `relay_tx`, `get_tx_key`, `export_key_images`, mining controls.
 - Gate additional daemon operator RPCs (`set_bans`, `flush_txpool`, `save_bc`,
   `relay_tx`, log controls, `pop_blocks`, `prune_blockchain`,
-  `get_service_node_key`, `get_service_node_privkey`) via `rpc_auth`
-  with `CORE_RPC_ERROR_CODE_RESTRICTED`.
+  `get_service_node_key`, `get_service_node_privkey`, Pulse/Arq-Net/Blink
+  status, peer lists, mining status) via one `rpc_auth` catalog used by both
+  `MAP_*_IF` and handler `deny_restricted_rpc`.
+- Cap `arqma-storage` at 4096 keys globally and 512 per namespace (HTTP 507).
 - Cap ArqMQ/Arq-Net request framing (1 MiB / 16 frames / 64-byte command names)
   via `authorize_request` on vote_ob/ping/pong.
 - Cleartext storage reachability uses HTTP GET after TCP connect; TLS stays

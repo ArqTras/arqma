@@ -237,7 +237,15 @@ struct StorageServer::Impl
         std::vector<std::string> swarm_urls;
         {
           std::lock_guard<std::mutex> lock{mu};
-          if (values.find({ns, key}) == values.end() && values.size() >= max_kv_entries)
+          const bool inserting_new = values.find({ns, key}) == values.end();
+          std::size_t ns_count = 0;
+          if (inserting_new) {
+            for (const auto& kv : values) {
+              if (kv.first.first == ns)
+                ++ns_count;
+            }
+          }
+          if (kv_quota_exceeded(values.size(), ns_count, inserting_new))
             return "HTTP/1.1 507 Insufficient Storage\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
           values[{ns, key}] = stored;
           persist_kv(ns, key, stored);

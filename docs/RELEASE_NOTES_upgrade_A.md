@@ -6,7 +6,7 @@
 - Harden Arq-Net: only registered service nodes may authenticate to the mesh.
 - Restore `arqnet_ping` / `last_arqnet_ping` for operator visibility.
 - Raise the build baseline to C++20 (with `-fno-char8_t` compatibility).
-- Curated unit suite (**626** tests) green on Linux and macOS; ASan on Linux.
+- Curated unit suite (**628** tests) green on Linux and macOS; ASan on Linux.
 - Cross-compile release binaries for **Windows x64**, **macOS x64/arm64**, and
   **Linux x64/arm** via `contrib/depends`.
 - Arqma-named modules: ArqMQ facade, storage client, messaging helpers,

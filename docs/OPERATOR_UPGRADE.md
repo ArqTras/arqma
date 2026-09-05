@@ -133,7 +133,7 @@ before HF21 so exclusive mesh has a CURVE stack.
 
 ## How to test (before merge / before HF20)
 
-Curated suite is **626** tests. Default CMake keeps `BUILD_INTEGRATION_TESTS=OFF`
+Curated suite is **628** tests. Default CMake keeps `BUILD_INTEGRATION_TESTS=OFF`
 (`core_tests` stay opt-in).
 
 ### 1. Unit tests (Linux / macOS)
@@ -148,7 +148,7 @@ cmake --build build/upgrade-test --parallel \
 build/upgrade-test/tests/unit_tests/unit_tests
 ```
 
-Expect: `[  PASSED  ] 626 tests.`
+Expect: `[  PASSED  ] 628 tests.`
 
 Optional: `ctest --test-dir build/upgrade-test -R 'unit_tests|hash-target' --output-on-failure`
 

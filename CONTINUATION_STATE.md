@@ -47,10 +47,11 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - [x] Local messenger identity (`gen` saves `~/.arqma/msg/identity`; `inbox`/`open` use it)
 - [x] Everyday `send <hex> hello` (positional) + remembered names (`name=hex` → `~/.arqma/msg/contacts`)
 - [x] Mainnet HF20 prep: weight-neutral Pulse splice, stack token, opaque inbox, honest Blink/UBSan docs, CLSAG operator checklist
+- [x] Unified daemon restricted-RPC catalog (`rpc_auth.h` drives `MAP_*_IF` + handler denials); storage quota per namespace
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 
 ## Quality
 
-- Local `unit_tests` → **626** passed (HF20 prep: splice, stack token, opaque inbox)
+- Local `unit_tests` → **628** passed (restricted-RPC catalog + KV namespace quota)
 - Test steps: `docs/OPERATOR_UPGRADE.md` (unit / messenger / daemon probes)

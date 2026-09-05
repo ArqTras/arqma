@@ -264,3 +264,70 @@ TEST(rpc_auth, access_levels_and_operator_methods)
   EXPECT_TRUE(cryptonote::rpc::allow_rpc_method("stop_daemon", AccessLevel::Operator));
   EXPECT_TRUE(cryptonote::rpc::allow_rpc_method("get_info", AccessLevel::Public));
 }
+
+TEST(rpc_auth, catalog_covers_map_gated_operator_methods)
+{
+  using cryptonote::rpc::AccessLevel;
+  constexpr std::string_view mapped[] = {
+      "arqnet_ping",
+      "banned",
+      "flush_txpool",
+      "generateblocks",
+      "get_alternate_chains",
+      "get_arqnet_status",
+      "get_bans",
+      "get_blink_status",
+      "get_coinbase_tx_sum",
+      "get_connections",
+      "get_net_stats",
+      "get_peer_list",
+      "get_public_nodes",
+      "get_pulse_status",
+      "get_service_node_key",
+      "get_service_node_privkey",
+      "get_service_node_registration_cmd",
+      "get_service_node_registration_cmd_raw",
+      "get_storage_status",
+      "in_peers",
+      "mining_status",
+      "out_peers",
+      "pop_blocks",
+      "prune_blockchain",
+      "relay_tx",
+      "report_peer_storage_server_status",
+      "save_bc",
+      "set_bans",
+      "set_limit",
+      "set_log_categories",
+      "set_log_level",
+      "start_mining",
+      "stop_daemon",
+      "stop_mining",
+      "storage_server_ping",
+      "sync_info",
+      "test_trigger_p2p_resync",
+      "update",
+  };
+  ASSERT_EQ(sizeof(cryptonote::rpc::k_operator_rpc_methods) / sizeof(cryptonote::rpc::k_operator_rpc_methods[0]),
+            sizeof(mapped) / sizeof(mapped[0]));
+  for (std::size_t i = 0; i < sizeof(mapped) / sizeof(mapped[0]); ++i) {
+    EXPECT_EQ(mapped[i], cryptonote::rpc::k_operator_rpc_methods[i]);
+    EXPECT_TRUE(cryptonote::rpc::method_requires_operator(mapped[i]));
+    EXPECT_FALSE(cryptonote::rpc::allow_restricted_map(true, mapped[i]));
+    EXPECT_TRUE(cryptonote::rpc::allow_restricted_map(false, mapped[i]));
+  }
+  EXPECT_TRUE(cryptonote::rpc::allow_restricted_map(true, "get_info"));
+  EXPECT_FALSE(cryptonote::rpc::allow_rpc_method("get_pulse_status", AccessLevel::Public));
+  EXPECT_TRUE(cryptonote::rpc::allow_rpc_method("get_pulse_status", AccessLevel::Operator));
+}
+
+TEST(arq_storage_http, kv_quota_counts_namespace_and_global)
+{
+  EXPECT_FALSE(arq_storage::kv_quota_exceeded(0, 0, false));
+  EXPECT_FALSE(arq_storage::kv_quota_exceeded(arq_storage::max_kv_entries - 1,
+                                              arq_storage::max_kv_entries_per_namespace - 1, true));
+  EXPECT_TRUE(arq_storage::kv_quota_exceeded(arq_storage::max_kv_entries, 0, true));
+  EXPECT_TRUE(arq_storage::kv_quota_exceeded(0, arq_storage::max_kv_entries_per_namespace, true));
+  EXPECT_FALSE(
+      arq_storage::kv_quota_exceeded(arq_storage::max_kv_entries, arq_storage::max_kv_entries_per_namespace, false));
+}

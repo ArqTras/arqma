@@ -61,6 +61,12 @@ listed in `method_requires_full_access`. Handlers call `deny_if_restricted`
 for defense-in-depth; read helpers such as `get_balance` / `get_height` /
 `validate_address` remain available.
 
+### Daemon restricted mode (`rpc_auth.h`)
+
+`k_operator_rpc_methods` is the single catalog for `--restricted-rpc`.
+`MAP_*_IF` uses `allow_restricted_map`, and handlers call `deny_restricted_rpc`
+for defense-in-depth. Public reads such as `get_info` / `get_height` stay mapped.
+
 ## Pagination Plan
 
 Prefer cursor-based pagination for dynamic collections and bounded page sizes for

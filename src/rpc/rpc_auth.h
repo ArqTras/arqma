@@ -54,12 +54,56 @@ inline AccessLevel daemon_access_level(bool restricted_mode, bool has_rpc_origin
   return restricted_mode ? AccessLevel::Public : AccessLevel::Operator;
 }
 
+/// JSON-RPC / binary-URI method names gated by `MAP_*_IF(..., !restricted)`
+/// in `core_rpc_server.h`. Keep this list and those macros in lockstep.
+inline constexpr std::string_view k_operator_rpc_methods[] = {
+    "arqnet_ping",
+    "banned",
+    "flush_txpool",
+    "generateblocks",
+    "get_alternate_chains",
+    "get_arqnet_status",
+    "get_bans",
+    "get_blink_status",
+    "get_coinbase_tx_sum",
+    "get_connections",
+    "get_net_stats",
+    "get_peer_list",
+    "get_public_nodes",
+    "get_pulse_status",
+    "get_service_node_key",
+    "get_service_node_privkey",
+    "get_service_node_registration_cmd",
+    "get_service_node_registration_cmd_raw",
+    "get_storage_status",
+    "in_peers",
+    "mining_status",
+    "out_peers",
+    "pop_blocks",
+    "prune_blockchain",
+    "relay_tx",
+    "report_peer_storage_server_status",
+    "save_bc",
+    "set_bans",
+    "set_limit",
+    "set_log_categories",
+    "set_log_level",
+    "start_mining",
+    "stop_daemon",
+    "stop_mining",
+    "storage_server_ping",
+    "sync_info",
+    "test_trigger_p2p_resync",
+    "update",
+};
+
 inline bool method_requires_operator(std::string_view method) noexcept
 {
-  return method == "start_mining" || method == "stop_mining" || method == "stop_daemon" || method == "set_bans" ||
-         method == "flush_txpool" || method == "relay_tx" || method == "set_log_level" ||
-         method == "set_log_categories" || method == "save_bc" || method == "pop_blocks" ||
-         method == "prune_blockchain" || method == "get_service_node_key" || method == "get_service_node_privkey";
+  for (const auto name : k_operator_rpc_methods) {
+    if (name == method)
+      return true;
+  }
+  return false;
 }
 
 inline bool allow_rpc_method(std::string_view method, AccessLevel granted) noexcept
@@ -67,6 +111,12 @@ inline bool allow_rpc_method(std::string_view method, AccessLevel granted) noexc
   if (!method_requires_operator(method))
     return true;
   return access_allows(AccessLevel::Operator, granted);
+}
+
+/// True when the URI/JSON map should expose `method` on this daemon.
+inline bool allow_restricted_map(bool restricted_mode, std::string_view method) noexcept
+{
+  return allow_rpc_method(method, daemon_access_level(restricted_mode, true));
 }
 } // namespace rpc
 } // namespace cryptonote

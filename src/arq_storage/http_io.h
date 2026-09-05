@@ -22,6 +22,14 @@ constexpr std::size_t max_kv_name_bytes = 128;
 constexpr std::size_t max_swarm_fallback = 8;
 constexpr std::size_t max_snode_urls = 32;
 constexpr std::size_t max_kv_entries = 4096;
+constexpr std::size_t max_kv_entries_per_namespace = 512;
+
+inline bool kv_quota_exceeded(std::size_t total, std::size_t ns_count, bool inserting_new) noexcept
+{
+  if (!inserting_new)
+    return false;
+  return total >= max_kv_entries || ns_count >= max_kv_entries_per_namespace;
+}
 
 std::string url_encode(std::string_view raw);
 std::string url_decode(std::string_view raw);
