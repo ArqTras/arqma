@@ -1435,10 +1435,14 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
         const uint8_t rnd = service_nodes::pulse::round_from_timestamps(parent_ts, static_cast<uint64_t>(time(NULL)));
         cryptonote::tx_extra_pulse_round cached_pulse{};
         const bool has_pulse = cryptonote::get_pulse_round_from_tx_extra(m_btc.miner_tx.extra, cached_pulse);
-        if (has_pulse)
-          pulse_cache_ok = cached_pulse.round == rnd;
-        else if (rnd != 0)
-          pulse_cache_ok = false;
+        cryptonote::tx_extra_pulse_round live{};
+        const bool have_majority = service_nodes::pulse::collector().snapshot(live) && live.height == m_btc_height &&
+                                   live.round == rnd;
+        if (have_majority)
+          pulse_cache_ok = has_pulse && cached_pulse.round == live.round &&
+                           cached_pulse.votes.size() == live.votes.size();
+        else
+          pulse_cache_ok = !has_pulse;
       }
       if (pulse_cache_ok)
       {

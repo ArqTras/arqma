@@ -299,6 +299,7 @@ void RoundCollector::prepare(const uint64_t height, const crypto::hash& prev_id,
   m_extra.round = round;
   m_extra.leader_index = leader_index;
   m_prev_id = prev_id;
+  m_quorum_size = 0;
 }
 
 bool RoundCollector::add_vote(const RelayVote& vote, const std::vector<crypto::public_key>& quorum_keys,
@@ -320,6 +321,7 @@ bool RoundCollector::add_vote(const RelayVote& vote, const std::vector<crypto::p
       m_extra.leader_index = vote.leader_index;
       m_prev_id = vote.prev_id;
     }
+    m_quorum_size = quorum_keys.size();
     if (m_extra.leader_index != vote.leader_index)
       return false;
     for (const auto& existing : m_extra.votes)
@@ -343,7 +345,8 @@ bool RoundCollector::add_vote(const RelayVote& vote, const std::vector<crypto::p
 bool RoundCollector::snapshot(cryptonote::tx_extra_pulse_round& out) const
 {
   std::lock_guard lock{m_mu};
-  if (m_extra.votes.empty())
+  const size_t q = m_quorum_size != 0 ? m_quorum_size : k_quorum_size;
+  if (!majority_reached(m_extra.votes.size(), q))
     return false;
   out = m_extra;
   return true;
@@ -378,6 +381,19 @@ size_t RoundCollector::signature_count() const
   return m_extra.votes.size();
 }
 
+size_t RoundCollector::quorum_size() const
+{
+  std::lock_guard lock{m_mu};
+  return m_quorum_size;
+}
+
+bool RoundCollector::majority_ok() const
+{
+  std::lock_guard lock{m_mu};
+  const size_t q = m_quorum_size != 0 ? m_quorum_size : k_quorum_size;
+  return majority_reached(m_extra.votes.size(), q);
+}
+
 void RoundCollector::discard_below(const uint64_t height)
 {
   std::lock_guard lock{m_mu};
@@ -385,6 +401,7 @@ void RoundCollector::discard_below(const uint64_t height)
   {
     m_extra = {};
     m_prev_id = {};
+    m_quorum_size = 0;
   }
 }
 
@@ -393,6 +410,7 @@ void RoundCollector::clear()
   std::lock_guard lock{m_mu};
   m_extra = {};
   m_prev_id = {};
+  m_quorum_size = 0;
 }
 
 bool pow_replacement_ready() noexcept

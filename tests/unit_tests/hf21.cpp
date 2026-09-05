@@ -294,6 +294,9 @@ TEST(pulse, relay_vote_roundtrip_and_collector)
   EXPECT_TRUE(collector.add_vote(first, qpubs, pubs.size(), false));
   EXPECT_FALSE(collector.add_vote(first, qpubs, pubs.size(), false));
   EXPECT_EQ(1u, collector.signature_count());
+  cryptonote::tx_extra_pulse_round early{};
+  EXPECT_FALSE(collector.snapshot(early));
+  EXPECT_FALSE(collector.majority_ok());
 
   for (size_t i = 1; i < 7; ++i)
   {
@@ -307,6 +310,7 @@ TEST(pulse, relay_vote_roundtrip_and_collector)
     EXPECT_TRUE(collector.add_vote(v, qpubs, pubs.size(), false));
   }
   EXPECT_EQ(7u, collector.signature_count());
+  EXPECT_TRUE(collector.majority_ok());
   cryptonote::tx_extra_pulse_round extra{};
   ASSERT_TRUE(collector.snapshot(extra));
   EXPECT_TRUE(service_nodes::pulse::verify_round(extra, height, prev, pubs.size(), qpubs, 7));
@@ -403,9 +407,14 @@ TEST(pulse, participate_round_signs_and_is_idempotent)
   EXPECT_EQ(1u, service_nodes::pulse::collector().signature_count());
 
   cryptonote::tx_extra_pulse_round extra{};
-  ASSERT_TRUE(service_nodes::pulse::collector().snapshot(extra));
-  EXPECT_TRUE(service_nodes::pulse::verify_round(extra, height, prev, pubs.size(),
-                                                 service_nodes::pulse::quorum_pubkeys(height, pubs), 1));
+  EXPECT_FALSE(service_nodes::pulse::collector().snapshot(extra));
+  EXPECT_FALSE(service_nodes::pulse::collector().majority_ok());
+  cryptonote::tx_extra_pulse_round local{};
+  ASSERT_TRUE(service_nodes::pulse::try_local_round(height, prev, 0, keys[lead].pub, keys[lead].sec, pubs, local));
+  const auto qpubs = service_nodes::pulse::quorum_pubkeys(height, pubs);
+  EXPECT_TRUE(service_nodes::pulse::verify_round(local, height, prev, pubs.size(), qpubs, 1));
+  EXPECT_FALSE(service_nodes::pulse::verify_round(local, height, prev, pubs.size(), qpubs,
+                                                  service_nodes::pulse::min_signatures_for_quorum(qpubs.size())));
   service_nodes::pulse::collector().clear();
 }
 

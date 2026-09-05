@@ -104,8 +104,9 @@ bool participate_round(uint64_t height, const crypto::hash& prev_id, uint8_t rou
                        const std::vector<crypto::public_key>& active_pubs,
                        bool relay = true);
 
-/// Structural + signature checks. `min_signatures` is 1 while Pulse extra is
-/// optional (hybrid PoW policy). Majority is only required if PoW is ever dropped.
+/// Structural + signature checks. Callers that attach extra to a block must
+/// pass `min_signatures_for_quorum` (majority). Extra stays optional in hybrid;
+/// a present extra is a real quorum, not a single stamp.
 bool verify_round(const cryptonote::tx_extra_pulse_round& extra, uint64_t height,
                   const crypto::hash& prev_id, size_t active_sn_count,
                   const std::vector<crypto::public_key>& quorum_keys,
@@ -144,6 +145,9 @@ public:
   uint64_t height() const;
   uint8_t round() const;
   size_t signature_count() const;
+  size_t quorum_size() const;
+  /// True when collected votes meet `min_signatures_for_quorum(quorum_size())`.
+  bool majority_ok() const;
   /// Drop votes for heights that have already been produced (`height` is the next block).
   void discard_below(uint64_t height);
   void clear();
@@ -152,6 +156,7 @@ private:
   mutable std::mutex m_mu;
   cryptonote::tx_extra_pulse_round m_extra{};
   crypto::hash m_prev_id{};
+  size_t m_quorum_size = 0;
 };
 
 RoundCollector& collector();

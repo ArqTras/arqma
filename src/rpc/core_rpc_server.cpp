@@ -3250,9 +3250,8 @@ namespace cryptonote
     }
     const auto &collector = service_nodes::pulse::collector();
     res.signature_count = (collector.height() == height && collector.round() == rnd) ? collector.signature_count() : 0;
-    if (res.signature_count == 0 && res.in_quorum)
-      res.signature_count = 1;
-    res.majority_ok = service_nodes::pulse::majority_reached(res.signature_count, q.size());
+    res.majority_ok = (collector.height() == height && collector.round() == rnd) ? collector.majority_ok()
+                                                                                : service_nodes::pulse::majority_reached(res.signature_count, q.size());
     res.status = CORE_RPC_STATUS_OK;
     return true;
   }
