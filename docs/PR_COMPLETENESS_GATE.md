@@ -6,8 +6,8 @@ macOS**.
 
 It does **not** claim that full Oxen Storage Server, Lokinet-class routing,
 Session messenger clients, or Blink are shipped. Pulse SN **hybrid (HF20) /
-exclusive (HF21)** gates and `get_pulse_status` are started; RandomARQ is still
-required until a Pulse producer is wired. See
+exclusive (HF21)** gates, Pulse `pulse_rnd` collector, wait-windows, and `get_pulse_status` are
+started; RandomARQ stays required (hybrid PoW — Pulse does not replace mining). See
 https://github.com/ArqTras/arqma/pull/3.
 
 ### Must-have (satisfied)
@@ -36,7 +36,7 @@ https://github.com/ArqTras/arqma/pull/3.
 - Production Storage Server binary + swarm replication (Milestone C)
 - Full privacy router binary (Milestone C)
 - Messenger clients / Session protocol wire completeness (Milestone C)
-- Pulse/Blink/L2: Pulse **gates + RPC started**; producer and Blink still later
+- Pulse/Blink/L2: Pulse **hybrid producer started** (signatures, `pulse_rnd`, wait-windows, idle SN votes); Blink still later
 - Restoring every legacy Monero-era unit fixture / `core_tests` in default CI
 - Native MSVC unit job on `windows-latest` (Windows covered via mingw depends)
 

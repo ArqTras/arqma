@@ -2960,6 +2960,12 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
       uint64_t mesh_vote_ob_shadow_in = 0;
       uint64_t mesh_vote_ob_shadow_parse_ok = 0;
       uint64_t mesh_vote_ob_shadow_parse_fail = 0;
+      uint64_t mesh_pulse_rnd_live = 0;
+      uint64_t mesh_pulse_rnd_shadow_ok = 0;
+      uint64_t mesh_pulse_rnd_shadow_fail = 0;
+      uint64_t mesh_pulse_rnd_shadow_in = 0;
+      uint64_t mesh_pulse_rnd_shadow_parse_ok = 0;
+      uint64_t mesh_pulse_rnd_shadow_parse_fail = 0;
       uint32_t mesh_shadow_ok_rate_bps = 0;
       bool mesh_shadow_parity_sample_ok = false;
       bool native_mesh_ready = false;
@@ -2989,6 +2995,12 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
         KV_SERIALIZE(mesh_vote_ob_shadow_in)
         KV_SERIALIZE(mesh_vote_ob_shadow_parse_ok)
         KV_SERIALIZE(mesh_vote_ob_shadow_parse_fail)
+        KV_SERIALIZE(mesh_pulse_rnd_live)
+        KV_SERIALIZE(mesh_pulse_rnd_shadow_ok)
+        KV_SERIALIZE(mesh_pulse_rnd_shadow_fail)
+        KV_SERIALIZE(mesh_pulse_rnd_shadow_in)
+        KV_SERIALIZE(mesh_pulse_rnd_shadow_parse_ok)
+        KV_SERIALIZE(mesh_pulse_rnd_shadow_parse_fail)
         KV_SERIALIZE(mesh_shadow_ok_rate_bps)
         KV_SERIALIZE(mesh_shadow_parity_sample_ok)
         KV_SERIALIZE(native_mesh_ready)
@@ -3020,6 +3032,7 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
       uint8_t hard_fork_version = 0;
       uint64_t height = 0;
       uint64_t service_node_count = 0;
+      uint64_t active_service_node_count = 0;
       std::string sn_operating_mode;
       bool hybrid_permitted = false;
       bool exclusive_required = false;
@@ -3027,12 +3040,20 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
       bool pow_replacement_ready = false;
       std::string pulse_blocker;
       uint64_t leader_index = 0;
+      uint8_t round = 0;
+      uint64_t majority_required = 0;
+      uint64_t signature_count = 0;
+      bool majority_ok = false;
+      bool in_quorum = false;
+      bool is_leader = false;
+      bool local_signature_ready = false;
       std::vector<uint64_t> quorum_indices;
       std::string status;
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(hard_fork_version)
         KV_SERIALIZE(height)
         KV_SERIALIZE(service_node_count)
+        KV_SERIALIZE(active_service_node_count)
         KV_SERIALIZE(sn_operating_mode)
         KV_SERIALIZE(hybrid_permitted)
         KV_SERIALIZE(exclusive_required)
@@ -3040,6 +3061,13 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
         KV_SERIALIZE(pow_replacement_ready)
         KV_SERIALIZE(pulse_blocker)
         KV_SERIALIZE(leader_index)
+        KV_SERIALIZE(round)
+        KV_SERIALIZE(majority_required)
+        KV_SERIALIZE(signature_count)
+        KV_SERIALIZE(majority_ok)
+        KV_SERIALIZE(in_quorum)
+        KV_SERIALIZE(is_leader)
+        KV_SERIALIZE(local_signature_ready)
         KV_SERIALIZE(quorum_indices)
         KV_SERIALIZE(status)
       END_KV_SERIALIZE_MAP()

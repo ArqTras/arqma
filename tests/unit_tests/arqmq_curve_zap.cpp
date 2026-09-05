@@ -34,6 +34,7 @@
 #include "arqmq/peer_table.hpp"
 #include "arqmq/socket_stack.hpp"
 #include "arqnet/bt_serialize.h"
+#include "cryptonote_core/pulse.h"
 
 #include <array>
 #include <chrono>
@@ -629,6 +630,212 @@ TEST(arqmq_curve_zap, soak_inbound_counts_unparseable_vote_ob)
   EXPECT_GE(stats.vote_ob_shadow_parse_fail, 1u);
   EXPECT_EQ(0u, stats.vote_ob_shadow_parse_ok);
   EXPECT_FALSE(arqmq::native_mesh_shadow_parity_sample_ok(1, 9000));
+
+  arqmq::set_native_mesh_shadow_relay_enabled(false);
+  EXPECT_FALSE(arqmq::shutdown());
+  server.stop();
+}
+
+TEST(arqmq_curve_zap, pulse_rnd_wire_payload_rejects_garbage)
+{
+  arqmq::set_pulse_rnd_payload_validator(nullptr);
+  EXPECT_FALSE(arqmq::pulse_rnd_wire_payload_ok(""));
+  EXPECT_FALSE(arqmq::pulse_rnd_wire_payload_ok("not-a-vote"));
+  std::string bad(service_nodes::pulse::k_relay_vote_bytes, '\0');
+  EXPECT_FALSE(arqmq::pulse_rnd_wire_payload_ok(bad));
+  service_nodes::pulse::RelayVote vote{};
+  vote.height = 240;
+  std::string blob;
+  ASSERT_TRUE(service_nodes::pulse::encode_relay_vote(vote, blob));
+  EXPECT_TRUE(arqmq::pulse_rnd_wire_payload_ok(blob));
+}
+
+TEST(arqmq_curve_zap, soak_inbound_parses_pulse_rnd)
+{
+  arqmq::set_pulse_rnd_payload_validator(nullptr);
+
+  service_nodes::pulse::RelayVote vote{};
+  vote.height = 240;
+  vote.round = 1;
+  vote.leader_index = 2;
+  vote.validator_index = 3;
+  std::string payload;
+  ASSERT_TRUE(service_nodes::pulse::encode_relay_vote(vote, payload));
+  ASSERT_TRUE(arqmq::pulse_rnd_wire_payload_ok(payload));
+
+  std::string server_pub;
+  std::string server_sec;
+  std::string client_pub;
+  std::string client_sec;
+  ASSERT_TRUE(make_curve_keypair(server_pub, server_sec));
+  ASSERT_TRUE(make_curve_keypair(client_pub, client_sec));
+
+  arqmq::SocketStack server;
+  ASSERT_FALSE(server.start());
+  arqmq::configure_mesh_shadow(server, server_pub, server_sec, [&](const std::string&, const std::string& pk) {
+    return pk == client_pub ? arqmq::CurvePeerAllow::ServiceNode : arqmq::CurvePeerAllow::Denied;
+  });
+
+  EXPECT_FALSE(arqmq::shutdown());
+  EXPECT_FALSE(arqmq::init(arqmq::Config{arqmq::Backend::ArqMq, arqmq::CategoryAcl::ServiceNode}));
+  auto* client = arqmq::active_socket_stack();
+  ASSERT_NE(nullptr, client);
+  arqmq::configure_mesh_shadow(*client, client_pub, client_sec,
+                               [](const std::string&, const std::string&) { return arqmq::CurvePeerAllow::Denied; });
+  arqmq::set_native_mesh_shadow_relay_enabled(true);
+
+  ASSERT_FALSE(arqmq::start_mesh_shadow_listener(server, "tcp://127.0.0.1:46200"));
+
+  arqmq::note_live_mesh_relay("pulse_rnd");
+  arqmq::shadow_send_to_peer(server_pub, "pulse_rnd", payload, "tcp://127.0.0.1:46200");
+
+  bool inbound = false;
+  for (int i = 0; i < 80; ++i)
+  {
+    if (arqmq::native_mesh_shadow_stats().pulse_rnd_shadow_in >= 1)
+    {
+      inbound = true;
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+  ASSERT_TRUE(inbound);
+
+  const auto stats = arqmq::native_mesh_shadow_stats();
+  EXPECT_GE(stats.pulse_rnd_shadow_ok, 1u);
+  EXPECT_GE(stats.pulse_rnd_shadow_in, 1u);
+  EXPECT_GE(stats.pulse_rnd_shadow_parse_ok, 1u);
+  EXPECT_EQ(0u, stats.pulse_rnd_shadow_parse_fail);
+  EXPECT_GE(stats.pulse_rnd_live, 1u);
+
+  arqmq::set_native_mesh_shadow_relay_enabled(false);
+  EXPECT_FALSE(arqmq::shutdown());
+  server.stop();
+}
+
+TEST(arqmq_curve_zap, soak_inbound_counts_unparseable_pulse_rnd)
+{
+  arqmq::set_pulse_rnd_payload_validator(nullptr);
+
+  std::string server_pub;
+  std::string server_sec;
+  std::string client_pub;
+  std::string client_sec;
+  ASSERT_TRUE(make_curve_keypair(server_pub, server_sec));
+  ASSERT_TRUE(make_curve_keypair(client_pub, client_sec));
+
+  arqmq::SocketStack server;
+  ASSERT_FALSE(server.start());
+  arqmq::configure_mesh_shadow(server, server_pub, server_sec, [&](const std::string&, const std::string& pk) {
+    return pk == client_pub ? arqmq::CurvePeerAllow::ServiceNode : arqmq::CurvePeerAllow::Denied;
+  });
+
+  EXPECT_FALSE(arqmq::shutdown());
+  EXPECT_FALSE(arqmq::init(arqmq::Config{arqmq::Backend::ArqMq, arqmq::CategoryAcl::ServiceNode}));
+  auto* client = arqmq::active_socket_stack();
+  ASSERT_NE(nullptr, client);
+  arqmq::configure_mesh_shadow(*client, client_pub, client_sec,
+                               [](const std::string&, const std::string&) { return arqmq::CurvePeerAllow::Denied; });
+  arqmq::set_native_mesh_shadow_relay_enabled(true);
+
+  ASSERT_FALSE(arqmq::start_mesh_shadow_listener(server, "tcp://127.0.0.1:46300"));
+  arqmq::note_live_mesh_relay("pulse_rnd");
+  arqmq::shadow_send_to_peer(server_pub, "pulse_rnd", "not-a-pulse-vote", "tcp://127.0.0.1:46300");
+
+  bool inbound = false;
+  for (int i = 0; i < 80; ++i)
+  {
+    if (arqmq::native_mesh_shadow_stats().pulse_rnd_shadow_in >= 1)
+    {
+      inbound = true;
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+  ASSERT_TRUE(inbound);
+
+  const auto stats = arqmq::native_mesh_shadow_stats();
+  EXPECT_GE(stats.pulse_rnd_shadow_parse_fail, 1u);
+  EXPECT_EQ(0u, stats.pulse_rnd_shadow_parse_ok);
+
+  arqmq::set_native_mesh_shadow_relay_enabled(false);
+  EXPECT_FALSE(arqmq::shutdown());
+  server.stop();
+}
+
+TEST(arqmq_curve_zap, soak_local_pulse_rnd_roundtrip)
+{
+  service_nodes::pulse::RelayVote vote{};
+  vote.height = 240;
+  vote.round = 2;
+  vote.leader_index = 4;
+  vote.validator_index = 1;
+  vote.prev_id.data[0] = 11;
+  std::string blob;
+  ASSERT_TRUE(service_nodes::pulse::encode_relay_vote(vote, blob));
+
+  std::string server_pub;
+  std::string server_sec;
+  std::string client_pub;
+  std::string client_sec;
+  ASSERT_TRUE(make_curve_keypair(server_pub, server_sec));
+  ASSERT_TRUE(make_curve_keypair(client_pub, client_sec));
+
+  std::mutex mu;
+  std::condition_variable cv;
+  bool got = false;
+  service_nodes::pulse::RelayVote decoded{};
+
+  arqmq::SocketStack server;
+  ASSERT_FALSE(server.start());
+  server.set_curve_identity(server_pub, server_sec);
+  server.set_allow_connection([&](const std::string&, const std::string& pk) {
+    return pk == client_pub ? arqmq::CurvePeerAllow::ServiceNode : arqmq::CurvePeerAllow::Denied;
+  });
+  server.register_handler("pulse_rnd", arqmq::CategoryAcl::ServiceNode, [&](const arqmq::InboundRequest& req) {
+    service_nodes::pulse::RelayVote parsed{};
+    const bool ok = service_nodes::pulse::decode_relay_vote(req.payload, parsed);
+    {
+      std::lock_guard<std::mutex> lock{mu};
+      if (ok)
+        decoded = parsed;
+      got = ok;
+    }
+    cv.notify_one();
+    return std::string{"ok"};
+  });
+  ASSERT_FALSE(server.bind_curve("tcp://127.0.0.1:0"));
+  const std::string shadow_ep = server.last_curve_endpoint();
+  ASSERT_FALSE(shadow_ep.empty());
+
+  EXPECT_FALSE(arqmq::shutdown());
+  EXPECT_FALSE(arqmq::init(arqmq::Config{arqmq::Backend::ArqMq, arqmq::CategoryAcl::ServiceNode}));
+  auto* client = arqmq::active_socket_stack();
+  ASSERT_NE(nullptr, client);
+  arqmq::configure_mesh_shadow(*client, client_pub, client_sec,
+                               [](const std::string&, const std::string&) { return arqmq::CurvePeerAllow::Denied; });
+  arqmq::set_native_mesh_shadow_relay_enabled(true);
+  ASSERT_FALSE(arqmq::start_mesh_shadow_listener(*client, "tcp://127.0.0.1:47000"));
+
+  const auto colon = shadow_ep.rfind(':');
+  ASSERT_NE(std::string::npos, colon);
+  const int shadow_port = std::stoi(shadow_ep.substr(colon + 1));
+  const int live_port = shadow_port - arqmq::k_mesh_shadow_port_offset;
+  ASSERT_GT(live_port, 0);
+  const std::string live_hint = "tcp://127.0.0.1:" + std::to_string(live_port);
+
+  arqmq::note_live_mesh_relay("pulse_rnd");
+  arqmq::shadow_send_to_peer(server_pub, "pulse_rnd", blob, live_hint);
+
+  {
+    std::unique_lock<std::mutex> lock{mu};
+    ASSERT_TRUE(cv.wait_for(lock, std::chrono::seconds(3), [&] { return got; }));
+  }
+  EXPECT_EQ(vote.height, decoded.height);
+  EXPECT_EQ(vote.round, decoded.round);
+  EXPECT_EQ(vote.leader_index, decoded.leader_index);
+  EXPECT_EQ(vote.validator_index, decoded.validator_index);
+  EXPECT_GE(arqmq::native_mesh_shadow_stats().pulse_rnd_shadow_ok, 1u);
 
   arqmq::set_native_mesh_shadow_relay_enabled(false);
   EXPECT_FALSE(arqmq::shutdown());

@@ -3,8 +3,9 @@
 Branch: `upgrade`
 
 Foundation engineering for phases 3–12 is landed. Pulse SN hybrid/exclusive
-gates are started (Milestone C); full Pulse producer, Storage Server binary,
-Lokinet-class router, Session clients, and Blink remain follow-ups.
+gates, local signatures, `pulse_rnd` quorum gossip, 15s wait-windows, and idle-loop
+SN participation are started (Milestone C); hybrid PoW (no Pulse PoW-off), Storage Server binary, Lokinet-class
+router, Session clients, and Blink remain follow-ups.
 
 ## Status Matrix
 
@@ -23,8 +24,6 @@ Lokinet-class router, Session clients, and Blink remain follow-ups.
 
 ## Recommended next milestone outputs
 
-1. Re-run stagenet SN soak; wire Pulse block producer before treating HF21 as PoW-off.
-2. Remaining Milestone C: Storage binary / Blink / Router (Pulse gates already started).
-3. Migrate legacy `core_tests` incrementally under `BUILD_INTEGRATION_TESTS=ON`.
-2. Choose Milestone C primary value-add (Storage / Blink / Pulse / Router).
+1. Optional live stagenet SN soak re-run (local loopback already passed; Pulse `pulse_rnd` soak counters are on `get_arqnet_status`). Keep HF21 block production hybrid (RandomARQ + Pulse).
+2. Remaining Milestone C: Storage binary / Blink / Router (Pulse signatures started).
 3. Migrate legacy `core_tests` incrementally under `BUILD_INTEGRATION_TESTS=ON`.

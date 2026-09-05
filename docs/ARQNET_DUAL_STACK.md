@@ -73,8 +73,14 @@ Alias: `HF_VERSION_NATIVE_ARQNET_MESH` → `network_version_20`.
 - [x] RPC cutover gate fields on `get_arqnet_status`
 - [x] Native inbound `vote_ob` processing (installed at stage ≥4)
 - [x] Soak inbound `vote_ob` wire parse (`mesh_vote_ob_shadow_parse_*`; same decoder as stage 4)
+- [x] Soak inbound `pulse_rnd` wire parse (`mesh_pulse_rnd_shadow_*`; observability only, not in `sample_ok`)
 - [x] Native CURVE ping/pong reply path on SocketStack (unit-tested)
 - [x] `native_mesh_implementation_ready()` (stage 4); live path `native_mesh_live_at`
 - [x] Mainnet HF20 height **4 000 000** (v19 compatible until then)
 - [x] HF21 **5 000 000** exclusive mesh intent + Pulse `get_pulse_status`
-- [ ] Re-run stagenet soak; Pulse producer; default `--arqnet-backend` flip later
+- [x] Pulse local round signatures + miner-tx extra (`TX_EXTRA_TAG_PULSE`)
+- [x] Pulse `pulse_rnd` Arq-Net collector (hybrid PoW; no PoW-off scheduled)
+- [x] Pulse wait-windows (15s) + leader rotation (`round` 0–7); RandomARQ still required
+- [x] Pulse idle-loop participation (`pulse_rnd` without mining); hybrid PoW
+- [x] Pulse vote retransmit + collector drop on new block / reorg
+- [ ] Re-run stagenet soak; default `--arqnet-backend` flip later

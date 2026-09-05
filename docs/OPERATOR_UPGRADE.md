@@ -26,6 +26,7 @@ arqmad --stagenet --arqnet-backend=arqmq --arqnet-mesh-shadow
    | `mesh_vote_ob_shadow_ok` / `*_fail` | SocketStack dual-write results |
    | `mesh_vote_ob_shadow_in` | inbound shadow `vote_ob` frames (receivers) |
    | `mesh_vote_ob_shadow_parse_ok` / `*_parse_fail` | inbound payloads that decode as obligation-vote wire |
+   | `mesh_pulse_rnd_live` / `mesh_pulse_rnd_shadow_*` | Pulse `pulse_rnd` dual-write + inbound parse (observability; not in `sample_ok`) |
    | `mesh_shadow_ok_rate_bps` | overall shadow success (0–10000) |
    | `mesh_shadow_parity_sample_ok` | ≥32 live `vote_ob` + ≥95% shadow send ok **and** inbound parse ok |
    | `native_mesh_ready` / `native_mesh_blocker` | implementation gate (stage 4 → `none`) |
@@ -39,6 +40,8 @@ arqmad --stagenet --arqnet-backend=arqmq --arqnet-mesh-shadow
       mesh stays on ANET; after HF20, `arqmq` nodes send quorum on ANET+10000.
    3. `mesh_shadow_endpoint` populated; watch `mesh_vote_ob_shadow_in` **and**
       `mesh_vote_ob_shadow_parse_ok` on receivers (`parse_fail` must stay near 0).
+      After HF20, also watch `mesh_pulse_rnd_shadow_in` / `mesh_pulse_rnd_shadow_parse_ok`
+      (`pulse_parse_fail` near 0). `mesh_shadow_parity_sample_ok` still keys off `vote_ob`.
    4. `mesh_shadow_parity_sample_ok == true` across a multi-hour quorum window
       (requires both outbound send success and inbound vote-wire parse).
    5. No consensus / uptime regressions vs SNNetwork-only control nodes.
@@ -60,6 +63,7 @@ constexpr int k_native_mesh_port_stage = 4;
 ```text
 utils/arqnet-mesh-soak-monitor.py 127.0.0.1:39994
 utils/arqnet-mesh-soak-monitor.py 127.0.0.1:39994 --once   # exit 0 when sample_ok
+# Prints mesh-shadow parity plus Pulse round / signature_count (unrestricted RPC).
 ```
 
 ### HF20 / HF21 (native mesh + hybrid then exclusive SN)
@@ -72,7 +76,7 @@ utils/arqnet-mesh-soak-monitor.py 127.0.0.1:39994 --once   # exit 0 when sample_
 
 - **Until 4 000 000:** major version 19, SNNetwork, miner PoW. Full compatibility with current nodes.
 - **HF20 (hybrid):** miner RandomARQ **and** Pulse SN rounds are both permitted. Native mesh is live on `--arqnet-backend=arqmq` nodes; others stay SNNetwork.
-- **HF21 (exclusive):** intended new style only (Pulse + native mesh). RandomARQ stays **required** until `get_pulse_status.pow_replacement_ready` is true, so the chain cannot stall.
+- **HF21 (exclusive mesh):** intended native mesh for operators. Block production stays **hybrid**: miner RandomARQ **and** Pulse SN rounds. `get_pulse_status.pow_replacement_ready` stays false — Pulse does not replace PoW. From HF20, active SNs in the Pulse quorum sign and gossip `pulse_rnd` (idle loop + miner template). If a round has no majority after **15 seconds**, the leader rotates (`round` 0–7, covering one 120s block target).
 
 Until mainnet height 4 000 000, upgraded daemons still produce **major version 19**
 blocks (they only vote 20 in `minor_version`). Pre-HF20 peers accept those blocks.
@@ -123,8 +127,8 @@ before HF21 so exclusive mesh has a CURVE stack.
 | `--arq-router` | Experimental privacy-router scaffold (lives for daemon lifetime) |
 | `--storage-client-url=<url>` | Outbound Storage Server reachability probe (`http://` GET / `https://` TCP) |
 | `arqnet_ping` | Records Arq-Net reachability (not yet a hard uptime gate) |
-| `get_arqnet_status` | `backend`, `transport`, `mesh`, shadow counters, `native_mesh_*`, `sn_operating_mode`, `pulse_*` |
-| `get_pulse_status` | Hybrid/exclusive SN mode, PoW gate, Pulse leader + quorum indices |
+| `get_arqnet_status` | `backend`, `transport`, `mesh`, shadow counters (`vote_ob` + `pulse_rnd`), `native_mesh_*`, `sn_operating_mode`, `pulse_*` |
+| `get_pulse_status` | Hybrid/exclusive SN mode, PoW gate, Pulse `round` / leader / quorum / collector `signature_count` / `majority_ok` |
 | `get_storage_status` | Storage client scaffold status + last SS ping |
 | `get_service_nodes` `offset`/`limit` | Optional pagination |
 

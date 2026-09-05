@@ -80,6 +80,12 @@ struct MeshShadowStats
   /// Inbound shadow vote_ob payloads that parse as obligation-vote wire.
   uint64_t vote_ob_shadow_parse_ok = 0;
   uint64_t vote_ob_shadow_parse_fail = 0;
+  uint64_t pulse_rnd_live = 0;
+  uint64_t pulse_rnd_shadow_ok = 0;
+  uint64_t pulse_rnd_shadow_fail = 0;
+  uint64_t pulse_rnd_shadow_in = 0;
+  uint64_t pulse_rnd_shadow_parse_ok = 0;
+  uint64_t pulse_rnd_shadow_parse_fail = 0;
 };
 
 /// Cumulative shadow/live counters (reset when shadow is toggled on).
@@ -88,12 +94,16 @@ MeshShadowStats native_mesh_shadow_stats() noexcept;
 /// Record one live SNNetwork peer relay (call alongside snn.send).
 void note_live_mesh_relay(std::string_view command) noexcept;
 
+/// Count an inbound SocketStack `vote_ob` / `pulse_rnd` (shadow listener or native handler).
+void note_inbound_mesh_shadow(std::string_view command, std::string_view payload) noexcept;
+
 /// Shadow ok-rate in basis points (0..10000). Returns 0 when attempts==0.
 uint32_t native_mesh_shadow_ok_rate_bps() noexcept;
 
 /// True when soak sample is large enough, outbound vote_ob shadow ok-rate meets
 /// floor, **and** inbound payloads parse as obligation-vote wire at the same
-/// floor. Does not flip cutover by itself — operators / release notes decide.
+/// floor. Pulse `pulse_rnd` counters are observability only (not part of this
+/// gate — Pulse gossip starts at HF20). Does not flip cutover by itself.
 bool native_mesh_shadow_parity_sample_ok(uint64_t min_vote_ob_live = 32, uint32_t min_ok_rate_bps = 9500) noexcept;
 
 /// Optional daemon hook: same decoder the native inbound path will use at stage 4.
@@ -103,6 +113,12 @@ void set_vote_ob_payload_validator(VoteObPayloadValidator validator) noexcept;
 
 /// True when `payload` is a well-formed obligation `vote_ob` wire body.
 bool vote_ob_wire_payload_ok(std::string_view payload) noexcept;
+
+using PulseRndPayloadValidator = bool (*)(std::string_view payload);
+void set_pulse_rnd_payload_validator(PulseRndPayloadValidator validator) noexcept;
+
+/// True when `payload` is a well-formed Pulse `pulse_rnd` packed vote.
+bool pulse_rnd_wire_payload_ok(std::string_view payload) noexcept;
 
 /// Best-effort shadow send; never throws. No-op unless shadow relay is enabled
 /// and the active stack has CURVE identity configured.

@@ -44,9 +44,9 @@ struct CommandAcl
 };
 
 inline constexpr CommandAcl k_builtin_commands[] = {
-    {"ping", CategoryAcl::Basic},           {"pong", CategoryAcl::Basic},
-    {"vote_ob", CategoryAcl::ServiceNode},  {"arqnet_status", CategoryAcl::Basic},
-    {"admin_shutdown", CategoryAcl::Admin},
+    {"ping", CategoryAcl::Basic},          {"pong", CategoryAcl::Basic},
+    {"vote_ob", CategoryAcl::ServiceNode}, {"pulse_rnd", CategoryAcl::ServiceNode},
+    {"arqnet_status", CategoryAcl::Basic}, {"admin_shutdown", CategoryAcl::Admin},
 };
 
 inline CategoryAcl required_acl_for(std::string_view command) noexcept

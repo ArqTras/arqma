@@ -63,6 +63,8 @@ namespace cryptonote
     uint64_t gov = 0;
     uint64_t dev = 0;
     uint64_t net = 0;
+    /// HF20+: optional Pulse round extra (local SN vote until quorum relay exists).
+    boost::optional<tx_extra_pulse_round> pulse_round;
   };
 
   class Blockchain;

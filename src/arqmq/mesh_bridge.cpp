@@ -51,6 +51,13 @@ std::atomic<uint64_t> g_vote_ob_shadow_in{0};
 std::atomic<uint64_t> g_vote_ob_shadow_parse_ok{0};
 std::atomic<uint64_t> g_vote_ob_shadow_parse_fail{0};
 std::atomic<VoteObPayloadValidator> g_vote_ob_validator{nullptr};
+std::atomic<uint64_t> g_pulse_rnd_live{0};
+std::atomic<uint64_t> g_pulse_rnd_shadow_ok{0};
+std::atomic<uint64_t> g_pulse_rnd_shadow_fail{0};
+std::atomic<uint64_t> g_pulse_rnd_shadow_in{0};
+std::atomic<uint64_t> g_pulse_rnd_shadow_parse_ok{0};
+std::atomic<uint64_t> g_pulse_rnd_shadow_parse_fail{0};
+std::atomic<PulseRndPayloadValidator> g_pulse_rnd_validator{nullptr};
 std::atomic<int> g_shadow_port_offset{0};
 std::mutex g_shadow_endpoint_mu;
 std::string g_shadow_endpoint;
@@ -67,6 +74,12 @@ void reset_shadow_stats() noexcept
   g_vote_ob_shadow_in.store(0, std::memory_order_relaxed);
   g_vote_ob_shadow_parse_ok.store(0, std::memory_order_relaxed);
   g_vote_ob_shadow_parse_fail.store(0, std::memory_order_relaxed);
+  g_pulse_rnd_live.store(0, std::memory_order_relaxed);
+  g_pulse_rnd_shadow_ok.store(0, std::memory_order_relaxed);
+  g_pulse_rnd_shadow_fail.store(0, std::memory_order_relaxed);
+  g_pulse_rnd_shadow_in.store(0, std::memory_order_relaxed);
+  g_pulse_rnd_shadow_parse_ok.store(0, std::memory_order_relaxed);
+  g_pulse_rnd_shadow_parse_fail.store(0, std::memory_order_relaxed);
 }
 
 bool vote_ob_wire_shape_ok(const std::string_view payload) noexcept
@@ -86,6 +99,37 @@ bool vote_ob_wire_shape_ok(const std::string_view payload) noexcept
 bool is_vote_ob(const std::string_view command) noexcept
 {
   return command == "vote_ob";
+}
+
+bool is_pulse_rnd(const std::string_view command) noexcept
+{
+  return command == "pulse_rnd";
+}
+
+/// Packed Pulse vote: version(1) || height(8) || round(1) || leader(4) || index(4) || prev(32) || sig(64).
+bool pulse_rnd_wire_shape_ok(const std::string_view payload) noexcept
+{
+  constexpr size_t k_pulse_rnd_wire_bytes = 114;
+  constexpr uint8_t k_pulse_rnd_wire_version = 1;
+  return payload.size() == k_pulse_rnd_wire_bytes && static_cast<uint8_t>(payload[0]) == k_pulse_rnd_wire_version;
+}
+
+void record_shadow_inbound(const std::string_view command, const std::string_view payload) noexcept
+{
+  if (is_vote_ob(command)) {
+    g_vote_ob_shadow_in.fetch_add(1, std::memory_order_relaxed);
+    if (vote_ob_wire_payload_ok(payload))
+      g_vote_ob_shadow_parse_ok.fetch_add(1, std::memory_order_relaxed);
+    else
+      g_vote_ob_shadow_parse_fail.fetch_add(1, std::memory_order_relaxed);
+  }
+  if (is_pulse_rnd(command)) {
+    g_pulse_rnd_shadow_in.fetch_add(1, std::memory_order_relaxed);
+    if (pulse_rnd_wire_payload_ok(payload))
+      g_pulse_rnd_shadow_parse_ok.fetch_add(1, std::memory_order_relaxed);
+    else
+      g_pulse_rnd_shadow_parse_fail.fetch_add(1, std::memory_order_relaxed);
+  }
 }
 
 void clear_shadow_endpoint()
@@ -175,6 +219,8 @@ void attach_compatible_mesh_mirrors(SocketStack& stack)
   // Replies make ownership of the live peer mesh explicit: SNNetwork.
   stack.register_handler("vote_ob", CategoryAcl::ServiceNode,
                          [](const InboundRequest&) { return std::string{k_transport_snnetwork}; });
+  stack.register_handler("pulse_rnd", CategoryAcl::ServiceNode,
+                         [](const InboundRequest&) { return std::string{k_transport_snnetwork}; });
   stack.register_handler("ping", CategoryAcl::Basic, [](const InboundRequest&) { return std::string{"pong"}; });
   stack.register_handler("pong", CategoryAcl::Basic, [](const InboundRequest&) { return std::string{}; });
   stack.register_handler("arqnet_status", CategoryAcl::Basic, [](const InboundRequest&) {
@@ -226,13 +272,13 @@ std::error_code start_mesh_shadow_listener(SocketStack& stack, const std::string
   if (!stack.curve_zap_configured())
     return std::make_error_code(std::errc::invalid_argument);
 
-  // Count + parse inbound shadow vote_ob (observability only; does not affect consensus).
+  // Count + parse inbound shadow vote_ob / pulse_rnd (observability only; does not affect consensus).
   stack.register_handler("vote_ob", CategoryAcl::ServiceNode, [](const InboundRequest& req) {
-    g_vote_ob_shadow_in.fetch_add(1, std::memory_order_relaxed);
-    if (vote_ob_wire_payload_ok(req.payload))
-      g_vote_ob_shadow_parse_ok.fetch_add(1, std::memory_order_relaxed);
-    else
-      g_vote_ob_shadow_parse_fail.fetch_add(1, std::memory_order_relaxed);
+    record_shadow_inbound("vote_ob", req.payload);
+    return std::string{k_transport_snnetwork};
+  });
+  stack.register_handler("pulse_rnd", CategoryAcl::ServiceNode, [](const InboundRequest& req) {
+    record_shadow_inbound("pulse_rnd", req.payload);
     return std::string{k_transport_snnetwork};
   });
 
@@ -281,7 +327,13 @@ MeshShadowStats native_mesh_shadow_stats() noexcept
                          g_vote_ob_shadow_fail.load(std::memory_order_relaxed),
                          g_vote_ob_shadow_in.load(std::memory_order_relaxed),
                          g_vote_ob_shadow_parse_ok.load(std::memory_order_relaxed),
-                         g_vote_ob_shadow_parse_fail.load(std::memory_order_relaxed)};
+                         g_vote_ob_shadow_parse_fail.load(std::memory_order_relaxed),
+                         g_pulse_rnd_live.load(std::memory_order_relaxed),
+                         g_pulse_rnd_shadow_ok.load(std::memory_order_relaxed),
+                         g_pulse_rnd_shadow_fail.load(std::memory_order_relaxed),
+                         g_pulse_rnd_shadow_in.load(std::memory_order_relaxed),
+                         g_pulse_rnd_shadow_parse_ok.load(std::memory_order_relaxed),
+                         g_pulse_rnd_shadow_parse_fail.load(std::memory_order_relaxed)};
 }
 
 void note_live_mesh_relay(const std::string_view command) noexcept
@@ -291,6 +343,13 @@ void note_live_mesh_relay(const std::string_view command) noexcept
   g_live_relays.fetch_add(1, std::memory_order_relaxed);
   if (is_vote_ob(command))
     g_vote_ob_live.fetch_add(1, std::memory_order_relaxed);
+  if (is_pulse_rnd(command))
+    g_pulse_rnd_live.fetch_add(1, std::memory_order_relaxed);
+}
+
+void note_inbound_mesh_shadow(const std::string_view command, const std::string_view payload) noexcept
+{
+  record_shadow_inbound(command, payload);
 }
 
 uint32_t native_mesh_shadow_ok_rate_bps() noexcept
@@ -346,6 +405,24 @@ bool vote_ob_wire_payload_ok(const std::string_view payload) noexcept
   return vote_ob_wire_shape_ok(payload);
 }
 
+void set_pulse_rnd_payload_validator(const PulseRndPayloadValidator validator) noexcept
+{
+  g_pulse_rnd_validator.store(validator, std::memory_order_relaxed);
+}
+
+bool pulse_rnd_wire_payload_ok(const std::string_view payload) noexcept
+{
+  const auto validator = g_pulse_rnd_validator.load(std::memory_order_relaxed);
+  if (validator) {
+    try {
+      return validator(payload);
+    } catch (...) {
+      return false;
+    }
+  }
+  return pulse_rnd_wire_shape_ok(payload);
+}
+
 void shadow_send_to_peer(const std::string_view pubkey, const std::string_view command, const std::string_view payload,
                          const std::string_view hint)
 {
@@ -353,11 +430,14 @@ void shadow_send_to_peer(const std::string_view pubkey, const std::string_view c
     return;
   auto* stack = active_socket_stack();
   const bool vote = is_vote_ob(command);
+  const bool pulse = is_pulse_rnd(command);
   if (!stack || !stack->curve_zap_configured() || pubkey.size() != 32 || command.empty()) {
     g_shadow_attempts.fetch_add(1, std::memory_order_relaxed);
     g_shadow_fail.fetch_add(1, std::memory_order_relaxed);
     if (vote)
       g_vote_ob_shadow_fail.fetch_add(1, std::memory_order_relaxed);
+    if (pulse)
+      g_pulse_rnd_shadow_fail.fetch_add(1, std::memory_order_relaxed);
     return;
   }
 
@@ -376,10 +456,14 @@ void shadow_send_to_peer(const std::string_view pubkey, const std::string_view c
     g_shadow_fail.fetch_add(1, std::memory_order_relaxed);
     if (vote)
       g_vote_ob_shadow_fail.fetch_add(1, std::memory_order_relaxed);
+    if (pulse)
+      g_pulse_rnd_shadow_fail.fetch_add(1, std::memory_order_relaxed);
   } else {
     g_shadow_ok.fetch_add(1, std::memory_order_relaxed);
     if (vote)
       g_vote_ob_shadow_ok.fetch_add(1, std::memory_order_relaxed);
+    if (pulse)
+      g_pulse_rnd_shadow_ok.fetch_add(1, std::memory_order_relaxed);
   }
 }
 

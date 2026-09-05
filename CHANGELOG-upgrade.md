@@ -43,23 +43,32 @@
   `mesh_shadow_parity_sample_ok`) for stagenet soak decisions.
 - Bind opt-in mesh-shadow CURVE listener on ANET+10000 and rewrite dual-write
   peer hints to that port (`mesh_shadow_endpoint`, `mesh_vote_ob_shadow_in`).
-- Add `utils/arqnet-mesh-soak-monitor.py` to poll soak parity via `get_arqnet_status`.
+- Add `utils/arqnet-mesh-soak-monitor.py` to poll soak parity via `get_arqnet_status`
+  and hybrid Pulse via `get_pulse_status`.
 - Scaffold HF20 cutover relay (`primary_mesh_send_to_peer`); live only via
   `native_mesh_live_at` (stage 4 + HF20+ + CURVE `arqmq` stack). Legacy backend
   keeps SNNetwork so votes are not dropped.
 - Flip `k_native_mesh_port_stage` to **4** (`native_mesh_blocker=none`). Do not
   change mainnet default `--arqnet-backend`.
 - Schedule mainnet HF20 at height **4 000 000** (v19 until then) and HF21 at
-  **5 000 000** (hybrid POSPOW SN in between; exclusive new-style after HF21).
+  **5 000 000** (HF20/HF21 hybrid RandomARQ + Pulse; HF21 exclusive mesh intent).
 - Start Milestone C Pulse: SN modes `legacy`/`hybrid`/`exclusive`, deterministic
-  leader/quorum, `get_pulse_status` RPC. RandomARQ remains required until a Pulse
-  producer is wired.
+  leader/quorum, miner-tx round extra (`TX_EXTRA_TAG_PULSE`), local SN signature,
+  in-memory collector and Arq-Net `pulse_rnd` gossip, plus 15s wait-windows that
+  rotate the Pulse leader when a round lacks majority. Block production stays
+  **hybrid**: RandomARQ remains required at HF20 and HF21 (`pow_replacement_ready`
+  stays false; do not flip Pulse stage 3 / PoW-off). Active service nodes in the
+  Pulse quorum now sign and gossip `pulse_rnd` from the daemon idle loop (every 5s),
+  retransmitting already-collected local votes so late quorum peers catch up.
+  The collector drops votes once the height is produced (and on reorg).
 - Expose cutover gates on `get_arqnet_status` (`native_mesh_ready`,
   `native_mesh_blocker`, `native_mesh_hf_permits`, `hard_fork_version`).
 - Scaffold native-mesh inbound `vote_ob` processing (installed only after
   `native_mesh_ready()` / stage ≥4).
 - Parse inbound shadow `vote_ob` as obligation-vote wire (`mesh_vote_ob_shadow_parse_ok` /
   `*_parse_fail`); `mesh_shadow_parity_sample_ok` now requires inbound parse parity.
+- Parse inbound shadow `pulse_rnd` as packed Pulse vote (`mesh_pulse_rnd_*`); observability
+  only — `mesh_shadow_parity_sample_ok` still keys off `vote_ob` (Pulse gossip starts at HF20).
 - Native SocketStack `ping` replies `pong` over CURVE (ROUTER → DEALER) so cutover
   keepalives have a wire path; inbound `ping`/`pong` handlers install at stage ≥4.
 - Restore `arqnet_ping` RPC and `last_arqnet_ping` daemon info fields.

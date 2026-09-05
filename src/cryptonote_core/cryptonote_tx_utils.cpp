@@ -238,6 +238,9 @@ namespace cryptonote
     add_tx_pub_key_to_extra(tx, gov_key.pub);
 
     add_service_node_winner_to_tx_extra(tx.extra, service_node_key);
+    if (miner_tx_context.pulse_round &&
+        !add_pulse_round_to_tx_extra(tx.extra, *miner_tx_context.pulse_round))
+      return false;
 
     txin_gen in;
     in.height = height;

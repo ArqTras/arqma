@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright (c) 2018 - 2026, The Arqma Network
 #
-# Poll arqmad get_arqnet_status for mesh-shadow soak progress.
+# Poll arqmad get_arqnet_status (mesh-shadow) and get_pulse_status (hybrid Pulse).
 # Stdlib only (no third-party deps).
 #
 # Usage:
@@ -37,6 +37,22 @@ def rpc_call(url: str, method: str) -> dict:
     return payload.get("result") or {}
 
 
+def fmt_pulse(result: dict) -> str:
+    if not result:
+        return "pulse=unavailable"
+    return (
+        f"pulse_mode={result.get('sn_operating_mode', '-')} "
+        f"round={result.get('round', '-')} "
+        f"lead={result.get('leader_index', '-')} "
+        f"sigs={result.get('signature_count', 0)}/{result.get('majority_required', 0)} "
+        f"maj={result.get('majority_ok')} "
+        f"in_q={result.get('in_quorum')} "
+        f"pow={result.get('pow_required')} "
+        f"repl={result.get('pow_replacement_ready')} "
+        f"blocker={result.get('pulse_blocker') or '-'}"
+    )
+
+
 def fmt_row(result: dict) -> str:
     return (
         f"hf={result.get('hard_fork_version', '-')} "
@@ -51,6 +67,12 @@ def fmt_row(result: dict) -> str:
         f"sh_in={result.get('mesh_vote_ob_shadow_in', 0)} "
         f"parse_ok={result.get('mesh_vote_ob_shadow_parse_ok', 0)} "
         f"parse_fail={result.get('mesh_vote_ob_shadow_parse_fail', 0)} "
+        f"live_pulse={result.get('mesh_pulse_rnd_live', 0)} "
+        f"pulse_ok={result.get('mesh_pulse_rnd_shadow_ok', 0)} "
+        f"pulse_fail={result.get('mesh_pulse_rnd_shadow_fail', 0)} "
+        f"pulse_in={result.get('mesh_pulse_rnd_shadow_in', 0)} "
+        f"pulse_parse_ok={result.get('mesh_pulse_rnd_shadow_parse_ok', 0)} "
+        f"pulse_parse_fail={result.get('mesh_pulse_rnd_shadow_parse_fail', 0)} "
         f"ok_bps={result.get('mesh_shadow_ok_rate_bps', 0)} "
         f"sample_ok={result.get('mesh_shadow_parity_sample_ok')}"
     )
@@ -85,6 +107,11 @@ def main() -> int:
 
         line = fmt_row(result)
         print(line, flush=True)
+        try:
+            pulse = rpc_call(url, "get_pulse_status")
+        except (urllib.error.URLError, TimeoutError, RuntimeError, json.JSONDecodeError):
+            pulse = {}
+        print(fmt_pulse(pulse), flush=True)
 
         if args.once:
             return 0 if result.get("mesh_shadow_parity_sample_ok") else 2

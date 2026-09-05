@@ -68,8 +68,9 @@ Platform matrix: [`docs/PLATFORM.md`](PLATFORM.md).
 ## Requires SN economics / product decision (Milestone C)
 
 - Full Storage Server + swarm replication for messaging
-- Pulse-like PoS block production (**started:** HF20 hybrid / HF21 exclusive gates +
-  leader/quorum + `get_pulse_status`; producer not yet replacing RandomARQ)
+- Pulse-like PoS block production (**started:** HF20 hybrid / HF21 exclusive mesh +
+  leader/quorum + miner extra + `pulse_rnd` collector + wait-windows + `get_pulse_status`;
+  RandomARQ stays required — hybrid PoW, no PoW-off; SN idle `pulse_rnd`)
 - Blink-like instant tx quorums
 - Lokinet-class onion routing network
 - Session-class messenger clients
@@ -119,11 +120,12 @@ Remaining before default flip (not blocking Milestone B; preserves compatibility
 - [x] Soak monitor script (`utils/arqnet-mesh-soak-monitor.py`)
 - [x] Cutover relay scaffold (HF-gated; stage 4)
 - [x] Soak inbound vote_ob wire parse + RPC parse counters
+- [x] Soak inbound pulse_rnd wire parse + RPC counters (observability; not in `sample_ok`)
 - [x] Native CURVE ping→pong reply path on SocketStack
 - [x] Cutover gate (`k_native_mesh_port_stage = 4`); live mesh still SNNetwork without `arqmq`+CURVE+HF20
 - [x] Mainnet HF20 at **4 000 000** (compatible v19 until then)
 - [x] HF21 at **5 000 000** (exclusive SN) + Pulse Milestone C start (`get_pulse_status`)
-- [ ] Re-verify stagenet soak; Pulse producer; default backend flip later
+- [ ] Re-verify stagenet soak; keep Pulse hybrid PoW (no stage-3 PoW-off); default backend flip later
 
 ## Milestone C — product fork-in-the-road
 

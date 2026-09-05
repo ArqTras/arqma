@@ -3193,6 +3193,12 @@ namespace cryptonote
     res.mesh_vote_ob_shadow_in = shadow.vote_ob_shadow_in;
     res.mesh_vote_ob_shadow_parse_ok = shadow.vote_ob_shadow_parse_ok;
     res.mesh_vote_ob_shadow_parse_fail = shadow.vote_ob_shadow_parse_fail;
+    res.mesh_pulse_rnd_live = shadow.pulse_rnd_live;
+    res.mesh_pulse_rnd_shadow_ok = shadow.pulse_rnd_shadow_ok;
+    res.mesh_pulse_rnd_shadow_fail = shadow.pulse_rnd_shadow_fail;
+    res.mesh_pulse_rnd_shadow_in = shadow.pulse_rnd_shadow_in;
+    res.mesh_pulse_rnd_shadow_parse_ok = shadow.pulse_rnd_shadow_parse_ok;
+    res.mesh_pulse_rnd_shadow_parse_fail = shadow.pulse_rnd_shadow_parse_fail;
     res.mesh_shadow_ok_rate_bps = arqmq::native_mesh_shadow_ok_rate_bps();
     res.mesh_shadow_parity_sample_ok = arqmq::native_mesh_shadow_parity_sample_ok();
     res.hard_fork_version = hf;
@@ -3213,18 +3219,40 @@ namespace cryptonote
     const uint8_t hf = m_core.get_blockchain_storage().get_current_hard_fork_version();
     const uint64_t height = m_core.get_current_blockchain_height();
     const size_t sn_count = m_core.get_service_node_list().get_service_node_count();
+    const auto active = m_core.get_service_node_list().get_active_service_node_pubkeys();
     res.hard_fork_version = hf;
     res.height = height;
     res.service_node_count = sn_count;
+    res.active_service_node_count = active.size();
     res.sn_operating_mode = service_nodes::pulse::to_string(service_nodes::pulse::sn_operating_mode(hf));
     res.hybrid_permitted = service_nodes::pulse::hybrid_sn_permitted(hf);
     res.exclusive_required = service_nodes::pulse::exclusive_sn_required(hf);
     res.pow_required = service_nodes::pulse::pow_required_for_block(hf);
     res.pow_replacement_ready = service_nodes::pulse::pow_replacement_ready();
     res.pulse_blocker = service_nodes::pulse::blocker();
-    res.leader_index = service_nodes::pulse::leader_index(height, sn_count);
-    for (const size_t idx : service_nodes::pulse::quorum_indices(height, sn_count))
+    uint64_t parent_ts = 0;
+    const uint64_t db_height = m_core.get_blockchain_storage().get_db().height();
+    if (db_height > 0)
+      parent_ts = m_core.get_blockchain_storage().get_db().get_block_timestamp(db_height - 1);
+    const uint8_t rnd = service_nodes::pulse::round_from_timestamps(parent_ts, static_cast<uint64_t>(time(NULL)));
+    res.leader_index = service_nodes::pulse::leader_index(height, active.size(), rnd);
+    res.round = rnd;
+    const auto q = service_nodes::pulse::quorum_indices(height, active.size(), rnd);
+    res.majority_required = service_nodes::pulse::min_signatures_for_quorum(q.size());
+    for (const size_t idx : q)
       res.quorum_indices.push_back(idx);
+    if (const auto *keys = m_core.get_service_node_keys())
+    {
+      const size_t slot = service_nodes::pulse::validator_slot(height, active, keys->pub, rnd);
+      res.in_quorum = slot != service_nodes::pulse::k_not_in_quorum;
+      res.is_leader = res.in_quorum && slot == 0;
+      res.local_signature_ready = res.in_quorum;
+    }
+    const auto &collector = service_nodes::pulse::collector();
+    res.signature_count = (collector.height() == height && collector.round() == rnd) ? collector.signature_count() : 0;
+    if (res.signature_count == 0 && res.in_quorum)
+      res.signature_count = 1;
+    res.majority_ok = service_nodes::pulse::majority_reached(res.signature_count, q.size());
     res.status = CORE_RPC_STATUS_OK;
     return true;
   }
