@@ -87,6 +87,8 @@
   and the router with `--storage-url`. Companion HTTP listens accept IPv6
   (`[::1]:port`), cap bodies at 1 MiB, apply socket timeouts on Windows and POSIX,
   and open identity files via `std::filesystem::path` (Unicode-safe on Windows).
+  `arqma-msg` get / inbox / open follow `/v1/snodes` members when the contacted
+  node has no local copy of an `inbox-*` key.
 - Expose cutover gates on `get_arqnet_status` (`native_mesh_ready`,
   `native_mesh_blocker`, `native_mesh_hf_permits`, `hard_fork_version`).
 - Scaffold native-mesh inbound `vote_ob` processing (installed only after

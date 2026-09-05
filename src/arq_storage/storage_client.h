@@ -90,6 +90,7 @@ public:
   void set_snodes_for_pubkey(std::string pubkey, std::vector<std::string> snodes);
 
 private:
+  std::vector<Endpoint> inbox_swarm_endpoints(const std::string& namespace_name) const;
   Config config_;
   Endpoint endpoint_;
   mutable std::mutex mutex_;

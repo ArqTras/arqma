@@ -150,8 +150,9 @@ arqma-msg inbox --url http://127.0.0.1:22021 --to <64-hex>
 
 `arqma-storage` honors `PUT /v1/kv?ttl=` (max 14 days). Inbox keys also copy to
 URLs listed in `PUT /v1/snodes?pubkey=`. `GET /v1/swarm?pubkey=` returns swarm id
-plus those members. Listen on IPv6 as `[::1]:22021`. HTTP bodies are capped at
-1 MiB on Linux, macOS, and Windows.
+plus those members. `arqma-msg` get / inbox / open also read those members when
+the node in `--url` has no local copy. Listen on IPv6 as `[::1]:22021`. HTTP
+bodies are capped at 1 MiB on Linux, macOS, and Windows.
 
 ## Compatibility
 

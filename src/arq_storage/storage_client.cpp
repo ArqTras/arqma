@@ -37,6 +37,7 @@
 #include <array>
 #include <chrono>
 #include <mutex>
+#include <set>
 #include <sstream>
 #include <utility>
 
@@ -160,11 +161,18 @@ Result<std::string> StorageClient::retrieve(std::string namespace_name, std::str
   if (!endpoint_ || endpoint_.tls)
     return {{}, not_connected()};
   const auto result = http_exchange(endpoint_, "GET", kv_path(namespace_name, key), {}, config_.connect_timeout);
+  if (result.status != 404 && result)
+    return {result.body, {}};
+  if (result.status != 404 && result.error)
+    return {{}, result.error};
+  for (const auto& ep : inbox_swarm_endpoints(namespace_name)) {
+    const auto replica = http_exchange(ep, "GET", kv_path(namespace_name, key), {}, config_.connect_timeout);
+    if (replica)
+      return {replica.body, {}};
+  }
   if (result.status == 404)
     return {{}, std::make_error_code(std::errc::no_such_file_or_directory)};
-  if (!result)
-    return {{}, result.error ? result.error : not_connected()};
-  return {result.body, {}};
+  return {{}, result.error ? result.error : not_connected()};
 }
 
 Result<std::vector<std::string>> StorageClient::list_keys(std::string namespace_name) const noexcept
@@ -186,16 +194,29 @@ Result<std::vector<std::string>> StorageClient::list_keys(std::string namespace_
       http_exchange(endpoint_, "GET", "/v1/list?ns=" + url_encode(namespace_name), {}, config_.connect_timeout);
   if (!result)
     return {{}, result.error ? result.error : not_connected()};
-  std::vector<std::string> keys;
+  std::set<std::string> unique;
   std::string line;
   std::istringstream iss{result.body};
   while (std::getline(iss, line)) {
     if (!line.empty() && line.back() == '\r')
       line.pop_back();
     if (!line.empty())
-      keys.push_back(std::move(line));
+      unique.insert(std::move(line));
   }
-  return {keys, {}};
+  for (const auto& ep : inbox_swarm_endpoints(namespace_name)) {
+    const auto replica =
+        http_exchange(ep, "GET", "/v1/list?ns=" + url_encode(namespace_name), {}, config_.connect_timeout);
+    if (!replica)
+      continue;
+    std::istringstream replica_iss{replica.body};
+    while (std::getline(replica_iss, line)) {
+      if (!line.empty() && line.back() == '\r')
+        line.pop_back();
+      if (!line.empty())
+        unique.insert(std::move(line));
+    }
+  }
+  return {{unique.begin(), unique.end()}, {}};
 }
 
 Result<std::vector<std::string>> StorageClient::get_snodes_for_pubkey(std::string pubkey) const noexcept
@@ -241,6 +262,31 @@ void StorageClient::set_snodes_for_pubkey(std::string pubkey, std::vector<std::s
     body.push_back('\n');
   }
   http_exchange(endpoint_, "PUT", snodes_path(pubkey), body, config_.connect_timeout);
+}
+
+std::vector<Endpoint> StorageClient::inbox_swarm_endpoints(const std::string& namespace_name) const
+{
+  std::vector<Endpoint> out;
+  if (config_.backend != Backend::Remote || !endpoint_ || endpoint_.tls)
+    return out;
+  const auto pub = inbox_pubkey(namespace_name);
+  if (pub.empty())
+    return out;
+  const auto members = get_snodes_for_pubkey(pub);
+  if (!members)
+    return out;
+  const auto self = format_http_authority(endpoint_.host, endpoint_.port);
+  for (const auto& url : members.value) {
+    const auto ep = parse_endpoint(url);
+    if (!ep || ep.tls)
+      continue;
+    if (format_http_authority(ep.host, ep.port) == self)
+      continue;
+    out.push_back(ep);
+    if (out.size() >= max_swarm_fallback)
+      break;
+  }
+  return out;
 }
 
 void configure_daemon_client(Config config)

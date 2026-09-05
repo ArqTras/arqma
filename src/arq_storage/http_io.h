@@ -18,6 +18,15 @@ namespace arq_storage {
 constexpr std::size_t max_http_header_bytes = 8192;
 constexpr std::size_t max_http_body_bytes = 1024 * 1024;
 constexpr std::size_t max_kv_name_bytes = 128;
+constexpr std::size_t max_swarm_fallback = 8;
+
+inline std::string inbox_pubkey(const std::string_view ns)
+{
+  constexpr std::string_view prefix = "inbox-";
+  if (ns.size() <= prefix.size() || ns.substr(0, prefix.size()) != prefix)
+    return {};
+  return std::string{ns.substr(prefix.size())};
+}
 struct HttpResult
 {
   int status = 0;

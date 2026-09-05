@@ -279,6 +279,47 @@ TEST(arq_storage_server, fans_inbox_put_to_swarm_members)
   replica.stop();
 }
 
+TEST(arq_storage_server, retrieve_falls_back_to_swarm_member)
+{
+  arq_storage::StorageServer directory;
+  arq_storage::StorageServer replica;
+  ASSERT_FALSE(directory.listen("127.0.0.1", 0));
+  ASSERT_FALSE(replica.listen("127.0.0.1", 0));
+  arq_storage::Config replica_cfg{arq_storage::Backend::Remote, replica.base_url(), std::chrono::milliseconds{2000}};
+  arq_storage::StorageClient replica_writer{replica_cfg};
+  ASSERT_FALSE(replica_writer.store({"inbox-pk", "k", "hidden"}));
+  arq_storage::Config dir_cfg{arq_storage::Backend::Remote, directory.base_url(), std::chrono::milliseconds{2000}};
+  arq_storage::StorageClient reader{dir_cfg};
+  reader.set_snodes_for_pubkey("pk", {replica.base_url()});
+  const auto got = reader.retrieve("inbox-pk", "k");
+  EXPECT_FALSE(got.error);
+  EXPECT_EQ("hidden", got.value);
+  directory.stop();
+  replica.stop();
+}
+
+TEST(arq_storage_server, list_keys_merges_swarm_members)
+{
+  arq_storage::StorageServer directory;
+  arq_storage::StorageServer replica;
+  ASSERT_FALSE(directory.listen("127.0.0.1", 0));
+  ASSERT_FALSE(replica.listen("127.0.0.1", 0));
+  arq_storage::Config replica_cfg{arq_storage::Backend::Remote, replica.base_url(), std::chrono::milliseconds{2000}};
+  arq_storage::StorageClient replica_writer{replica_cfg};
+  ASSERT_FALSE(replica_writer.store({"inbox-pk", "only-replica", "x"}));
+  arq_storage::Config dir_cfg{arq_storage::Backend::Remote, directory.base_url(), std::chrono::milliseconds{2000}};
+  arq_storage::StorageClient reader{dir_cfg};
+  reader.set_snodes_for_pubkey("pk", {replica.base_url()});
+  ASSERT_FALSE(reader.store({"inbox-pk", "on-dir", "y"}));
+  const auto keys = reader.list_keys("inbox-pk");
+  ASSERT_FALSE(keys.error);
+  ASSERT_EQ(2u, keys.value.size());
+  EXPECT_EQ("on-dir", keys.value[0]);
+  EXPECT_EQ("only-replica", keys.value[1]);
+  directory.stop();
+  replica.stop();
+}
+
 TEST(arq_storage_server, swarm_status_lists_members)
 {
   arq_storage::StorageServer server;

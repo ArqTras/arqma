@@ -83,14 +83,6 @@ struct StorageServer::Impl
     return out;
   }
 
-  static std::string inbox_pubkey(const std::string& ns)
-  {
-    static const std::string prefix = "inbox-";
-    if (ns.size() <= prefix.size() || ns.compare(0, prefix.size(), prefix) != 0)
-      return {};
-    return ns.substr(prefix.size());
-  }
-
   std::filesystem::path kv_path_on_disk(const std::string& ns, const std::string& key) const
   {
     return std::filesystem::path{data_dir} / "kv" / url_encode(ns) / url_encode(key);

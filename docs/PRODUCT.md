@@ -33,8 +33,9 @@ arqma-msg open --to <pub> --secret <priv> --key <id>
 
 `PUT /v1/kv?ttl=` expires values (cap 14 days; `0` means keep). Inbox namespaces
 `inbox-<pubkey>` also fan out to URLs in `PUT /v1/snodes`. `GET /v1/swarm?pubkey=`
-returns the FNV swarm id plus those member URLs. HTTP bodies are capped at 1 MiB;
-listen addresses accept IPv6 (`[::1]:22021`).
+returns the FNV swarm id plus those member URLs. `arqma-msg` get / inbox / open
+read from those members when the local node has no copy. HTTP bodies are capped
+at 1 MiB; listen addresses accept IPv6 (`[::1]:22021`).
 
 `get_storage_status` / `storage_server_ping` talk to `arqma-storage`.
 `get_blink_status` / `print_blink` report the in-daemon Blink collector.

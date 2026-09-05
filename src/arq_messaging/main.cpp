@@ -89,7 +89,9 @@ int main(int argc, char** argv)
                  "  arqma-msg send --to <hex> --text hello --url http://127.0.0.1:22021\n"
                  "  arqma-msg send --router http://127.0.0.1:1090 --to <hex> --text hello\n"
                  "  arqma-msg inbox --to <hex>\n"
-                 "  arqma-msg open --to <pub> --secret <priv> --key <id>\n";
+                 "  arqma-msg get --to <hex> --key <id>\n"
+                 "  arqma-msg open --to <pub> --secret <priv> --key <id>\n"
+                 "get/inbox/open follow inbox swarm members advertised by --url.\n";
     return vm.count("help") ? 0 : 1;
   }
 
