@@ -90,7 +90,9 @@
   `arqma-msg` get / inbox / open follow `/v1/snodes` members when the contacted
   node has no local copy of an `inbox-*` key. `arqma-router` also forwards leftover
   onion (`ARQH` + next hop URL) after peeling; `fwd` caps the path at 3 hops.
-  `arqma-msg send --router` may be repeated (outermost first).
+  `arqma-msg send --router` may be repeated (outermost first). `PUT /v1/snodes`
+  merges unique HTTP member URLs (cap 32) and pushes the list to those members;
+  `arqma-msg swarm` lists or announces them (not a full gossip protocol).
 - Expose cutover gates on `get_arqnet_status` (`native_mesh_ready`,
   `native_mesh_blocker`, `native_mesh_hf_permits`, `hard_fork_version`).
 - Scaffold native-mesh inbound `vote_ob` processing (installed only after

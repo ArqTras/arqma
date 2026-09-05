@@ -64,6 +64,7 @@ int main(int argc, char** argv)
   std::string key;
   std::string secret;
   std::vector<std::string> routers;
+  std::vector<std::string> snodes;
   std::uint32_t ttl = 3600;
   po::options_description desc{"arqma-msg"};
   desc.add_options()("help,h", "show help")("url", po::value<std::string>(&url), "storage base URL")(
@@ -73,7 +74,8 @@ int main(int argc, char** argv)
                                                                      "plaintext (send)")(
       "secret", po::value<std::string>(&secret),
       "recipient private key hex (open)")("router", po::value<std::vector<std::string>>(&routers)->composing(),
-                                          "arqma-router URL (repeat, outermost first, max 3)");
+                                          "arqma-router URL (repeat, outermost first, max 3)")(
+      "snode", po::value<std::vector<std::string>>(&snodes)->composing(), "storage member URL (swarm announce)");
   po::options_description hidden;
   hidden.add_options()("cmd", po::value<std::string>(&cmd));
   po::positional_options_description pos;
@@ -85,7 +87,7 @@ int main(int argc, char** argv)
   po::notify(vm);
   if (vm.count("help") || cmd.empty()) {
     std::cout
-        << "Usage: arqma-msg gen|send|get|inbox|open [options]\n"
+        << "Usage: arqma-msg gen|send|get|inbox|open|swarm [options]\n"
         << desc
         << "\nRequires arqma-storage. Example:\n"
            "  arqma-msg gen\n"
@@ -95,6 +97,8 @@ int main(int argc, char** argv)
            "  arqma-msg inbox --to <hex>\n"
            "  arqma-msg get --to <hex> --key <id>\n"
            "  arqma-msg open --to <pub> --secret <priv> --key <id>\n"
+           "  arqma-msg swarm --to <hex>\n"
+           "  arqma-msg swarm --to <hex> --snode http://127.0.0.1:22022\n"
            "get/inbox/open follow inbox swarm members advertised by --url.\n";
     return vm.count("help") ? 0 : 1;
   }
@@ -232,6 +236,24 @@ int main(int argc, char** argv)
       return 1;
     }
     std::cout << std::string(plain.begin(), plain.end()) << "\n";
+    return 0;
+  }
+
+  if (cmd == "swarm") {
+    if (to.size() != 64) {
+      std::cerr << "swarm requires --to <recipient hex>\n";
+      return 1;
+    }
+    if (!snodes.empty())
+      client.set_snodes_for_pubkey(to, snodes);
+    const auto got = client.get_swarm(to);
+    if (!got) {
+      std::cerr << "swarm failed: " << got.error.message() << "\n";
+      return 1;
+    }
+    std::cout << got.value.first << "\n";
+    for (const auto& member : got.value.second)
+      std::cout << member << "\n";
     return 0;
   }
 

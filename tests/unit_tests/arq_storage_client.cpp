@@ -161,11 +161,11 @@ TEST(arq_storage_server, remote_client_http_roundtrip)
   ASSERT_FALSE(keys.error);
   ASSERT_EQ(1u, keys.value.size());
   EXPECT_EQ("hello", keys.value[0]);
-  client.set_snodes_for_pubkey("pk", {"sn-a", "sn-b"});
+  client.set_snodes_for_pubkey("pk", {"http://127.0.0.1:22021", "http://127.0.0.1:22022"});
   const auto snodes = client.get_snodes_for_pubkey("pk");
   ASSERT_FALSE(snodes.error);
   ASSERT_EQ(2u, snodes.value.size());
-  EXPECT_EQ("sn-a", snodes.value[0]);
+  EXPECT_EQ("http://127.0.0.1:22021", snodes.value[0]);
   server.stop();
   EXPECT_FALSE(server.running());
 }
@@ -334,6 +334,60 @@ TEST(arq_storage_server, swarm_status_lists_members)
   EXPECT_EQ(0u, got.body.find(expected + "\n"));
   EXPECT_NE(std::string::npos, got.body.find("http://127.0.0.1:1"));
   server.stop();
+}
+
+TEST(arq_storage_server, merge_snode_urls_uniques_and_cap)
+{
+  const auto merged = arq_storage::merge_snode_urls({"http://127.0.0.1:22021/", "https://example.com:443"},
+                                                    {"http://127.0.0.1:22021", "http://127.0.0.1:22022", "not-a-url"});
+  ASSERT_EQ(2u, merged.size());
+  EXPECT_EQ("http://127.0.0.1:22021", merged[0]);
+  EXPECT_EQ("http://127.0.0.1:22022", merged[1]);
+  std::vector<std::string> many;
+  many.reserve(arq_storage::max_snode_urls + 4);
+  for (std::size_t i = 0; i < arq_storage::max_snode_urls + 4; ++i)
+    many.push_back("http://127.0.0.1:" + std::to_string(20000 + i));
+  EXPECT_EQ(arq_storage::max_snode_urls, arq_storage::merge_snode_urls({}, many).size());
+}
+
+TEST(arq_storage_server, merges_snode_lists_on_put)
+{
+  arq_storage::StorageServer server;
+  ASSERT_FALSE(server.listen("127.0.0.1", 0));
+  arq_storage::Config cfg{arq_storage::Backend::Remote, server.base_url(), std::chrono::milliseconds{2000}};
+  arq_storage::StorageClient client{cfg};
+  client.set_snodes_for_pubkey("pk", {"http://127.0.0.1:22021"});
+  client.set_snodes_for_pubkey("pk", {"http://127.0.0.1:22022"});
+  const auto members = client.get_snodes_for_pubkey("pk");
+  ASSERT_FALSE(members.error);
+  ASSERT_EQ(2u, members.value.size());
+  EXPECT_EQ("http://127.0.0.1:22021", members.value[0]);
+  EXPECT_EQ("http://127.0.0.1:22022", members.value[1]);
+  const auto swarm = client.get_swarm("pk");
+  ASSERT_FALSE(swarm.error);
+  EXPECT_EQ(arq_messaging::hash_pubkey_to_swarm("pk"), swarm.value.first);
+  EXPECT_EQ(members.value, swarm.value.second);
+  server.stop();
+}
+
+TEST(arq_storage_server, gossips_snode_list_to_members)
+{
+  arq_storage::StorageServer directory;
+  arq_storage::StorageServer replica;
+  ASSERT_FALSE(directory.listen("127.0.0.1", 0));
+  ASSERT_FALSE(replica.listen("127.0.0.1", 0));
+  arq_storage::Config cfg{arq_storage::Backend::Remote, directory.base_url(), std::chrono::milliseconds{2000}};
+  arq_storage::StorageClient writer{cfg};
+  writer.set_snodes_for_pubkey("pk", {replica.base_url(), "http://127.0.0.1:9"});
+  arq_storage::Config replica_cfg{arq_storage::Backend::Remote, replica.base_url(), std::chrono::milliseconds{2000}};
+  arq_storage::StorageClient reader{replica_cfg};
+  const auto members = reader.get_snodes_for_pubkey("pk");
+  ASSERT_FALSE(members.error);
+  ASSERT_EQ(2u, members.value.size());
+  EXPECT_EQ(replica.base_url(), members.value[0]);
+  EXPECT_EQ("http://127.0.0.1:9", members.value[1]);
+  directory.stop();
+  replica.stop();
 }
 
 TEST(arq_storage_server, rejects_oversized_content_length)

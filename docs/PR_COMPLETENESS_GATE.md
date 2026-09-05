@@ -5,8 +5,8 @@ This PR lands the **production-grade foundation** for Arqma modernization
 macOS**.
 
 It does **not** claim Session-class mobile clients or a full Storage swarm
-gossip protocol. Inbox fan-out **and read fallback** to `/v1/snodes` members
-and KV TTL are in-tree.
+gossip protocol. Inbox fan-out **and read fallback** to `/v1/snodes` members,
+KV TTL, and membership merge/push (cap 32) are in-tree.
 Pulse SN **hybrid (HF20) / exclusive (HF21)** gates, Pulse
 `pulse_rnd` collector, wait-windows, payload-bound majority extra, and
 `get_pulse_status` are started; RandomARQ stays required. Companion binaries
@@ -21,7 +21,7 @@ https://github.com/ArqTras/arqma/pull/3.
 - [x] Critical consensus/wallet correctness fix (HF19 burn)
 - [x] Arq-Net auth hardening
 - [x] Toolchain modernization (C++20, CMake, CI, sanitizers job)
-- [x] Automated unit tests green on curated suite (**616** tests)
+- [x] Automated unit tests green on curated suite (**619** tests)
 - [x] Module scaffolding with tests/docs/CI for MQ, storage, messaging, router
 - [x] ArqMQ facade + dedicated `SocketStack` behind `--arqnet-backend=arqmq`
 - [x] In-memory storage/swarm helpers for tests; remote client stays honest
@@ -38,7 +38,7 @@ https://github.com/ArqTras/arqma/pull/3.
 ### Explicitly deferred (documented)
 
 - Native mesh cutover: stage 4 is on; live `vote_ob` uses SocketStack only with HF20+ `arqmq`+CURVE (SNNetwork fallback otherwise)
-- Storage swarm gossip protocol beyond `/v1/snodes` URL lists (KV + TTL + inbox fan-out + read fallback are in-tree)
+- Storage swarm gossip protocol beyond `/v1/snodes` URL lists (KV + TTL + inbox fan-out + read fallback + membership merge/push are in-tree)
 - Session-class client UX beyond `arqma-msg`
 - Pulse/Blink/L2: Pulse **hybrid producer started**; Blink collector/RPC in-tree (does not replace Pulse or PoW)
 - Restoring every legacy Monero-era unit fixture / `core_tests` in default CI

@@ -28,6 +28,7 @@
 
 #include "storage_client.h"
 #include "http_io.h"
+#include "arq_messaging/swarm_map.hpp"
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -36,6 +37,7 @@
 #include <boost/system/error_code.hpp>
 #include <array>
 #include <chrono>
+#include <cstdlib>
 #include <mutex>
 #include <set>
 #include <sstream>
@@ -235,16 +237,7 @@ Result<std::vector<std::string>> StorageClient::get_snodes_for_pubkey(std::strin
   const auto result = http_exchange(endpoint_, "GET", snodes_path(pubkey), {}, config_.connect_timeout);
   if (!result)
     return {{}, result.error ? result.error : not_connected()};
-  std::vector<std::string> snodes;
-  std::string line;
-  std::istringstream iss{result.body};
-  while (std::getline(iss, line)) {
-    if (!line.empty() && line.back() == '\r')
-      line.pop_back();
-    if (!line.empty())
-      snodes.push_back(std::move(line));
-  }
-  return {snodes, {}};
+  return {parse_url_lines(result.body), {}};
 }
 
 void StorageClient::set_snodes_for_pubkey(std::string pubkey, std::vector<std::string> snodes)
@@ -256,12 +249,40 @@ void StorageClient::set_snodes_for_pubkey(std::string pubkey, std::vector<std::s
   }
   if (!endpoint_ || endpoint_.tls)
     return;
-  std::string body;
-  for (const auto& sn : snodes) {
-    body.append(sn);
-    body.push_back('\n');
+  http_exchange(endpoint_, "PUT", snodes_path(pubkey), join_url_lines(merge_snode_urls({}, snodes)),
+                config_.connect_timeout);
+}
+
+Result<std::pair<std::uint64_t, std::vector<std::string>>> StorageClient::get_swarm(std::string pubkey) const noexcept
+{
+  if (pubkey.empty())
+    return {{}, invalid_argument()};
+  if (config_.backend == Backend::InMemory) {
+    std::lock_guard<std::mutex> lock{mutex_};
+    std::vector<std::string> members;
+    const auto it = snodes_.find(pubkey);
+    if (it != snodes_.end())
+      members = it->second;
+    return {{arq_messaging::hash_pubkey_to_swarm(pubkey), std::move(members)}, {}};
   }
-  http_exchange(endpoint_, "PUT", snodes_path(pubkey), body, config_.connect_timeout);
+  if (!endpoint_ || endpoint_.tls)
+    return {{}, not_connected()};
+  const auto result =
+      http_exchange(endpoint_, "GET", "/v1/swarm?pubkey=" + url_encode(pubkey), {}, config_.connect_timeout);
+  if (!result)
+    return {{}, result.error ? result.error : not_connected()};
+  std::string line;
+  std::istringstream iss{result.body};
+  if (!std::getline(iss, line))
+    return {{}, not_connected()};
+  if (!line.empty() && line.back() == '\r')
+    line.pop_back();
+  char* end = nullptr;
+  const auto id = static_cast<std::uint64_t>(std::strtoull(line.c_str(), &end, 10));
+  if (end == line.c_str() || (end && *end != '\0'))
+    return {{}, invalid_argument()};
+  const auto rest = result.body.size() > line.size() ? result.body.substr(line.size() + 1) : std::string{};
+  return {{id, parse_url_lines(rest)}, {}};
 }
 
 std::vector<Endpoint> StorageClient::inbox_swarm_endpoints(const std::string& namespace_name) const

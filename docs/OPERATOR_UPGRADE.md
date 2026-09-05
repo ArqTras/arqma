@@ -147,6 +147,7 @@ arqma-router --listen 127.0.0.1:1090 --data-dir ~/.arqma/arq-router --storage-ur
 arqma-msg send --router http://127.0.0.1:1090 --to <64-hex> --text hello
 arqma-msg send --router http://127.0.0.1:1090 --router http://127.0.0.1:1091 --to <64-hex> --text hello
 arqma-msg inbox --url http://127.0.0.1:22021 --to <64-hex>
+arqma-msg swarm --to <64-hex> --snode http://127.0.0.1:22022
 ```
 
 `arqma-storage` honors `PUT /v1/kv?ttl=` (max 14 days). Inbox keys also copy to
@@ -155,7 +156,9 @@ plus those members. `arqma-msg` get / inbox / open also read those members when
 the node in `--url` has no local copy. Listen on IPv6 as `[::1]:22021`. HTTP
 bodies are capped at 1 MiB on Linux, macOS, and Windows. Repeat `--router`
 (outermost first, max 3); intermediate hops forward leftover onion, the last hop
-needs `--storage-url`.
+needs `--storage-url`. `PUT /v1/snodes` merges unique HTTP member URLs (cap 32)
+and pushes the list onto those members. `arqma-msg swarm` lists or announces
+membership. That is still not a full epidemic gossip protocol.
 
 ## Compatibility
 

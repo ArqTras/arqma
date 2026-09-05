@@ -38,6 +38,8 @@ echo "  ${BIN_DIR}/arqma-msg send --url http://${STORAGE_LISTEN} --to <64-hex> -
 echo "  ${BIN_DIR}/arqma-msg send --router http://${ROUTER_LISTEN} --to <64-hex> --text hello"
 echo "  # repeat --router (outermost first, max 3) for extra hops"
 echo "  ${BIN_DIR}/arqma-msg inbox --url http://${STORAGE_LISTEN} --to <64-hex>"
+echo "  ${BIN_DIR}/arqma-msg swarm --to <64-hex>"
+echo "  ${BIN_DIR}/arqma-msg swarm --to <64-hex> --snode http://127.0.0.1:22022"
 echo "  ${BIN_DIR}/arqma-msg open --url http://${STORAGE_LISTEN} --to <pub> --secret <priv> --key <id>"
 echo
 wait

@@ -69,20 +69,6 @@ struct StorageServer::Impl
     return v;
   }
 
-  static std::vector<std::string> split_lines(const std::string& body)
-  {
-    std::vector<std::string> out;
-    std::string line;
-    std::istringstream iss{body};
-    while (std::getline(iss, line)) {
-      if (!line.empty() && line.back() == '\r')
-        line.pop_back();
-      if (!line.empty())
-        out.push_back(std::move(line));
-    }
-    return out;
-  }
-
   std::filesystem::path kv_path_on_disk(const std::string& ns, const std::string& key) const
   {
     return std::filesystem::path{data_dir} / "kv" / url_encode(ns) / url_encode(key);
@@ -242,7 +228,7 @@ struct StorageServer::Impl
           if (!pub.empty()) {
             const auto it = snodes.find(pub);
             if (it != snodes.end())
-              swarm_urls = split_lines(it->second);
+              swarm_urls = parse_url_lines(it->second);
           }
         }
         if (query_get(path, "replicate") != "0") {
@@ -275,13 +261,19 @@ struct StorageServer::Impl
       if (pub.empty())
         return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
       if (method == "PUT") {
+        std::string merged;
+        std::vector<std::string> member_urls;
         {
           std::lock_guard<std::mutex> lock{mu};
-          snodes[pub] = body;
-          persist_snodes(pub, body);
+          const auto it = snodes.find(pub);
+          const auto existing = it == snodes.end() ? std::vector<std::string>{} : parse_url_lines(it->second);
+          member_urls = merge_snode_urls(existing, parse_url_lines(body));
+          merged = join_url_lines(member_urls);
+          snodes[pub] = merged;
+          persist_snodes(pub, merged);
         }
         if (query_get(path, "replicate") != "0")
-          replicate(snodes_path(pub) + "&replicate=0", body);
+          replicate(snodes_path(pub) + "&replicate=0", merged, member_urls);
         return "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
       }
       if (method == "GET") {

@@ -15,12 +15,12 @@ Platform matrix: [`docs/PLATFORM.md`](PLATFORM.md).
 | 2 Core modernization | **Done** | C++20, CI, CLSAG tests, HF/Arq-Net fixes |
 | 3 Oxen feature parity (selective) | **Foundation + native transport** | ArqMQ facade + `SocketStack` behind `--arqnet-backend=arqmq` |
 | 4 Arq-Net evolution | **Foundation done** | Auth harden, ping, dual-stack plan |
-| 5 Storage Server | **In-repo binary** | `arqma-storage` HTTP KV + TTL + swarm member fan-out; daemon still probes |
+| 5 Storage Server | **In-repo binary** | `arqma-storage` HTTP KV + TTL + swarm member fan-out + membership merge/push; daemon still probes |
 | 6 Session-like modules | **In-repo CLI** | Envelope, onion peel/forward, swarm, sealed-box, `arqma-msg` |
 | 7 RPC modernization | **Foundation done** | Validation, wallet caps/auth, OpenAPI 0.2.0 |
 | 8 P2P improvements | **Foundation done** | Limits + Levin/preauth lock |
 | 9 Performance | **Baseline** | Local measurement doc |
-| 10 Testing | **Done (curated)** | **616** unit tests green; integration suites opt-in |
+| 10 Testing | **Done (curated)** | **619** unit tests green; integration suites opt-in |
 | 11 CI | **Done (3 OS)** | Linux/macOS native unit + Windows/macOS/Linux depends |
 | 12 Final review | **Gate ready** | Checklist + completeness gate + platform doc |
 
@@ -90,7 +90,7 @@ milestone.
 - [x] Native GitHub Actions CI + sanitizer job
 - [x] `.clang-format` / `.clang-tidy`
 - [x] CMake ≥ 3.16, C++20 (`-fno-char8_t` bridge)
-- [x] Green curated unit suite (**616** tests)
+- [x] Green curated unit suite (**619** tests)
 - [x] Restore legacy fixtures (base58/uri/parse_amount/sha256/mul_div/fee/…)
 - [x] Hardfork version + serialization basic unit coverage
 - [x] ArqMQ dual-backend facade (transport remains SNNetwork)
@@ -132,12 +132,12 @@ Remaining before default flip (not blocking Milestone B; preserves compatibility
 
 **Requires human product decision.** Choose one primary value-add:
 
-1. Storage swarm replication (HTTP KV + TTL + inbox `/v1/snodes` fan-out is in-tree)
+1. Storage swarm replication (HTTP KV + TTL + inbox `/v1/snodes` fan-out + membership merge/push is in-tree)
 2. Blink-like fast confirmation (collector/RPC in-tree; not a Pulse/PoW replacement)
 3. Pulse-like consensus change (hybrid producer started; PoW stays)
 4. Privacy routing daemon (HTTP companion is in-tree: `arqma-router`)
 
-See [`docs/PRODUCT.md`](PRODUCT.md). Full swarm gossip protocol and Session-class
+See [`docs/PRODUCT.md`](PRODUCT.md). Full epidemic swarm gossip and Session-class
 clients remain follow-ups (`docs/PR_COMPLETENESS_GATE.md`).
 
 ## Explicit non-goals (near term)

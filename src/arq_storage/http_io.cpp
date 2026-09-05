@@ -12,6 +12,7 @@
 #include <boost/asio/write.hpp>
 #include <cstdlib>
 #include <iterator>
+#include <set>
 #include <sstream>
 
 #if defined(_WIN32)
@@ -129,6 +130,67 @@ std::string kv_path(const std::string_view ns, const std::string_view key)
 std::string snodes_path(const std::string_view pubkey)
 {
   return "/v1/snodes?pubkey=" + url_encode(pubkey);
+}
+
+namespace {
+std::string trim_base_url(std::string url)
+{
+  while (!url.empty() && url.back() == '/')
+    url.pop_back();
+  return url;
+}
+
+bool usable_snode_url(const std::string& url)
+{
+  const auto ep = parse_endpoint(url);
+  return static_cast<bool>(ep) && !ep.tls;
+}
+} // namespace
+
+std::vector<std::string> parse_url_lines(const std::string_view body)
+{
+  std::vector<std::string> out;
+  std::string line;
+  std::istringstream iss{std::string{body}};
+  while (std::getline(iss, line)) {
+    if (!line.empty() && line.back() == '\r')
+      line.pop_back();
+    line = trim_base_url(std::move(line));
+    if (line.empty() || !usable_snode_url(line))
+      continue;
+    out.push_back(std::move(line));
+  }
+  return out;
+}
+
+std::string join_url_lines(const std::vector<std::string>& urls)
+{
+  std::string body;
+  for (const auto& url : urls) {
+    body.append(url);
+    body.push_back('\n');
+  }
+  return body;
+}
+
+std::vector<std::string> merge_snode_urls(const std::vector<std::string>& existing,
+                                          const std::vector<std::string>& incoming)
+{
+  std::vector<std::string> out;
+  std::set<std::string> seen;
+  auto push = [&](std::string url) {
+    url = trim_base_url(std::move(url));
+    if (url.empty() || !usable_snode_url(url) || !seen.insert(url).second)
+      return;
+    if (out.size() >= max_snode_urls)
+      return;
+    out.push_back(std::move(url));
+  };
+  for (const auto& url : existing)
+    push(url);
+  for (const auto& url : incoming)
+    push(url);
+  return out;
 }
 
 std::string format_http_request(const std::string_view method, const std::string_view path, const std::string_view host,

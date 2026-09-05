@@ -19,6 +19,7 @@ constexpr std::size_t max_http_header_bytes = 8192;
 constexpr std::size_t max_http_body_bytes = 1024 * 1024;
 constexpr std::size_t max_kv_name_bytes = 128;
 constexpr std::size_t max_swarm_fallback = 8;
+constexpr std::size_t max_snode_urls = 32;
 
 inline std::string inbox_pubkey(const std::string_view ns)
 {
@@ -40,6 +41,13 @@ std::string url_decode(std::string_view raw);
 std::string query_get(std::string_view path, std::string_view key);
 std::string kv_path(std::string_view ns, std::string_view key);
 std::string snodes_path(std::string_view pubkey);
+
+/// Parse newline-separated HTTP base URLs; drop empties, TLS, and junk.
+std::vector<std::string> parse_url_lines(std::string_view body);
+std::string join_url_lines(const std::vector<std::string>& urls);
+/// Union `existing` then `incoming`, first-seen order, cap `max_snode_urls`.
+std::vector<std::string> merge_snode_urls(const std::vector<std::string>& existing,
+                                          const std::vector<std::string>& incoming);
 
 std::string format_http_request(std::string_view method, std::string_view path, std::string_view host,
                                 std::string_view body);

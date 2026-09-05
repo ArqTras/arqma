@@ -42,9 +42,10 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - [x] Cross-platform companion HTTP (IPv6 listen, 1 MiB body cap, socket timeouts, Windows stack.cmd)
 - [x] Inbox swarm read fallback (`retrieve` / `list_keys` try `/v1/snodes` members)
 - [x] Multi-hop onion forward (`ARQH` frame, `fwd` cap, repeatable `--router`)
+- [x] Swarm membership merge + push to listed members (`arqma-msg swarm`)
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 
 ## Quality
 
-- Local `unit_tests` → **616** passed (multi-hop onion forward)
+- Local `unit_tests` → **619** passed (swarm membership merge + gossip push)
