@@ -104,13 +104,23 @@ bool participate_round(uint64_t height, const crypto::hash& prev_id, uint8_t rou
                        const std::vector<crypto::public_key>& active_pubs,
                        bool relay = true);
 
-/// Structural + signature checks. Callers that attach extra to a block must
-/// pass `min_signatures_for_quorum` (majority). Extra stays optional in hybrid;
-/// a present extra is a real quorum, not a single stamp.
+/// Structural + signature checks. Votes must be unique and strictly increasing
+/// by `validator_index`. `min_signatures` is a lower bound (collector probes use
+/// the current count; miner extra uses `verify_majority_certificate`).
 bool verify_round(const cryptonote::tx_extra_pulse_round& extra, uint64_t height,
                   const crypto::hash& prev_id, size_t active_sn_count,
                   const std::vector<crypto::public_key>& quorum_keys,
                   size_t min_signatures);
+
+/// True when `extra_round` is the wait-window implied by parent → block time.
+bool extra_round_matches_timestamps(uint64_t parent_timestamp, uint64_t block_timestamp,
+                                    uint8_t extra_round) noexcept;
+
+/// Majority certificate: exactly `min_signatures_for_quorum` votes, sorted, all valid.
+/// Used for miner-tx extra (hybrid extra stays optional; if present it is this shape).
+bool verify_majority_certificate(const cryptonote::tx_extra_pulse_round& extra, uint64_t height,
+                                 const crypto::hash& prev_id, size_t active_sn_count,
+                                 const std::vector<crypto::public_key>& quorum_keys);
 
 /// Packed vote used on Arq-Net `pulse_rnd` (version || height || round || leader || index || prev || sig).
 struct RelayVote
@@ -140,6 +150,9 @@ public:
   /// Returns true when `vote` is new and valid. Optionally invokes the relay hook.
   bool add_vote(const RelayVote& vote, const std::vector<crypto::public_key>& quorum_keys,
                 size_t active_sn_count, bool relay_if_new = true);
+  /// Snapshot a canonical majority certificate (lowest `validator_index` slots).
+  /// False until 2/3 of the quorum have signed. Extra vote count is capped at
+  /// `min_signatures_for_quorum` so miner templates converge after majority.
   bool snapshot(cryptonote::tx_extra_pulse_round& out) const;
   bool has_vote(uint32_t validator_index) const;
   uint64_t height() const;

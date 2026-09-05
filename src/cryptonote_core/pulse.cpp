@@ -6,10 +6,10 @@
 
 #include "common/util.h"
 
+#include <algorithm>
 #include <array>
 #include <cstring>
 #include <mutex>
-#include <unordered_set>
 
 namespace service_nodes
 {
@@ -25,6 +25,16 @@ constexpr int k_pulse_pow_stage = 2;
 constexpr int k_pulse_pow_replacement_stage = 3;
 
 void (*g_relay_new_vote)(const RelayVote&) = nullptr;
+
+void insert_sorted_vote(std::vector<cryptonote::tx_extra_pulse_round::vote>& votes,
+                        const cryptonote::tx_extra_pulse_round::vote& vote)
+{
+  const auto it = std::lower_bound(votes.begin(), votes.end(), vote.validator_index,
+                                   [](const cryptonote::tx_extra_pulse_round::vote& existing, const uint32_t index) {
+                                     return existing.validator_index < index;
+                                   });
+  votes.insert(it, vote);
+}
 } // namespace
 
 const char* to_string(const SnMode mode) noexcept
@@ -78,6 +88,12 @@ uint8_t round_from_timestamps(const uint64_t parent_timestamp, const uint64_t no
   const uint64_t elapsed = now - parent_timestamp;
   const uint64_t r = elapsed / k_round_window_seconds;
   return r > k_max_round ? k_max_round : static_cast<uint8_t>(r);
+}
+
+bool extra_round_matches_timestamps(const uint64_t parent_timestamp, const uint64_t block_timestamp,
+                                    const uint8_t extra_round) noexcept
+{
+  return extra_round == round_from_timestamps(parent_timestamp, block_timestamp);
 }
 
 bool majority_reached(const size_t signatures, const size_t quorum_size) noexcept
@@ -222,18 +238,30 @@ bool verify_round(const cryptonote::tx_extra_pulse_round& extra, const uint64_t 
     return false;
 
   const crypto::hash hashed = round_hash(height, prev_id, extra.round);
-  std::unordered_set<uint32_t> seen;
-  seen.reserve(extra.votes.size());
+  uint32_t prev_index = 0;
+  bool first = true;
   for (const auto& vote : extra.votes)
   {
     if (vote.validator_index >= quorum_keys.size())
       return false;
-    if (!seen.insert(vote.validator_index).second)
+    if (!first && vote.validator_index <= prev_index)
       return false;
+    first = false;
+    prev_index = vote.validator_index;
     if (!check_round_signature(hashed, quorum_keys[vote.validator_index], vote.signature))
       return false;
   }
   return true;
+}
+
+bool verify_majority_certificate(const cryptonote::tx_extra_pulse_round& extra, const uint64_t height,
+                                 const crypto::hash& prev_id, const size_t active_sn_count,
+                                 const std::vector<crypto::public_key>& quorum_keys)
+{
+  const size_t min_sigs = min_signatures_for_quorum(quorum_keys.size());
+  if (min_sigs == 0 || extra.votes.size() != min_sigs)
+    return false;
+  return verify_round(extra, height, prev_id, active_sn_count, quorum_keys, min_sigs);
 }
 
 bool encode_relay_vote(const RelayVote& vote, std::string& out)
@@ -331,10 +359,10 @@ bool RoundCollector::add_vote(const RelayVote& vote, const std::vector<crypto::p
     }
 
     cryptonote::tx_extra_pulse_round probe = m_extra;
-    probe.votes.push_back({vote.signature, vote.validator_index});
+    insert_sorted_vote(probe.votes, {vote.signature, vote.validator_index});
     if (!verify_round(probe, vote.height, vote.prev_id, active_sn_count, quorum_keys, probe.votes.size()))
       return false;
-    m_extra.votes.push_back({vote.signature, vote.validator_index});
+    m_extra.votes = std::move(probe.votes);
   }
 
   if (relay_if_new && g_relay_new_vote)
@@ -349,6 +377,9 @@ bool RoundCollector::snapshot(cryptonote::tx_extra_pulse_round& out) const
   if (!majority_reached(m_extra.votes.size(), q))
     return false;
   out = m_extra;
+  const size_t keep = min_signatures_for_quorum(q);
+  if (out.votes.size() > keep)
+    out.votes.resize(keep);
   return true;
 }
 

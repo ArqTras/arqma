@@ -651,6 +651,8 @@ void relay_pulse_vote(const service_nodes::pulse::RelayVote &vote)
   if (!service_nodes::pulse::encode_relay_vote(vote, blob))
     return;
   std::shared_ptr<const quorum> cq = std::move(q);
+  // Peer list comes from `cq->validators` (Pulse quorum). `quorum_type` is only
+  // used for Q/Q' trace labels in peer_info.
   peer_info pinfo{*g_pulse_snw, quorum_type::obligations, cq};
   if (!pinfo.my_position_count)
     return;

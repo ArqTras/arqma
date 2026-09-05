@@ -104,6 +104,9 @@ TEST(pulse, wait_window_round_from_timestamps)
   EXPECT_EQ(7, service_nodes::pulse::round_from_timestamps(100, 100 + 7 * service_nodes::pulse::k_round_window_seconds));
   EXPECT_EQ(service_nodes::pulse::k_max_round,
             service_nodes::pulse::round_from_timestamps(100, 100 + 1000));
+  EXPECT_TRUE(service_nodes::pulse::extra_round_matches_timestamps(100, 114, 0));
+  EXPECT_TRUE(service_nodes::pulse::extra_round_matches_timestamps(100, 115, 1));
+  EXPECT_FALSE(service_nodes::pulse::extra_round_matches_timestamps(100, 115, 0));
 }
 
 TEST(pulse, round_hash_is_deterministic)
@@ -177,10 +180,16 @@ TEST(pulse, local_round_and_majority_verify)
   }
 
   EXPECT_TRUE(service_nodes::pulse::verify_round(extra, height, prev, pubs.size(), qpubs, 7));
+  EXPECT_TRUE(service_nodes::pulse::verify_majority_certificate(extra, height, prev, pubs.size(), qpubs));
+  auto too_many = extra;
+  too_many.votes.push_back({service_nodes::pulse::sign_round(hashed, keys[q[7]].pub, keys[q[7]].sec), 7});
+  EXPECT_TRUE(service_nodes::pulse::verify_round(too_many, height, prev, pubs.size(), qpubs, 7));
+  EXPECT_FALSE(service_nodes::pulse::verify_majority_certificate(too_many, height, prev, pubs.size(), qpubs));
 
   auto too_few = extra;
   too_few.votes.pop_back();
   EXPECT_FALSE(service_nodes::pulse::verify_round(too_few, height, prev, pubs.size(), qpubs, 7));
+  EXPECT_FALSE(service_nodes::pulse::verify_majority_certificate(too_few, height, prev, pubs.size(), qpubs));
   EXPECT_TRUE(service_nodes::pulse::verify_round(too_few, height, prev, pubs.size(), qpubs, 1));
 
   auto bad_height = extra;
@@ -314,8 +323,69 @@ TEST(pulse, relay_vote_roundtrip_and_collector)
   cryptonote::tx_extra_pulse_round extra{};
   ASSERT_TRUE(collector.snapshot(extra));
   EXPECT_TRUE(service_nodes::pulse::verify_round(extra, height, prev, pubs.size(), qpubs, 7));
+
+  auto unsorted = extra;
+  ASSERT_GE(unsorted.votes.size(), 2u);
+  std::swap(unsorted.votes.front(), unsorted.votes.back());
+  EXPECT_FALSE(service_nodes::pulse::verify_round(unsorted, height, prev, pubs.size(), qpubs, 7));
+
   collector.clear();
   EXPECT_EQ(0u, collector.signature_count());
+}
+
+TEST(pulse, collector_canonicalizes_vote_order)
+{
+  service_nodes::pulse::collector().clear();
+  constexpr uint64_t height = 778;
+  crypto::hash prev{};
+  prev.data[6] = 2;
+  const auto keys = make_pulse_keys(11);
+  const auto pubs = pubs_of(keys);
+  const auto q = service_nodes::pulse::quorum_indices(height, pubs.size());
+  const auto qpubs = service_nodes::pulse::quorum_pubkeys(height, pubs);
+  const crypto::hash hashed = service_nodes::pulse::round_hash(height, prev, 0);
+  const uint32_t lead = static_cast<uint32_t>(service_nodes::pulse::leader_index(height, pubs.size()));
+  auto &collector = service_nodes::pulse::collector();
+  collector.prepare(height, prev, 0, lead);
+
+  const uint32_t order[] = {6, 0, 4, 2, 1, 5, 3};
+  for (const uint32_t i : order)
+  {
+    service_nodes::pulse::RelayVote v{};
+    v.height = height;
+    v.round = 0;
+    v.leader_index = lead;
+    v.validator_index = i;
+    v.prev_id = prev;
+    v.signature = service_nodes::pulse::sign_round(hashed, keys[q[i]].pub, keys[q[i]].sec);
+    EXPECT_TRUE(collector.add_vote(v, qpubs, pubs.size(), false));
+  }
+  cryptonote::tx_extra_pulse_round extra{};
+  ASSERT_TRUE(collector.snapshot(extra));
+  ASSERT_EQ(7u, extra.votes.size());
+  for (uint32_t i = 0; i < extra.votes.size(); ++i)
+    EXPECT_EQ(i, extra.votes[i].validator_index);
+  EXPECT_TRUE(service_nodes::pulse::verify_majority_certificate(extra, height, prev, pubs.size(), qpubs));
+
+  for (const uint32_t i : {7u, 8u})
+  {
+    service_nodes::pulse::RelayVote v{};
+    v.height = height;
+    v.round = 0;
+    v.leader_index = lead;
+    v.validator_index = i;
+    v.prev_id = prev;
+    v.signature = service_nodes::pulse::sign_round(hashed, keys[q[i]].pub, keys[q[i]].sec);
+    EXPECT_TRUE(collector.add_vote(v, qpubs, pubs.size(), false));
+  }
+  EXPECT_EQ(9u, collector.signature_count());
+  cryptonote::tx_extra_pulse_round trimmed{};
+  ASSERT_TRUE(collector.snapshot(trimmed));
+  ASSERT_EQ(7u, trimmed.votes.size());
+  for (uint32_t i = 0; i < trimmed.votes.size(); ++i)
+    EXPECT_EQ(i, trimmed.votes[i].validator_index);
+  EXPECT_TRUE(service_nodes::pulse::verify_majority_certificate(trimmed, height, prev, pubs.size(), qpubs));
+  collector.clear();
 }
 
 TEST(pulse, fallback_round_rotates_leader_and_rejects_stale_votes)

@@ -1247,6 +1247,24 @@ bool Blockchain::validate_miner_transaction(const block& b, size_t cumulative_bl
       return false;
   }
 
+  if (service_nodes::pulse::hybrid_sn_permitted(hard_fork_version))
+  {
+    cryptonote::tx_extra_pulse_round pulse{};
+    if (cryptonote::get_pulse_round_from_tx_extra(b.miner_tx.extra, pulse))
+    {
+      uint64_t parent_ts = 0;
+      cryptonote::block parent{};
+      if (get_block_by_hash(b.prev_id, parent))
+        parent_ts = parent.timestamp;
+      if (!service_nodes::pulse::extra_round_matches_timestamps(parent_ts, b.timestamp, pulse.round))
+      {
+        MERROR("Pulse extra round " << static_cast<unsigned>(pulse.round)
+                                    << " does not match parent→block wait-window at height " << height);
+        return false;
+      }
+    }
+  }
+
   if(hard_fork_version >= 16)
   {
     size_t vout_end = b.miner_tx.vout.size();
@@ -1439,8 +1457,12 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
         const bool have_majority = service_nodes::pulse::collector().snapshot(live) && live.height == m_btc_height &&
                                    live.round == rnd;
         if (have_majority)
+        {
           pulse_cache_ok = has_pulse && cached_pulse.round == live.round &&
                            cached_pulse.votes.size() == live.votes.size();
+          for (size_t i = 0; pulse_cache_ok && i < live.votes.size(); ++i)
+            pulse_cache_ok = cached_pulse.votes[i].validator_index == live.votes[i].validator_index;
+        }
         else
           pulse_cache_ok = !has_pulse;
       }

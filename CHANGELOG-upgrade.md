@@ -60,8 +60,9 @@
   stays false; do not flip Pulse stage 3 / PoW-off). Active service nodes in the
   Pulse quorum now sign and gossip `pulse_rnd` from the daemon idle loop (every 5s),
   retransmitting already-collected local votes so late quorum peers catch up.
-  Miner-tx Pulse extra is attached only after a **majority** (7/11); a present extra
-  is validated at that threshold. `get_pulse_status.signature_count` is the collector
+  Miner-tx Pulse extra is attached only after a **majority** (7/11) as a fixed-size
+  certificate (lowest `validator_index` slots); extra `round` must match the
+  parent→block wait-window. `get_pulse_status.signature_count` is the collector
   total (no synthetic +1). The collector drops votes once the height is produced (and on reorg).
 - Expose cutover gates on `get_arqnet_status` (`native_mesh_ready`,
   `native_mesh_blocker`, `native_mesh_hf_permits`, `hard_fork_version`).

@@ -1524,8 +1524,7 @@ namespace service_nodes
         for (const auto &info : infos)
           active.push_back(info.first);
         const auto quorum_keys = service_nodes::pulse::quorum_pubkeys(height, active, pulse.round);
-        const size_t min_sigs = service_nodes::pulse::min_signatures_for_quorum(quorum_keys.size());
-        if (!service_nodes::pulse::verify_round(pulse, height, prev_id, active.size(), quorum_keys, min_sigs))
+        if (!service_nodes::pulse::verify_majority_certificate(pulse, height, prev_id, active.size(), quorum_keys))
         {
           MERROR("Pulse round extra on miner tx failed verification at height " << height);
           return false;
