@@ -38,8 +38,8 @@ echo
 echo "Messenger:"
 echo "  ${BIN_DIR}/arqma-msg gen"
 echo "  ${BIN_DIR}/arqma-msg send --to <64-hex> --text hello"
-echo "  ${BIN_DIR}/arqma-msg inbox --to <64-hex>"
-echo "  ${BIN_DIR}/arqma-msg open --to <pub> --secret <priv> --key <id>"
+echo "  ${BIN_DIR}/arqma-msg inbox"
+echo "  ${BIN_DIR}/arqma-msg open"
 echo
 echo "Daemon (separate process):"
 echo "  ${BIN_DIR}/arqmad --storage-client-url=http://${STORAGE_LISTEN} --arq-router"

@@ -15,8 +15,10 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
+#include <filesystem>
 #include <iostream>
 #include <string>
+#include <system_error>
 #include <vector>
 
 namespace {
@@ -51,6 +53,33 @@ bool from_hex(const std::string& hex, std::uint8_t* out, std::size_t n)
       return false;
     out[i] = static_cast<std::uint8_t>((hi << 4) | lo);
   }
+  return true;
+}
+
+std::error_code load_or_create_local_identity(arq_messaging::Identity& id, const bool create)
+{
+  const auto path = arq_messaging::default_identity_path();
+  if (!arq_messaging::load_identity(path, id))
+    return {};
+  if (!create)
+    return std::make_error_code(std::errc::no_such_file_or_directory);
+  std::error_code fs_ec;
+  std::filesystem::create_directories(path.parent_path(), fs_ec);
+  if (arq_messaging::generate_identity(id))
+    return std::make_error_code(std::errc::io_error);
+  return arq_messaging::save_identity(path, id);
+}
+
+bool inbox_to_hex(const std::string& to, std::string& out)
+{
+  if (to.size() == 64) {
+    out = to;
+    return true;
+  }
+  arq_messaging::Identity id{};
+  if (load_or_create_local_identity(id, false))
+    return false;
+  out = to_hex(id.public_key.data.data(), 32);
   return true;
 }
 } // namespace
@@ -98,16 +127,18 @@ int main(int argc, char** argv)
               << "\nEveryday (start utils/arqma-stack.sh first):\n"
                  "  arqma-msg gen\n"
                  "  arqma-msg send --to <hex> --text hello\n"
-                 "  arqma-msg inbox --to <hex>\n"
-                 "  arqma-msg open --to <pub> --secret <priv> --key <id>\n"
-                 "\nOperator knobs: --url, --router (repeat, max 3), swarm --snode.\n";
+                 "  arqma-msg inbox\n"
+                 "  arqma-msg open\n"
+                 "\nOperator knobs: --url, --to, --secret, --key, --router, swarm --snode.\n";
     return vm.count("help") ? 0 : 1;
   }
 
   if (cmd == "gen") {
     arq_messaging::Identity id{};
-    if (arq_messaging::generate_identity(id))
+    if (const auto ec = load_or_create_local_identity(id, true)) {
+      std::cerr << "identity failed: " << ec.message() << "\n";
       return 1;
+    }
     std::cout << to_hex(id.public_key.data.data(), 32) << " " << to_hex(id.private_key.data.data(), 32) << "\n";
     return 0;
   }
@@ -201,11 +232,12 @@ int main(int argc, char** argv)
   }
 
   if (cmd == "inbox") {
-    if (to.size() != 64) {
-      std::cerr << "inbox requires --to <recipient hex>\n";
+    std::string inbox_to;
+    if (!inbox_to_hex(to, inbox_to)) {
+      std::cerr << "run arqma-msg gen first\n";
       return 1;
     }
-    const auto keys = client.list_keys("inbox-" + to);
+    const auto keys = client.list_keys("inbox-" + inbox_to);
     if (!keys) {
       std::cerr << "list failed: " << keys.error.message() << "\n";
       return 1;
@@ -216,29 +248,48 @@ int main(int argc, char** argv)
   }
 
   if (cmd == "open") {
-    if (to.size() != 64 || secret.size() != 64 || key.empty()) {
-      std::cerr << "open requires --to <pub hex> --secret <priv hex> --key\n";
-      return 1;
-    }
-    const auto got = client.retrieve("inbox-" + to, key);
-    if (!got) {
-      std::cerr << "retrieve failed: " << got.error.message() << "\n";
-      return 1;
-    }
-    arq_messaging::MessageEnvelope env{};
-    if (!arq_messaging::decode_message_envelope(got.value, env)) {
-      std::cerr << "bad envelope\n";
-      return 1;
-    }
     arq_messaging::Identity id{};
-    if (!from_hex(to, id.public_key.data.data(), 32) || !from_hex(secret, id.private_key.data.data(), 32))
+    std::string inbox_to = to;
+    if (to.size() == 64 && secret.size() == 64) {
+      if (!from_hex(to, id.public_key.data.data(), 32) || !from_hex(secret, id.private_key.data.data(), 32))
+        return 1;
+    } else if (load_or_create_local_identity(id, false)) {
+      std::cerr << "run arqma-msg gen first\n";
       return 1;
-    std::vector<std::uint8_t> plain;
-    if (arq_messaging::open_payload(id, env.payload, plain)) {
-      std::cerr << "open failed\n";
-      return 1;
+    } else {
+      inbox_to = to_hex(id.public_key.data.data(), 32);
     }
-    std::cout << std::string(plain.begin(), plain.end()) << "\n";
+    std::vector<std::string> keys;
+    if (!key.empty()) {
+      keys.push_back(key);
+    } else {
+      const auto listed = client.list_keys("inbox-" + inbox_to);
+      if (!listed) {
+        std::cerr << "list failed: " << listed.error.message() << "\n";
+        return 1;
+      }
+      keys = listed.value;
+    }
+    for (const auto& item : keys) {
+      const auto got = client.retrieve("inbox-" + inbox_to, item);
+      if (!got) {
+        std::cerr << "retrieve failed: " << got.error.message() << "\n";
+        return 1;
+      }
+      arq_messaging::MessageEnvelope env{};
+      if (!arq_messaging::decode_message_envelope(got.value, env)) {
+        std::cerr << "bad envelope\n";
+        return 1;
+      }
+      std::vector<std::uint8_t> plain;
+      if (arq_messaging::open_payload(id, env.payload, plain)) {
+        std::cerr << "open failed\n";
+        return 1;
+      }
+      if (key.empty())
+        std::cout << item << "\n";
+      std::cout << std::string(plain.begin(), plain.end()) << "\n";
+    }
     return 0;
   }
 

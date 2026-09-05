@@ -30,6 +30,7 @@
 
 #include <sodium/crypto_box.h>
 
+#include <filesystem>
 #include <fstream>
 
 namespace arq_messaging {
@@ -57,6 +58,11 @@ std::error_code save_identity(const std::filesystem::path& path, const Identity&
             static_cast<std::streamsize>(X25519PrivateKey::bytes));
   if (!out)
     return std::make_error_code(std::errc::io_error);
+#if !defined(_WIN32)
+  std::error_code perm_ec;
+  std::filesystem::permissions(path, std::filesystem::perms::owner_read | std::filesystem::perms::owner_write,
+                               std::filesystem::perm_options::replace, perm_ec);
+#endif
   return {};
 }
 

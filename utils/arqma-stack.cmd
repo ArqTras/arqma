@@ -33,8 +33,8 @@ echo.
 echo Messenger:
 echo   "%BIN_DIR%\arqma-msg.exe" gen
 echo   "%BIN_DIR%\arqma-msg.exe" send --to ^<64-hex^> --text hello
-echo   "%BIN_DIR%\arqma-msg.exe" inbox --to ^<64-hex^>
-echo   "%BIN_DIR%\arqma-msg.exe" open --to ^<pub^> --secret ^<priv^> --key ^<id^>
+echo   "%BIN_DIR%\arqma-msg.exe" inbox
+echo   "%BIN_DIR%\arqma-msg.exe" open
 echo.
 echo Daemon (separate process):
 echo   "%BIN_DIR%\arqmad.exe" --storage-client-url=http://%STORAGE_LISTEN% --arq-router

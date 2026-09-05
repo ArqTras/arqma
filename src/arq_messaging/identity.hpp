@@ -30,8 +30,10 @@
 
 #include <array>
 #include <cstdint>
+#include <cstdlib>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <system_error>
 
 namespace arq_messaging {
@@ -74,5 +76,25 @@ inline std::error_code save_identity(const std::string& path, const Identity& id
 inline std::error_code load_identity(const std::string& path, Identity& out)
 {
   return load_identity(std::filesystem::path{path}, out);
+}
+
+/// `$HOME/.arqma/msg` (Windows: `%USERPROFILE%\.arqma\msg`). Override with `ARQMA_MSG_IDENTITY`.
+inline std::filesystem::path default_msg_dir(const std::string_view home)
+{
+  return std::filesystem::path{std::string{home}} / ".arqma" / "msg";
+}
+
+inline std::filesystem::path default_identity_path()
+{
+  if (const char* path = std::getenv("ARQMA_MSG_IDENTITY"); path && *path)
+    return path;
+  const char* home = std::getenv("HOME");
+#if defined(_WIN32)
+  if (!home || !*home)
+    home = std::getenv("USERPROFILE");
+#endif
+  if (!home || !*home)
+    return std::filesystem::path{"arqma-msg"} / "identity";
+  return default_msg_dir(home) / "identity";
 }
 } // namespace arq_messaging

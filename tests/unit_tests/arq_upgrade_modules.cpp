@@ -109,6 +109,13 @@ TEST(arq_messaging_identity, generate_curve25519_keypair)
   std::filesystem::remove(path);
 }
 
+TEST(arq_messaging_identity, default_msg_dir_under_home)
+{
+  EXPECT_EQ(std::filesystem::path("/home/a") / ".arqma" / "msg", arq_messaging::default_msg_dir("/home/a"));
+  EXPECT_EQ(std::filesystem::path("/home/a") / ".arqma" / "msg" / "identity",
+            arq_messaging::default_msg_dir("/home/a") / "identity");
+}
+
 TEST(arq_messaging_sealed_box, seal_open_roundtrip)
 {
   arq_messaging::Identity recipient{};

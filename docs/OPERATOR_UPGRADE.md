@@ -142,11 +142,12 @@ utils/arqma-stack.sh
 utils/arqma-stack.cmd
 arqma-msg gen
 arqma-msg send --to <64-hex> --text hello
-arqma-msg inbox --to <64-hex>
-arqma-msg open --to <pub> --secret <priv> --key <id>
+arqma-msg inbox
+arqma-msg open
 ```
 
 The stack writes `$ARQMA_STACK_DIR/env` so `arqma-msg` needs no `--url` / `--router`.
+`gen` saves `~/.arqma/msg/identity`; `inbox` and `open` use it.
 Daemon probe (separate process):
 
 ```text
