@@ -1635,6 +1635,15 @@ namespace cryptonote
     response.long_term_weight = m_core.get_blockchain_storage().get_db().get_block_long_term_weight(height);
     response.miner_tx_hash = string_tools::pod_to_hex(cryptonote::get_transaction_hash(blk.miner_tx));
     response.service_node_winner = string_tools::pod_to_hex(cryptonote::get_service_node_winner_from_tx_extra(blk.miner_tx.extra));
+    service_nodes::pulse::MinerExtraSummary pulse{};
+    if (service_nodes::pulse::summarize_miner_pulse_extra(blk.miner_tx.extra, pulse) && pulse.present)
+    {
+      response.pulse_certificate = true;
+      response.pulse_round = pulse.round;
+      response.pulse_signature_count = pulse.signature_count;
+      if (pulse.payload_hash != crypto::null_hash)
+        response.pulse_payload_hash = string_tools::pod_to_hex(pulse.payload_hash);
+    }
     return true;
   }
   //------------------------------------------------------------------------------------------------------------------------------
@@ -3246,12 +3255,27 @@ namespace cryptonote
       const size_t slot = service_nodes::pulse::validator_slot(height, active, keys->pub, rnd);
       res.in_quorum = slot != service_nodes::pulse::k_not_in_quorum;
       res.is_leader = res.in_quorum && slot == 0;
-      res.local_signature_ready = res.in_quorum;
+      res.local_signature_ready = false;
+      if (res.in_quorum)
+      {
+        const auto &collector = service_nodes::pulse::collector();
+        if (collector.height() == height && collector.round() == rnd)
+          res.local_signature_ready = collector.has_vote(static_cast<uint32_t>(slot));
+      }
     }
     const auto &collector = service_nodes::pulse::collector();
-    res.signature_count = (collector.height() == height && collector.round() == rnd) ? collector.signature_count() : 0;
-    res.majority_ok = (collector.height() == height && collector.round() == rnd) ? collector.majority_ok()
-                                                                                : service_nodes::pulse::majority_reached(res.signature_count, q.size());
+    const bool same_window = collector.height() == height && collector.round() == rnd;
+    res.signature_count = same_window ? collector.signature_count() : 0;
+    res.majority_ok = same_window ? collector.majority_ok()
+                                  : service_nodes::pulse::majority_reached(res.signature_count, q.size());
+    cryptonote::tx_extra_pulse_round snap{};
+    res.certificate_ready = same_window && collector.snapshot(snap);
+    if (same_window)
+    {
+      const crypto::hash payload = collector.payload_hash();
+      if (payload != crypto::null_hash)
+        res.payload_hash = epee::string_tools::pod_to_hex(payload);
+    }
     res.status = CORE_RPC_STATUS_OK;
     return true;
   }

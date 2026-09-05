@@ -14,7 +14,12 @@ info:
     `get_pulse_status` reports hybrid/exclusive SN mode, wait-window `round`,
     leader, quorum, collector signature count, `majority_ok`, and local signature
     slot. Miner Pulse extra is a majority certificate bound to the miner payload
-    hash. Block production is hybrid: RandomARQ stays required
+    hash; templates attach it before coinbase padding so weight stays locked in.
+    `get_pulse_status` also reports `certificate_ready` and hex `payload_hash`.
+    Daemon `print_pulse` dumps the same fields. Block header RPC adds
+    `pulse_certificate` / `pulse_round` / `pulse_signature_count` / `pulse_payload_hash`
+    when miner extra carries a Pulse certificate.
+    Block production is hybrid: RandomARQ stays required
     (`pulse-pow-replacement-not-ready`; `pow_replacement_ready` stays false).
     Privileged wallet-rpc methods
     are documented under the separate `arqma-wallet-rpc` surface; daemon

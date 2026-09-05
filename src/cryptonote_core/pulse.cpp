@@ -5,10 +5,12 @@
 #include "pulse.h"
 
 #include "common/util.h"
+#include "cryptonote_basic/cryptonote_format_utils.h"
 
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <limits>
 #include <mutex>
 #include <string>
 
@@ -284,6 +286,54 @@ bool verify_majority_certificate(const cryptonote::tx_extra_pulse_round& extra, 
   if (extra.payload_hash == crypto::null_hash)
     return false;
   return verify_round(extra, height, prev_id, active_sn_count, quorum_keys, min_sigs);
+}
+
+size_t majority_certificate_blob_size()
+{
+  cryptonote::tx_extra_pulse_round extra{};
+  extra.height = std::numeric_limits<uint64_t>::max();
+  extra.round = k_max_round;
+  extra.leader_index = std::numeric_limits<uint32_t>::max();
+  extra.payload_hash = crypto::null_hash;
+  extra.votes.resize(min_signatures_for_quorum(k_quorum_size));
+  for (size_t i = 0; i < extra.votes.size(); ++i)
+    extra.votes[i].validator_index = static_cast<uint32_t>(i);
+  std::vector<uint8_t> blob;
+  if (!cryptonote::add_pulse_round_to_tx_extra(blob, extra))
+    return 0;
+  return blob.size();
+}
+
+bool splice_majority_certificate(std::vector<uint8_t>& extra, const size_t extra_before_padding,
+                                 const cryptonote::tx_extra_pulse_round& cert)
+{
+  std::vector<uint8_t> blob;
+  if (!cryptonote::add_pulse_round_to_tx_extra(blob, cert))
+    return false;
+  if (blob.empty() || extra.size() < extra_before_padding)
+    return false;
+  const size_t padding = extra.size() - extra_before_padding;
+  if (padding < blob.size())
+    return false;
+  const size_t leftover = padding - blob.size();
+  extra.resize(extra_before_padding);
+  extra.insert(extra.end(), blob.begin(), blob.end());
+  extra.insert(extra.end(), leftover, 0);
+  return true;
+}
+
+bool summarize_miner_pulse_extra(const std::vector<uint8_t>& extra, MinerExtraSummary& out)
+{
+  out = {};
+  cryptonote::tx_extra_pulse_round pulse{};
+  if (!cryptonote::get_pulse_round_from_tx_extra(extra, pulse))
+    return false;
+  out.present = true;
+  out.round = pulse.round;
+  out.leader_index = pulse.leader_index;
+  out.signature_count = pulse.votes.size();
+  out.payload_hash = pulse.payload_hash;
+  return true;
 }
 
 bool encode_relay_vote(const RelayVote& vote, std::string& out)

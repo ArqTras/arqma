@@ -327,6 +327,45 @@ TEST(pulse, extra_roundtrip_survives_sort)
   EXPECT_EQ(2u, parsed.votes[0].validator_index);
 }
 
+TEST(pulse, majority_certificate_splice_is_weight_neutral)
+{
+  cryptonote::tx_extra_pulse_round extra{};
+  extra.height = 12;
+  extra.round = 3;
+  extra.leader_index = 4;
+  extra.payload_hash = sample_payload();
+  extra.votes.resize(service_nodes::pulse::min_signatures_for_quorum(service_nodes::pulse::k_quorum_size));
+  for (uint32_t i = 0; i < extra.votes.size(); ++i)
+    extra.votes[i].validator_index = i;
+  std::vector<uint8_t> blob;
+  ASSERT_TRUE(cryptonote::add_pulse_round_to_tx_extra(blob, extra));
+  const size_t reserve = service_nodes::pulse::majority_certificate_blob_size();
+  ASSERT_GT(reserve, 0u);
+  EXPECT_GE(reserve, blob.size());
+
+  std::vector<uint8_t> padded(blob.size() + 8, 0);
+  const size_t before = 0;
+  const size_t padded_size = padded.size();
+  ASSERT_TRUE(service_nodes::pulse::splice_majority_certificate(padded, before, extra));
+  EXPECT_EQ(padded_size, padded.size());
+  cryptonote::tx_extra_pulse_round parsed{};
+  ASSERT_TRUE(cryptonote::get_pulse_round_from_tx_extra(padded, parsed));
+  EXPECT_EQ(extra.height, parsed.height);
+  EXPECT_TRUE(extra.payload_hash == parsed.payload_hash);
+  ASSERT_EQ(extra.votes.size(), parsed.votes.size());
+  std::vector<uint8_t> too_small(blob.size() / 2, 0);
+  EXPECT_FALSE(service_nodes::pulse::splice_majority_certificate(too_small, 0, extra));
+  service_nodes::pulse::MinerExtraSummary sum{};
+  ASSERT_TRUE(service_nodes::pulse::summarize_miner_pulse_extra(padded, sum));
+  EXPECT_TRUE(sum.present);
+  EXPECT_EQ(3u, sum.round);
+  EXPECT_EQ(4u, sum.leader_index);
+  EXPECT_EQ(extra.votes.size(), sum.signature_count);
+  EXPECT_TRUE(sum.payload_hash == extra.payload_hash);
+  EXPECT_FALSE(service_nodes::pulse::summarize_miner_pulse_extra({}, sum));
+  EXPECT_FALSE(sum.present);
+}
+
 TEST(pulse, relay_vote_roundtrip_and_collector)
 {
   service_nodes::pulse::collector().clear();

@@ -1004,6 +1004,10 @@ namespace cryptonote
       uint64_t long_term_weight;
       std::string miner_tx_hash;
       std::string service_node_winner;
+      bool pulse_certificate = false;
+      uint8_t pulse_round = 0;
+      uint64_t pulse_signature_count = 0;
+      std::string pulse_payload_hash;
 
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(major_version)
@@ -1027,6 +1031,10 @@ namespace cryptonote
         KV_SERIALIZE_OPT(long_term_weight, (uint64_t)0)
         KV_SERIALIZE(miner_tx_hash)
         KV_SERIALIZE(service_node_winner)
+        KV_SERIALIZE_OPT(pulse_certificate, false)
+        KV_SERIALIZE_OPT(pulse_round, (uint8_t)0)
+        KV_SERIALIZE_OPT(pulse_signature_count, (uint64_t)0)
+        KV_SERIALIZE_OPT(pulse_payload_hash, std::string())
       END_KV_SERIALIZE_MAP()
   };
 
@@ -3044,6 +3052,8 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
       uint64_t majority_required = 0;
       uint64_t signature_count = 0;
       bool majority_ok = false;
+      bool certificate_ready = false;
+      std::string payload_hash;
       bool in_quorum = false;
       bool is_leader = false;
       bool local_signature_ready = false;
@@ -3065,6 +3075,8 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
         KV_SERIALIZE(majority_required)
         KV_SERIALIZE(signature_count)
         KV_SERIALIZE(majority_ok)
+        KV_SERIALIZE(certificate_ready)
+        KV_SERIALIZE(payload_hash)
         KV_SERIALIZE(in_quorum)
         KV_SERIALIZE(is_leader)
         KV_SERIALIZE(local_signature_ready)

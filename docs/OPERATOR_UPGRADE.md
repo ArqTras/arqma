@@ -128,7 +128,9 @@ before HF21 so exclusive mesh has a CURVE stack.
 | `--storage-client-url=<url>` | Outbound Storage Server reachability probe (`http://` GET / `https://` TCP) |
 | `arqnet_ping` | Records Arq-Net reachability (not yet a hard uptime gate) |
 | `get_arqnet_status` | `backend`, `transport`, `mesh`, shadow counters (`vote_ob` + `pulse_rnd`), `native_mesh_*`, `sn_operating_mode`, `pulse_*` |
-| `get_pulse_status` | Hybrid/exclusive SN mode, PoW gate, Pulse `round` / leader / quorum / collector `signature_count` / `majority_ok` |
+| `get_pulse_status` | Hybrid/exclusive SN mode, PoW gate, Pulse `round` / leader / quorum / collector `signature_count` / `majority_ok` / `certificate_ready` / `payload_hash` / `local_signature_ready` |
+| `print_pulse` | Daemon console dump of `get_pulse_status` |
+| `get_block_header_*` | Optional `pulse_certificate`, `pulse_round`, `pulse_signature_count`, `pulse_payload_hash` when miner extra has Pulse |
 | `get_storage_status` | Storage client scaffold status + last SS ping |
 | `get_service_nodes` `offset`/`limit` | Optional pagination |
 

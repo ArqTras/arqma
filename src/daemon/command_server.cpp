@@ -109,6 +109,12 @@ t_command_server::t_command_server(
     , "Print the quorum state for the range of block heights, omit the height to print the latest quorum"
     );
   m_command_lookup.set_handler(
+      "print_pulse"
+    , std::bind(&t_command_parser_executor::print_pulse, &m_parser, p::_1)
+    , "print_pulse"
+    , "Print hybrid Pulse round status (get_pulse_status)."
+    );
+  m_command_lookup.set_handler(
       "print_sn_key"
     , std::bind(&t_command_parser_executor::print_sn_key, &m_parser, p::_1)
     , "print_sn_key"

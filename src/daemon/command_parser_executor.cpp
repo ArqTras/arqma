@@ -248,6 +248,16 @@ bool t_command_parser_executor::print_quorum_state(const std::vector<std::string
   return m_executor.print_quorum_state(start_height, end_height);
 }
 
+bool t_command_parser_executor::print_pulse(const std::vector<std::string>& args)
+{
+  if (!args.empty())
+  {
+    std::cout << "use: print_pulse" << std::endl;
+    return true;
+  }
+  return m_executor.print_pulse();
+}
+
 bool t_command_parser_executor::print_sn_key(const std::vector<std::string>& args)
 {
   if(!args.empty())

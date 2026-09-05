@@ -1472,6 +1472,7 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
         if (have_majority)
         {
           pulse_cache_ok = has_pulse && cached_pulse.round == live.round &&
+                           cached_pulse.payload_hash == live.payload_hash &&
                            cached_pulse.votes.size() == live.votes.size();
           for (size_t i = 0; pulse_cache_ok && i < live.votes.size(); ++i)
             pulse_cache_ok = cached_pulse.votes[i].validator_index == live.votes[i].validator_index;
@@ -1662,6 +1663,31 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
   {
     r = construct_miner_tx(this, height, median_weight, already_generated_coins, cumulative_weight, fee, miner_address, b.miner_tx, ex_nonce, hard_fork_version, miner_tx_context);
     CHECK_AND_ASSERT_MES(r, false, "Failed to construct miner tx, second chance");
+    if (service_nodes::pulse::hybrid_sn_permitted(hard_fork_version) && !b.miner_tx.vout.empty() &&
+        b.miner_tx.vout[0].target.type() == typeid(txout_to_key))
+    {
+      const auto miner_out = boost::get<txout_to_key>(b.miner_tx.vout[0].target).key;
+      const crypto::hash payload =
+          service_nodes::pulse::miner_payload_hash(b.timestamp, b.tx_hashes, miner_out);
+      uint64_t parent_ts = 0;
+      cryptonote::block parent{};
+      if (get_block_by_hash(b.prev_id, parent))
+        parent_ts = parent.timestamp;
+      const uint8_t rnd = service_nodes::pulse::round_from_timestamps(parent_ts, b.timestamp);
+      const auto active = m_service_node_list.get_active_service_node_pubkeys();
+      if (const auto *keys = m_service_node_list.get_my_service_node_keys())
+      {
+        service_nodes::pulse::participate_round(height, b.prev_id, rnd, keys->pub, keys->key, active, true,
+                                                payload);
+      }
+      cryptonote::tx_extra_pulse_round collected{};
+      if (service_nodes::pulse::collector().snapshot(collected) && collected.payload_hash == payload)
+      {
+        if (!add_pulse_round_to_tx_extra(b.miner_tx.extra, collected))
+          return false;
+        b.miner_tx.invalidate_hashes();
+      }
+    }
     size_t coinbase_weight = get_transaction_weight(b.miner_tx);
     if (coinbase_weight > cumulative_weight - txs_weight)
     {
@@ -1689,31 +1715,6 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
       }
     }
     CHECK_AND_ASSERT_MES(cumulative_weight == txs_weight + get_transaction_weight(b.miner_tx), false, "unexpected case: cumulative_weight=" << cumulative_weight << " is not equal txs_cumulative_weight=" << txs_weight << " + get_transaction_weight(b.miner_tx)=" << get_transaction_weight(b.miner_tx));
-    if (service_nodes::pulse::hybrid_sn_permitted(hard_fork_version) && !b.miner_tx.vout.empty() &&
-        b.miner_tx.vout[0].target.type() == typeid(txout_to_key))
-    {
-      const auto miner_out = boost::get<txout_to_key>(b.miner_tx.vout[0].target).key;
-      const crypto::hash payload =
-          service_nodes::pulse::miner_payload_hash(b.timestamp, b.tx_hashes, miner_out);
-      uint64_t parent_ts = 0;
-      cryptonote::block parent{};
-      if (get_block_by_hash(b.prev_id, parent))
-        parent_ts = parent.timestamp;
-      const uint8_t rnd = service_nodes::pulse::round_from_timestamps(parent_ts, b.timestamp);
-      const auto active = m_service_node_list.get_active_service_node_pubkeys();
-      if (const auto *keys = m_service_node_list.get_my_service_node_keys())
-      {
-        service_nodes::pulse::participate_round(height, b.prev_id, rnd, keys->pub, keys->key, active, true,
-                                                payload);
-      }
-      cryptonote::tx_extra_pulse_round collected{};
-      if (service_nodes::pulse::collector().snapshot(collected) && collected.payload_hash == payload)
-      {
-        if (!add_pulse_round_to_tx_extra(b.miner_tx.extra, collected))
-          return false;
-        b.miner_tx.invalidate_hashes();
-      }
-    }
     if (!from_block)
       cache_block_template(b, miner_address, ex_nonce, diffic, height, expected_reward, seed_height, seed_hash, pool_cookie);
     return true;

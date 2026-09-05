@@ -65,8 +65,14 @@
   (timestamp + tx hashes + miner vout[0]); extra `round` must match the
   parent→block wait-window. Idle `pulse_rnd` votes may sign the round with a null
   payload (liveness); miner extra requires a non-null payload. `pulse_rnd` wire is
-  v2 (146 bytes, includes payload hash). `get_pulse_status.signature_count` is the collector
-  total (no synthetic +1). The collector drops votes once the height is produced (and on reorg).
+  v2 (146 bytes, includes payload hash). Miner templates attach the certificate
+  before coinbase weight padding so extra sits ahead of trailing zeros and does
+  not change the locked-in miner-tx weight.
+  `get_pulse_status` reports `certificate_ready`, hex `payload_hash`, and honest
+  `local_signature_ready` (collector has this node's vote). `signature_count` is the collector
+  total (no synthetic +1). Daemon `print_pulse` prints the same snapshot. Block headers
+  expose `pulse_certificate` / `pulse_round` / `pulse_signature_count` / `pulse_payload_hash`
+  when miner extra carries a Pulse certificate. The collector drops votes once the height is produced (and on reorg).
 - Expose cutover gates on `get_arqnet_status` (`native_mesh_ready`,
   `native_mesh_blocker`, `native_mesh_hf_permits`, `hard_fork_version`).
 - Scaffold native-mesh inbound `vote_ob` processing (installed only after

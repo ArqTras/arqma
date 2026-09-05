@@ -8,7 +8,7 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
 - Stage 4 mesh gate on; HF20 **4 000 000** hybrid SN; HF21 **5 000 000** exclusive
 - Pulse Milestone C: hybrid producer; majority certificate extra bound to miner
-  payload hash; round bound to block timestamp
+  payload hash; weight-neutral miner extra; round bound to block timestamp
 - PR notes: GitHub PR https://github.com/ArqTras/arqma/pull/3 (EN + PL)
 
 ## Mainnet locks until 4 000 000
@@ -33,9 +33,11 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 - [x] Canonical Pulse extra vote order (`validator_index` strictly increasing)
 - [x] Fixed-size majority certificate extra + round bound to block wait-window
 - [x] Pulse extra payload binding (quorum signs miner template hash; idle votes stay round-only)
+- [x] Weight-neutral Pulse extra on miner templates + honest `get_pulse_status` certificate fields
+- [x] Daemon `print_pulse` + Pulse fields on block headers
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 
 ## Quality
 
-- Local `unit_tests` → **596** passed (payload-bound majority certificate + `pulse_rnd` v2)
+- Local `unit_tests` → **597** passed (weight-locked extra, `print_pulse`, block-header Pulse fields)

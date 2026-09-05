@@ -33,7 +33,7 @@ https://github.com/ArqTras/arqma/pull/3.
 
 ### Explicitly deferred (documented)
 
-- Native mesh cutover: `vote_ob` peer relay on `SocketStack` (dual-run / Milestone B cutover)
+- Native mesh cutover: stage 4 is on; live `vote_ob` uses SocketStack only with HF20+ `arqmq`+CURVE (SNNetwork fallback otherwise)
 - Production Storage Server binary + swarm replication (Milestone C)
 - Full privacy router binary (Milestone C)
 - Messenger clients / Session protocol wire completeness (Milestone C)

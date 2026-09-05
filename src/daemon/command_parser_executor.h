@@ -78,6 +78,8 @@ public:
 
   bool print_quorum_state(const std::vector<std::string>& args);
 
+  bool print_pulse(const std::vector<std::string>& args);
+
   bool print_sn_key(const std::vector<std::string>& args);
 
   bool print_stake_requirement(const std::vector<std::string>& args);

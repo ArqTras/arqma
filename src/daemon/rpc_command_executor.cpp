@@ -917,6 +917,46 @@ bool t_rpc_command_executor::print_quorum_state(uint64_t start_height, uint64_t 
   return true;
 }
 
+bool t_rpc_command_executor::print_pulse()
+{
+  cryptonote::COMMAND_RPC_GET_PULSE_STATUS::request req;
+  cryptonote::COMMAND_RPC_GET_PULSE_STATUS::response res;
+  epee::json_rpc::error error_resp;
+  const std::string fail_message = "Unsuccessful";
+
+  if (m_is_rpc)
+  {
+    if (!m_rpc_client->json_rpc_request(req, res, "get_pulse_status", fail_message.c_str()))
+      return true;
+  }
+  else
+  {
+    if (!m_rpc_server->on_get_pulse_status(req, res, error_resp) || res.status != CORE_RPC_STATUS_OK)
+    {
+      tools::fail_msg_writer() << make_error(fail_message, res.status);
+      return true;
+    }
+  }
+
+  tools::success_msg_writer()
+      << "Pulse " << (res.sn_operating_mode.empty() ? "-" : res.sn_operating_mode)
+      << " hf=" << static_cast<unsigned>(res.hard_fork_version)
+      << " height=" << res.height
+      << "\n  round=" << static_cast<unsigned>(res.round)
+      << " leader=" << res.leader_index
+      << " sigs=" << res.signature_count << "/" << res.majority_required
+      << " majority=" << (res.majority_ok ? "true" : "false")
+      << " certificate=" << (res.certificate_ready ? "true" : "false")
+      << "\n  payload=" << (res.payload_hash.empty() ? "-" : res.payload_hash)
+      << "\n  in_quorum=" << (res.in_quorum ? "true" : "false")
+      << " is_leader=" << (res.is_leader ? "true" : "false")
+      << " local_sig=" << (res.local_signature_ready ? "true" : "false")
+      << "\n  pow_required=" << (res.pow_required ? "true" : "false")
+      << " replacement=" << (res.pow_replacement_ready ? "true" : "false")
+      << " blocker=" << (res.pulse_blocker.empty() ? "-" : res.pulse_blocker);
+  return true;
+}
+
 bool t_rpc_command_executor::set_log_level(int8_t level) {
   cryptonote::COMMAND_RPC_SET_LOG_LEVEL::request req;
   cryptonote::COMMAND_RPC_SET_LOG_LEVEL::response res;

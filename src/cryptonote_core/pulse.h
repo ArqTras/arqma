@@ -131,6 +131,26 @@ bool verify_majority_certificate(const cryptonote::tx_extra_pulse_round& extra, 
                                  const crypto::hash& prev_id, size_t active_sn_count,
                                  const std::vector<crypto::public_key>& quorum_keys);
 
+/// Ceiling size of a serialized 7/11 majority extra (max varints). Tests use this
+/// to prove a certificate plus leftover zero padding stays parseable.
+size_t majority_certificate_blob_size();
+
+/// Replace trailing padding with the certificate, then leftover zeros (Pulse
+/// must sit *before* zero padding so `parse_tx_extra` can read it).
+bool splice_majority_certificate(std::vector<uint8_t>& extra, size_t extra_before_padding,
+                                 const cryptonote::tx_extra_pulse_round& cert);
+
+/// Parsed miner-tx Pulse extra, if present. Used by block-header RPC.
+struct MinerExtraSummary
+{
+  bool present = false;
+  uint8_t round = 0;
+  uint32_t leader_index = 0;
+  size_t signature_count = 0;
+  crypto::hash payload_hash{};
+};
+bool summarize_miner_pulse_extra(const std::vector<uint8_t>& extra, MinerExtraSummary& out);
+
 /// Packed vote used on Arq-Net `pulse_rnd` (v2: version || height || round || leader ||
 /// index || prev || payload_hash || sig).
 struct RelayVote
