@@ -5,6 +5,7 @@
 #include "arq_messaging/identity.hpp"
 #include "arq_messaging/message_envelope.hpp"
 #include "arq_messaging/onion_layer.hpp"
+#include "arq_messaging/onion_request.hpp"
 #include "arq_messaging/sealed_sender.hpp"
 #include "arq_storage/http_io.h"
 #include "arq_storage/storage_client.h"
@@ -62,7 +63,7 @@ int main(int argc, char** argv)
   std::string text;
   std::string key;
   std::string secret;
-  std::string router;
+  std::vector<std::string> routers;
   std::uint32_t ttl = 3600;
   po::options_description desc{"arqma-msg"};
   desc.add_options()("help,h", "show help")("url", po::value<std::string>(&url), "storage base URL")(
@@ -71,7 +72,8 @@ int main(int argc, char** argv)
       "key", po::value<std::string>(&key), "storage key (get/open)")("text", po::value<std::string>(&text),
                                                                      "plaintext (send)")(
       "secret", po::value<std::string>(&secret),
-      "recipient private key hex (open)")("router", po::value<std::string>(&router), "arqma-router URL (onion send)");
+      "recipient private key hex (open)")("router", po::value<std::vector<std::string>>(&routers)->composing(),
+                                          "arqma-router URL (repeat, outermost first, max 3)");
   po::options_description hidden;
   hidden.add_options()("cmd", po::value<std::string>(&cmd));
   po::positional_options_description pos;
@@ -82,16 +84,18 @@ int main(int argc, char** argv)
   po::store(po::command_line_parser(argc, argv).options(all).positional(pos).run(), vm);
   po::notify(vm);
   if (vm.count("help") || cmd.empty()) {
-    std::cout << "Usage: arqma-msg gen|send|get|inbox|open [options]\n"
-              << desc
-              << "\nRequires arqma-storage. Example:\n"
-                 "  arqma-msg gen\n"
-                 "  arqma-msg send --to <hex> --text hello --url http://127.0.0.1:22021\n"
-                 "  arqma-msg send --router http://127.0.0.1:1090 --to <hex> --text hello\n"
-                 "  arqma-msg inbox --to <hex>\n"
-                 "  arqma-msg get --to <hex> --key <id>\n"
-                 "  arqma-msg open --to <pub> --secret <priv> --key <id>\n"
-                 "get/inbox/open follow inbox swarm members advertised by --url.\n";
+    std::cout
+        << "Usage: arqma-msg gen|send|get|inbox|open [options]\n"
+        << desc
+        << "\nRequires arqma-storage. Example:\n"
+           "  arqma-msg gen\n"
+           "  arqma-msg send --to <hex> --text hello --url http://127.0.0.1:22021\n"
+           "  arqma-msg send --router http://127.0.0.1:1090 --to <hex> --text hello\n"
+           "  arqma-msg send --router http://127.0.0.1:1090 --router http://127.0.0.1:1091 --to <hex> --text hello\n"
+           "  arqma-msg inbox --to <hex>\n"
+           "  arqma-msg get --to <hex> --key <id>\n"
+           "  arqma-msg open --to <pub> --secret <priv> --key <id>\n"
+           "get/inbox/open follow inbox swarm members advertised by --url.\n";
     return vm.count("help") ? 0 : 1;
   }
 
@@ -129,24 +133,34 @@ int main(int argc, char** argv)
     env.payload = std::move(sealed);
     const auto blob = arq_messaging::encode_message_envelope(env);
     const auto store_key = to_hex(blob.data(), std::min<std::size_t>(blob.size(), 16));
-    if (!router.empty()) {
-      const auto ep = arq_storage::parse_endpoint(router);
-      const auto pubget = arq_storage::http_exchange(ep, "GET", "/v1/pubkey", {});
-      if (!pubget || pubget.body.size() < 64) {
-        std::cerr << "router pubkey failed\n";
+    if (!routers.empty()) {
+      if (routers.size() > arq_messaging::OnionRequest::hop_count) {
+        std::cerr << "at most 3 --router hops\n";
         return 1;
       }
-      arq_messaging::X25519PublicKey rpub{};
-      if (!from_hex(pubget.body.substr(0, 64), rpub.data.data(), 32))
-        return 1;
+      std::vector<arq_messaging::X25519PublicKey> pubs;
+      pubs.reserve(routers.size());
+      for (const auto& router : routers) {
+        const auto ep = arq_storage::parse_endpoint(router);
+        const auto pubget = arq_storage::http_exchange(ep, "GET", "/v1/pubkey", {});
+        if (!pubget || pubget.body.size() < 64) {
+          std::cerr << "router pubkey failed\n";
+          return 1;
+        }
+        arq_messaging::X25519PublicKey rpub{};
+        if (!from_hex(pubget.body.substr(0, 64), rpub.data.data(), 32))
+          return 1;
+        pubs.push_back(rpub);
+      }
       std::vector<std::uint8_t> onion;
-      if (arq_messaging::wrap_onion_layer(rpub, blob, onion)) {
+      if (arq_messaging::compose_onion_route(pubs, routers, blob, onion)) {
         std::cerr << "onion wrap failed\n";
         return 1;
       }
       std::string rpath = "/v1/store?ns=inbox-" + to + "&key=" + store_key;
       if (env.ttl_seconds != 0)
         rpath += "&ttl=" + std::to_string(env.ttl_seconds);
+      const auto ep = arq_storage::parse_endpoint(routers.front());
       const auto put = arq_storage::http_exchange(ep, "POST", rpath, std::string(onion.begin(), onion.end()));
       if (!put) {
         std::cerr << "router store failed\n";

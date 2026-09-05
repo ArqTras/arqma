@@ -73,7 +73,8 @@ Working end-to-end on the platforms above:
   `--arqnet-allow-experimental`.
 - Storage client TCP/HTTP GET probe; messaging envelope / onion / swarm helpers
 - In-repo companions: `arqma-storage`, `arqma-router`, `arqma-msg` (IPv6 listen,
-  1 MiB HTTP body cap, socket timeouts on Windows and POSIX)
+  1 MiB HTTP body cap, socket timeouts on Windows and POSIX; router multi-hop
+  onion forward, max 3)
 - Experimental `arq_router` lifecycle (scaffold; not a Lokinet product)
 
 See `docs/UPGRADE_ROADMAP.md` and `docs/OPERATOR_UPGRADE.md` for mainnet locks.

@@ -11,7 +11,8 @@ Pulse SN **hybrid (HF20) / exclusive (HF21)** gates, Pulse
 `pulse_rnd` collector, wait-windows, payload-bound majority extra, and
 `get_pulse_status` are started; RandomARQ stays required. Companion binaries
 `arqma-storage`, `arqma-router`, and `arqma-msg` plus in-daemon Blink
-(`get_blink_status`) ship from this repository. See
+(`get_blink_status`) ship from this repository. Multi-hop onion forward (max 3)
+is in-tree; it is **not** a Lokinet product. See
 https://github.com/ArqTras/arqma/pull/3.
 
 ### Must-have (satisfied)
@@ -20,7 +21,7 @@ https://github.com/ArqTras/arqma/pull/3.
 - [x] Critical consensus/wallet correctness fix (HF19 burn)
 - [x] Arq-Net auth hardening
 - [x] Toolchain modernization (C++20, CMake, CI, sanitizers job)
-- [x] Automated unit tests green on curated suite (**548** tests)
+- [x] Automated unit tests green on curated suite (**616** tests)
 - [x] Module scaffolding with tests/docs/CI for MQ, storage, messaging, router
 - [x] ArqMQ facade + dedicated `SocketStack` behind `--arqnet-backend=arqmq`
 - [x] In-memory storage/swarm helpers for tests; remote client stays honest

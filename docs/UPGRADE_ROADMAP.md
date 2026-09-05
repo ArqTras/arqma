@@ -16,11 +16,11 @@ Platform matrix: [`docs/PLATFORM.md`](PLATFORM.md).
 | 3 Oxen feature parity (selective) | **Foundation + native transport** | ArqMQ facade + `SocketStack` behind `--arqnet-backend=arqmq` |
 | 4 Arq-Net evolution | **Foundation done** | Auth harden, ping, dual-stack plan |
 | 5 Storage Server | **In-repo binary** | `arqma-storage` HTTP KV + TTL + swarm member fan-out; daemon still probes |
-| 6 Session-like modules | **In-repo CLI** | Envelope, onion peel, swarm, sealed-box, `arqma-msg` |
+| 6 Session-like modules | **In-repo CLI** | Envelope, onion peel/forward, swarm, sealed-box, `arqma-msg` |
 | 7 RPC modernization | **Foundation done** | Validation, wallet caps/auth, OpenAPI 0.2.0 |
 | 8 P2P improvements | **Foundation done** | Limits + Levin/preauth lock |
 | 9 Performance | **Baseline** | Local measurement doc |
-| 10 Testing | **Done (curated)** | **548** unit tests green; integration suites opt-in |
+| 10 Testing | **Done (curated)** | **616** unit tests green; integration suites opt-in |
 | 11 CI | **Done (3 OS)** | Linux/macOS native unit + Windows/macOS/Linux depends |
 | 12 Final review | **Gate ready** | Checklist + completeness gate + platform doc |
 
@@ -73,7 +73,7 @@ Platform matrix: [`docs/PLATFORM.md`](PLATFORM.md).
   `get_pulse_status`;
   RandomARQ stays required — hybrid PoW, no PoW-off; SN idle `pulse_rnd`)
 - Blink-like instant tx quorums (**started:** `arq_blink` collector + `get_blink_status`; does not replace Pulse/PoW)
-- Privacy routing daemon (`arqma-router` HTTP status is in-tree)
+- Privacy routing daemon (`arqma-router` HTTP peel/store/forward is in-tree)
 - Session-class messenger clients (`arqma-msg` CLI is in-tree)
 
 Do not implement those as drive-by copies; schedule behind an explicit product
@@ -90,7 +90,7 @@ milestone.
 - [x] Native GitHub Actions CI + sanitizer job
 - [x] `.clang-format` / `.clang-tidy`
 - [x] CMake ≥ 3.16, C++20 (`-fno-char8_t` bridge)
-- [x] Green curated unit suite (**548** tests)
+- [x] Green curated unit suite (**616** tests)
 - [x] Restore legacy fixtures (base58/uri/parse_amount/sha256/mul_div/fee/…)
 - [x] Hardfork version + serialization basic unit coverage
 - [x] ArqMQ dual-backend facade (transport remains SNNetwork)

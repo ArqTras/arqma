@@ -36,6 +36,7 @@ echo "Messenger CLI (after storage is up):"
 echo "  ${BIN_DIR}/arqma-msg gen"
 echo "  ${BIN_DIR}/arqma-msg send --url http://${STORAGE_LISTEN} --to <64-hex> --text hello"
 echo "  ${BIN_DIR}/arqma-msg send --router http://${ROUTER_LISTEN} --to <64-hex> --text hello"
+echo "  # repeat --router (outermost first, max 3) for extra hops"
 echo "  ${BIN_DIR}/arqma-msg inbox --url http://${STORAGE_LISTEN} --to <64-hex>"
 echo "  ${BIN_DIR}/arqma-msg open --url http://${STORAGE_LISTEN} --to <pub> --secret <priv> --key <id>"
 echo

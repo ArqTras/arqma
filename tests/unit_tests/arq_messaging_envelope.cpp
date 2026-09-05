@@ -29,6 +29,7 @@
 #include "gtest/gtest.h"
 
 #include "arq_messaging/message_envelope.hpp"
+#include "arq_messaging/onion_forward.hpp"
 #include "arq_messaging/onion_layer.hpp"
 #include "arq_messaging/sealed_sender.hpp"
 
@@ -46,7 +47,7 @@ TEST(arq_messaging_envelope, roundtrip_binary_encoding)
 
   arq_messaging::MessageEnvelope decoded{};
   ASSERT_TRUE(arq_messaging::decode_message_envelope(
-      std::string_view{reinterpret_cast<const char *>(encoded.data()), encoded.size()}, decoded));
+      std::string_view{reinterpret_cast<const char*>(encoded.data()), encoded.size()}, decoded));
 
   EXPECT_EQ(envelope.version, decoded.version);
   EXPECT_EQ(envelope.recipient_x25519.data, decoded.recipient_x25519.data);
@@ -64,7 +65,7 @@ TEST(arq_messaging_envelope, rejects_truncated_payload)
 
   arq_messaging::MessageEnvelope decoded{};
   EXPECT_FALSE(arq_messaging::decode_message_envelope(
-      std::string_view{reinterpret_cast<const char *>(encoded.data()), encoded.size()}, decoded));
+      std::string_view{reinterpret_cast<const char*>(encoded.data()), encoded.size()}, decoded));
 }
 
 TEST(arq_messaging_envelope, sealed_sender_marker_and_ttl_bounds)
@@ -88,8 +89,7 @@ TEST(arq_messaging_envelope, onion_multi_hop_peel_roundtrip)
   constexpr int hops = 3;
   std::vector<arq_messaging::Identity> ids(hops);
   std::vector<arq_messaging::X25519PublicKey> pubs;
-  for (auto &id : ids)
-  {
+  for (auto& id : ids) {
     ASSERT_FALSE(arq_messaging::generate_identity(id));
     pubs.push_back(id.public_key);
   }
@@ -111,4 +111,45 @@ TEST(arq_messaging_envelope, onion_rejects_oversized_payload)
   std::vector<std::uint8_t> huge(arq_messaging::max_onion_payload_bytes + 1, 0xab);
   std::vector<std::uint8_t> onion;
   EXPECT_TRUE(arq_messaging::build_onion({id.public_key}, huge, onion));
+}
+
+TEST(arq_messaging_envelope, onion_forward_frame_roundtrip)
+{
+  const std::string url = "http://127.0.0.1:1091";
+  const std::vector<std::uint8_t> inner{0x11, 0x22, 0x33};
+  std::vector<std::uint8_t> framed;
+  ASSERT_TRUE(arq_messaging::encode_onion_forward(url, inner, framed));
+  std::string next;
+  std::vector<std::uint8_t> recovered;
+  ASSERT_TRUE(arq_messaging::decode_onion_forward(
+      std::string_view{reinterpret_cast<const char*>(framed.data()), framed.size()}, next, recovered));
+  EXPECT_EQ(url, next);
+  EXPECT_EQ(inner, recovered);
+  EXPECT_FALSE(arq_messaging::encode_onion_forward("", inner, framed));
+  EXPECT_FALSE(arq_messaging::decode_onion_forward("nope", next, recovered));
+}
+
+TEST(arq_messaging_envelope, compose_onion_route_peels_forward_frame)
+{
+  arq_messaging::Identity hop0{};
+  arq_messaging::Identity hop1{};
+  ASSERT_FALSE(arq_messaging::generate_identity(hop0));
+  ASSERT_FALSE(arq_messaging::generate_identity(hop1));
+  const std::vector<std::uint8_t> payload{0xca, 0xfe, 0xba, 0xbe};
+  const std::string url0 = "http://127.0.0.1:1090";
+  const std::string url1 = "http://127.0.0.1:1091";
+  std::vector<std::uint8_t> onion;
+  ASSERT_FALSE(arq_messaging::compose_onion_route({hop0.public_key, hop1.public_key}, {url0, url1}, payload, onion));
+
+  std::vector<std::uint8_t> after0;
+  ASSERT_FALSE(arq_messaging::peel_onion_layer(hop0, onion, after0));
+  std::string next;
+  std::vector<std::uint8_t> rest;
+  ASSERT_TRUE(arq_messaging::decode_onion_forward(
+      std::string_view{reinterpret_cast<const char*>(after0.data()), after0.size()}, next, rest));
+  EXPECT_EQ(url1, next);
+
+  std::vector<std::uint8_t> recovered;
+  ASSERT_FALSE(arq_messaging::peel_onion_layer(hop1, rest, recovered));
+  EXPECT_EQ(payload, recovered);
 }

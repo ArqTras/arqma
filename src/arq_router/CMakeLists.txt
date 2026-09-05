@@ -1,10 +1,12 @@
 set(arq_router_sources
   router_http.cpp
+  router_server.cpp
   router_service.cpp)
 
 set(arq_router_headers
   router_config.h
   router_http.h
+  router_server.h
   router_service.h)
 
 arqma_find_all_headers(arq_router_private_headers "${CMAKE_CURRENT_SOURCE_DIR}")
@@ -26,6 +28,7 @@ target_link_libraries(arq_router
     arq_storage
     ${Boost_SYSTEM_LIBRARY}
   PRIVATE
+    ${CMAKE_THREAD_LIBS_INIT}
     ${EXTRA_LIBRARIES})
 
 if(NOT IOS)

@@ -3,10 +3,14 @@
 // All rights reserved.
 
 #include "router_http.h"
+#include "arq_messaging/onion_forward.hpp"
 #include "arq_messaging/onion_layer.hpp"
+#include "arq_messaging/onion_request.hpp"
 #include "arq_storage/http_io.h"
 
+#include <cstdlib>
 #include <sstream>
+#include <string>
 #include <vector>
 
 namespace arq_router {
@@ -64,13 +68,38 @@ std::string handle_http(const std::string& method, const std::string& path, cons
   if (method == "POST" && path_only == "/v1/store") {
     const auto ns = arq_storage::query_get(path, "ns");
     const auto key = arq_storage::query_get(path, "key");
-    if (ns.empty() || key.empty() || storage_url.empty())
-      return "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+    const auto ttl = arq_storage::query_get(path, "ttl");
+    if (ns.empty() || key.empty())
+      return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
     std::string inner;
     if (!peel(hop, body, inner))
       return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+    unsigned long fwd = 0;
+    const auto fwd_raw = arq_storage::query_get(path, "fwd");
+    if (!fwd_raw.empty())
+      fwd = std::strtoul(fwd_raw.c_str(), nullptr, 10);
+    if (fwd >= arq_messaging::OnionRequest::hop_count)
+      return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+    std::string next_url;
+    std::vector<std::uint8_t> rest;
+    if (arq_messaging::decode_onion_forward(inner, next_url, rest)) {
+      if (fwd + 1 >= arq_messaging::OnionRequest::hop_count)
+        return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+      const auto next = arq_storage::parse_endpoint(next_url);
+      if (!next || next.tls)
+        return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+      auto fwd_path = "/v1/store?ns=" + arq_storage::url_encode(ns) + "&key=" + arq_storage::url_encode(key) +
+                      "&fwd=" + std::to_string(fwd + 1);
+      if (!ttl.empty())
+        fwd_path += "&ttl=" + ttl;
+      const auto hop_put = arq_storage::http_exchange(next, "POST", fwd_path, std::string(rest.begin(), rest.end()));
+      if (!hop_put)
+        return "HTTP/1.1 502 Bad Gateway\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+      return "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+    }
+    if (storage_url.empty())
+      return "HTTP/1.1 503 Service Unavailable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
     auto put_path = arq_storage::kv_path(ns, key);
-    const auto ttl = arq_storage::query_get(path, "ttl");
     if (!ttl.empty())
       put_path += "&ttl=" + ttl;
     const auto ep = arq_storage::parse_endpoint(storage_url);

@@ -34,6 +34,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <system_error>
 #include <vector>
 
@@ -58,4 +59,12 @@ std::error_code build_onion(const std::vector<X25519PublicKey>& hop_pubkeys, con
 /// Peel successive layers with matching hop identities (outermost first).
 std::error_code peel_onion(const std::vector<Identity>& hop_identities, const std::vector<std::uint8_t>& onion,
                            std::vector<std::uint8_t>& payload) noexcept;
+
+/// Wrap `payload` for successive router hops (outermost = hops[0]). Between hops the
+/// inner ciphertext is framed with the next hop URL (`encode_onion_forward`) so each
+/// `arqma-router` peels one layer and POSTs the rest. `hop_pubkeys.size()` must equal
+/// `hop_urls.size()`, be non-empty, and stay ≤ hop_count.
+std::error_code compose_onion_route(const std::vector<X25519PublicKey>& hop_pubkeys,
+                                    const std::vector<std::string>& hop_urls, const std::vector<std::uint8_t>& payload,
+                                    std::vector<std::uint8_t>& onion);
 } // namespace arq_messaging

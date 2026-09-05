@@ -34,7 +34,9 @@
 #include "arq_messaging/sealed_sender.hpp"
 #include "arq_messaging/swarm_map.hpp"
 #include "arq_router/router_http.h"
+#include "arq_router/router_server.h"
 #include "arq_router/router_service.h"
+#include "arq_storage/http_io.h"
 #include "arq_storage/storage_client.h"
 #include "arq_storage/storage_server.h"
 #include "rpc/rpc_auth.h"
@@ -199,6 +201,45 @@ TEST(arq_router, store_after_peel_writes_storage)
   const auto got = client.retrieve("inbox", "k1");
   EXPECT_FALSE(got.error);
   EXPECT_EQ(payload, got.value);
+  storage.stop();
+}
+
+TEST(arq_router, forwards_second_hop_then_stores)
+{
+  arq_storage::StorageServer storage;
+  ASSERT_FALSE(storage.listen("127.0.0.1", 0));
+  arq_messaging::Identity hop0{};
+  arq_messaging::Identity hop1{};
+  ASSERT_FALSE(arq_messaging::generate_identity(hop0));
+  ASSERT_FALSE(arq_messaging::generate_identity(hop1));
+
+  arq_router::RouterServer last;
+  last.set_identity(hop1);
+  last.set_storage_url(storage.base_url());
+  ASSERT_FALSE(last.listen("127.0.0.1", 0));
+
+  arq_router::RouterServer first;
+  first.set_identity(hop0);
+  ASSERT_FALSE(first.listen("127.0.0.1", 0));
+
+  const std::string payload = "two-hop-body";
+  std::vector<std::uint8_t> onion;
+  ASSERT_FALSE(arq_messaging::compose_onion_route({hop0.public_key, hop1.public_key},
+                                                  {first.base_url(), last.base_url()},
+                                                  std::vector<std::uint8_t>(payload.begin(), payload.end()), onion));
+
+  const auto ep = arq_storage::parse_endpoint(first.base_url());
+  const auto put =
+      arq_storage::http_exchange(ep, "POST", "/v1/store?ns=inbox&key=k2", std::string(onion.begin(), onion.end()));
+  ASSERT_TRUE(put);
+
+  arq_storage::Config cfg{arq_storage::Backend::Remote, storage.base_url(), std::chrono::milliseconds{2000}};
+  arq_storage::StorageClient client{cfg};
+  const auto got = client.retrieve("inbox", "k2");
+  EXPECT_FALSE(got.error);
+  EXPECT_EQ(payload, got.value);
+  first.stop();
+  last.stop();
   storage.stop();
 }
 

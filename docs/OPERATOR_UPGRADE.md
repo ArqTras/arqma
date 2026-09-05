@@ -145,6 +145,7 @@ arqma-msg gen
 arqma-storage --listen 127.0.0.1:22021 --data-dir ~/.arqma/storage --peer http://127.0.0.1:22022
 arqma-router --listen 127.0.0.1:1090 --data-dir ~/.arqma/arq-router --storage-url http://127.0.0.1:22021
 arqma-msg send --router http://127.0.0.1:1090 --to <64-hex> --text hello
+arqma-msg send --router http://127.0.0.1:1090 --router http://127.0.0.1:1091 --to <64-hex> --text hello
 arqma-msg inbox --url http://127.0.0.1:22021 --to <64-hex>
 ```
 
@@ -152,7 +153,9 @@ arqma-msg inbox --url http://127.0.0.1:22021 --to <64-hex>
 URLs listed in `PUT /v1/snodes?pubkey=`. `GET /v1/swarm?pubkey=` returns swarm id
 plus those members. `arqma-msg` get / inbox / open also read those members when
 the node in `--url` has no local copy. Listen on IPv6 as `[::1]:22021`. HTTP
-bodies are capped at 1 MiB on Linux, macOS, and Windows.
+bodies are capped at 1 MiB on Linux, macOS, and Windows. Repeat `--router`
+(outermost first, max 3); intermediate hops forward leftover onion, the last hop
+needs `--storage-url`.
 
 ## Compatibility
 

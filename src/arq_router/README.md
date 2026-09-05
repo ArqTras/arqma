@@ -1,20 +1,19 @@
 # Arq Router
 
-`src/arq_router` is an Arqma-owned privacy-routing scaffold.
+`src/arq_router` is the in-repo privacy-router companion (`arqma-router`).
 
-This module intentionally avoids importing Lokinet branding into the public API.
-The goal is to reserve daemon-side integration points, configuration names and
-service lifecycle hooks while future implementation work stays under Arqma
-copyright and product direction.
+It is **not** Lokinet. The process stays separate from `arqmad` (see
+`docs/PROCESS_BOUNDARIES.md`).
 
-Current status:
+Current HTTP surface:
 
-- config key constants for future daemon wiring
-- a stub `RouterService` lifecycle class
-- no embedded router daemon and no transport implementation yet
+- `GET /` / `GET /status` — liveness
+- `GET /v1/pubkey` — hop x25519 (hex)
+- `POST /v1/peel` — peel one sealed onion layer
+- `POST /v1/store?ns=&key=&ttl=&fwd=` — peel one layer, then either forward the
+  leftover onion (`ARQH` frame) to the next hop or `PUT` into `--storage-url`
 
-Non-goals for this scaffold:
+`fwd` counts hops already taken (max 3). Intermediate hops do not need
+`--storage-url`; the last hop does.
 
-- shipping a Lokinet-branded interface
-- implying production routing is already implemented
-- coupling the daemon to a separate router binary before requirements exist
+`arqma-msg send --router` may be repeated (outermost first, max 3).

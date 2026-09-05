@@ -32,5 +32,6 @@ echo Messenger CLI:
 echo   "%BIN_DIR%\arqma-msg.exe" gen
 echo   "%BIN_DIR%\arqma-msg.exe" send --url http://%STORAGE_LISTEN% --to ^<64-hex^> --text hello
 echo   "%BIN_DIR%\arqma-msg.exe" send --router http://%ROUTER_LISTEN% --to ^<64-hex^> --text hello
+echo   rem repeat --router (outermost first, max 3) for extra hops
 echo Close the companion console windows to stop the stack.
 endlocal

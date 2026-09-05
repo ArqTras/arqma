@@ -6,6 +6,7 @@ set(arq_messaging_sources
 set(arq_messaging_headers
   identity.hpp
   message_envelope.hpp
+  onion_forward.hpp
   onion_layer.hpp
   onion_request.hpp
   sealed_sender.hpp

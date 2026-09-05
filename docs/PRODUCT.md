@@ -12,8 +12,8 @@ across other repositories.
 | `arqmad` | Consensus daemon (RandomARQ + hybrid Pulse, Arq-Net, RPC) |
 | `arqma-wallet-rpc` / `arqma-wallet-cli` | Wallet processes |
 | `arqma-storage` | HTTP Storage Server (KV + TTL + `--data-dir` + `--peer` / swarm replicas) |
-| `arqma-router` | Privacy-router (`POST /v1/peel`, `POST /v1/store` into storage) |
-| `arqma-msg` | CLI: `gen` / `send` / `get` / `inbox` / `open` (optional `--router`) |
+| `arqma-router` | Privacy-router (`POST /v1/peel`, multi-hop `POST /v1/store`) |
+| `arqma-msg` | CLI: `gen` / `send` / `get` / `inbox` / `open` (repeatable `--router`) |
 
 Blink lives **in-process** as `src/arq_blink` (quorum sign/verify + collector).
 It pre-confirms transactions. It does **not** replace Pulse or RandomARQ.
@@ -27,6 +27,7 @@ arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
 arqma-msg gen
 arqma-msg send --url http://127.0.0.1:22021 --to <64-hex> --text hello
 arqma-msg send --router http://127.0.0.1:1090 --to <64-hex> --text hello
+arqma-msg send --router http://127.0.0.1:1090 --router http://127.0.0.1:1091 --to <64-hex> --text hello
 arqma-msg inbox --url http://127.0.0.1:22021 --to <64-hex>
 arqma-msg open --to <pub> --secret <priv> --key <id>
 ```
@@ -35,7 +36,9 @@ arqma-msg open --to <pub> --secret <priv> --key <id>
 `inbox-<pubkey>` also fan out to URLs in `PUT /v1/snodes`. `GET /v1/swarm?pubkey=`
 returns the FNV swarm id plus those member URLs. `arqma-msg` get / inbox / open
 read from those members when the local node has no copy. HTTP bodies are capped
-at 1 MiB; listen addresses accept IPv6 (`[::1]:22021`).
+at 1 MiB; listen addresses accept IPv6 (`[::1]:22021`). Repeat `--router` up to
+three times (outermost first); each hop peels one layer and either forwards
+(`ARQH`) or stores.
 
 `get_storage_status` / `storage_server_ping` talk to `arqma-storage`.
 `get_blink_status` / `print_blink` report the in-daemon Blink collector.

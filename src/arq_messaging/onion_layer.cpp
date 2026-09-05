@@ -27,6 +27,7 @@
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "onion_layer.hpp"
+#include "onion_forward.hpp"
 
 namespace arq_messaging {
 std::error_code wrap_onion_layer(const X25519PublicKey& hop_pubkey, const std::vector<std::uint8_t>& inner,
@@ -92,6 +93,40 @@ std::error_code peel_onion(const std::vector<Identity>& hop_identities, const st
     return std::make_error_code(std::errc::message_size);
   }
   payload = std::move(current);
+  return {};
+}
+
+std::error_code compose_onion_route(const std::vector<X25519PublicKey>& hop_pubkeys,
+                                    const std::vector<std::string>& hop_urls, const std::vector<std::uint8_t>& payload,
+                                    std::vector<std::uint8_t>& onion)
+{
+  if (hop_pubkeys.empty() || hop_pubkeys.size() != hop_urls.size() || hop_pubkeys.size() > OnionRequest::hop_count)
+    return std::make_error_code(std::errc::invalid_argument);
+  if (payload.size() > max_onion_payload_bytes)
+    return std::make_error_code(std::errc::message_size);
+
+  std::vector<std::uint8_t> current = payload;
+  for (std::size_t i = hop_pubkeys.size(); i-- > 0;) {
+    std::vector<std::uint8_t> wrapped;
+    if (auto ec = wrap_onion_layer(hop_pubkeys[i], current, wrapped)) {
+      onion.clear();
+      return ec;
+    }
+    current = std::move(wrapped);
+    if (i == 0)
+      break;
+    std::vector<std::uint8_t> framed;
+    if (!encode_onion_forward(hop_urls[i], current, framed)) {
+      onion.clear();
+      return std::make_error_code(std::errc::invalid_argument);
+    }
+    current = std::move(framed);
+  }
+  if (current.size() > max_onion_ciphertext_bytes) {
+    onion.clear();
+    return std::make_error_code(std::errc::message_size);
+  }
+  onion = std::move(current);
   return {};
 }
 } // namespace arq_messaging

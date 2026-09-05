@@ -19,7 +19,7 @@ repository** ([`docs/PRODUCT.md`](PRODUCT.md)); they are still separate PIDs.
 | Component | Binary | Why |
 |-----------|--------|-----|
 | Storage Server | `arqma-storage` | Replication/IO isolation; HTTP KV + TTL for messaging |
-| Privacy router | `arqma-router` | Network stack lifecycle separate from consensus |
+| Privacy router | `arqma-router` | Onion peel + optional multi-hop forward; separate from consensus |
 | Messenger CLI | `arqma-msg` | UX surface over storage + envelopes |
 
 `utils/arqma-stack.sh` (Linux/macOS) or `utils/arqma-stack.cmd` (Windows) starts
