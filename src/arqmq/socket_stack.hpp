@@ -65,6 +65,7 @@ using CommandHandler = std::function<std::string(const InboundRequest&)>;
 /// thread that enforces framing limits + ACL before invoking handlers.
 /// Curve/ZAP + peer send are available for shadow/native mesh; live quorum
 /// relay remains on `arqnet::SNNetwork` until cutover / stagenet parity.
+/// Inbound `ping` gets a CURVE `pong` reply (ROUTER → DEALER).
 class SocketStack final : public Transport
 {
 public:
@@ -151,6 +152,7 @@ private:
   std::error_code handle_job(const InboundRequest& request, std::string* reply);
   void process_zap_requests(zmq::socket_t& zap_auth);
   void process_listener_messages(zmq::socket_t& listener);
+  void process_dealer_messages(zmq::socket_t& dealer, const std::string& peer_pubkey);
   std::error_code worker_send_to_peer(SendJob& job, std::unordered_map<std::string, zmq::socket_t>& outgoing);
 
   zmq::context_t context_;

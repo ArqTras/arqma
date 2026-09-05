@@ -414,7 +414,33 @@ void SocketStack::process_listener_messages(zmq::socket_t& listener)
     if (parts.size() >= 3)
       request.payload.assign(static_cast<const char*>(parts[2].data()), parts[2].size());
 
-    // Fire-and-forget into the command handler (no wire reply yet).
+    std::string reply;
+    (void)handle_job(request, &reply);
+    // Request/response: ping handler returns "pong" as the reply command.
+    if (request.command != "ping" || reply.empty())
+      continue;
+    try {
+      zmq::message_t rid{parts[0].data(), parts[0].size()};
+      listener.send(rid, zmq::send_flags::sndmore);
+      zmq::message_t pong{reply.data(), reply.size()};
+      listener.send(pong, zmq::send_flags::none);
+    } catch (...) {
+    }
+  }
+}
+
+void SocketStack::process_dealer_messages(zmq::socket_t& dealer, const std::string& peer_pubkey)
+{
+  std::vector<zmq::message_t> parts;
+  while (recv_all_parts(dealer, parts, zmq::recv_flags::dontwait)) {
+    if (parts.empty())
+      continue;
+    InboundRequest request;
+    request.command.assign(static_cast<const char*>(parts[0].data()), parts[0].size());
+    request.peer_acl = CategoryAcl::ServiceNode;
+    request.peer_pubkey = peer_pubkey;
+    if (parts.size() >= 2)
+      request.payload.assign(static_cast<const char*>(parts[1].data()), parts[1].size());
     (void)handle_job(request, nullptr);
   }
 }
@@ -514,6 +540,13 @@ void SocketStack::worker_main()
     const size_t listener_offset = items.size();
     for (auto& listener : listeners)
       items.push_back({listener->handle(), 0, ZMQ_POLLIN, 0});
+    const size_t outgoing_offset = items.size();
+    std::vector<std::string> outgoing_keys;
+    outgoing_keys.reserve(outgoing.size());
+    for (auto& kv : outgoing) {
+      outgoing_keys.push_back(kv.first);
+      items.push_back({kv.second.handle(), 0, ZMQ_POLLIN, 0});
+    }
 
     zmq::poll(items.data(), items.size(), std::chrono::milliseconds{100});
 
@@ -523,6 +556,14 @@ void SocketStack::worker_main()
     for (size_t i = 0; i < listeners.size(); ++i) {
       if (items[listener_offset + i].revents & ZMQ_POLLIN)
         process_listener_messages(*listeners[i]);
+    }
+
+    for (size_t i = 0; i < outgoing_keys.size(); ++i) {
+      if (!(items[outgoing_offset + i].revents & ZMQ_POLLIN))
+        continue;
+      const auto it = outgoing.find(outgoing_keys[i]);
+      if (it != outgoing.end())
+        process_dealer_messages(it->second, it->first);
     }
 
     if (items[1].revents & ZMQ_POLLIN) {

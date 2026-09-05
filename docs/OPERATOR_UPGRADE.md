@@ -5,12 +5,14 @@
 This branch is prepared for **mainnet** operators. Compatibility locks:
 
 1. **Default** `--arqnet-backend=legacy-arqnet` — do not change on mainnet SNs.
-2. **Peer mesh** (`vote_ob` / quorum Curve+ZMQ) stays on `arqnet::SNNetwork` until
-   HF20 cutover conditions are met (see below).
+2. **Peer mesh** (`vote_ob` / quorum Curve+ZMQ) stays on `arqnet::SNNetwork` unless
+   **HF20+** and this node started `--arqnet-backend=arqmq` with CURVE identity
+   (`native_mesh_live_at`). Mainnet HF20 is at height **4 000 000**, so until then
+   the chain stays v19 and live mesh stays SNNetwork.
 3. `--arqnet-backend=arqmq` is **refused on mainnet** unless you also pass
    `--arqnet-allow-experimental` (not recommended for production service nodes).
 4. On testnet/stagenet, `arqmq` may be used to exercise the dedicated `SocketStack`.
-5. Stagenet soak (shadow dual-write, live mesh still SNNetwork):
+5. Stagenet soak (shadow dual-write; live mesh SNNetwork until HF20 on `arqmq` nodes):
 
 ```text
 arqmad --stagenet --arqnet-backend=arqmq --arqnet-mesh-shadow
@@ -22,28 +24,34 @@ arqmad --stagenet --arqnet-backend=arqmq --arqnet-mesh-shadow
    |-------|---------|
    | `mesh_live_relays` / `mesh_vote_ob_live` | SNNetwork relays observed |
    | `mesh_vote_ob_shadow_ok` / `*_fail` | SocketStack dual-write results |
+   | `mesh_vote_ob_shadow_in` | inbound shadow `vote_ob` frames (receivers) |
+   | `mesh_vote_ob_shadow_parse_ok` / `*_parse_fail` | inbound payloads that decode as obligation-vote wire |
    | `mesh_shadow_ok_rate_bps` | overall shadow success (0–10000) |
-   | `mesh_shadow_parity_sample_ok` | heuristic: ≥32 `vote_ob` live + ≥95% shadow ok |
-   | `native_mesh_ready` / `native_mesh_blocker` | cutover implementation gate (stage ≥4) |
+   | `mesh_shadow_parity_sample_ok` | ≥32 live `vote_ob` + ≥95% shadow send ok **and** inbound parse ok |
+   | `native_mesh_ready` / `native_mesh_blocker` | implementation gate (stage 4 → `none`) |
    | `native_mesh_hf_permits` / `hard_fork_version` | HF20+ permit on this chain |
+   | `mesh` | **live** quorum carrier (`arqmq` only at HF20+ with CURVE `arqmq` stack) |
 
-   Soak exit criteria (before flipping `native_mesh_implementation_ready()`):
+   Soak re-check (implementation gate is already 4; confirm on a live SN quorum):
 
    1. ≥2 stagenet SNs run `arqmq` + mesh-shadow (legacy-only peers inflate fails).
-   2. Open firewall for **ANET port + 10000** (shadow CURVE listener; live mesh stays on ANET).
-   3. `mesh_shadow_endpoint` populated; watch `mesh_vote_ob_shadow_in` on receivers.
-   4. `mesh_shadow_parity_sample_ok == true` across a multi-hour quorum window.
+   2. Open firewall for **ANET port + 10000** (CURVE listener). Before HF20, live
+      mesh stays on ANET; after HF20, `arqmq` nodes send quorum on ANET+10000.
+   3. `mesh_shadow_endpoint` populated; watch `mesh_vote_ob_shadow_in` **and**
+      `mesh_vote_ob_shadow_parse_ok` on receivers (`parse_fail` must stay near 0).
+   4. `mesh_shadow_parity_sample_ok == true` across a multi-hour quorum window
+      (requires both outbound send success and inbound vote-wire parse).
    5. No consensus / uptime regressions vs SNNetwork-only control nodes.
 
-   After soak succeeds, flip cutover in one place:
+   Implementation cutover is already flipped:
 
 ```text
 # src/arqmq/mesh_bridge.cpp
-constexpr int k_native_mesh_port_stage = 4;  // was 3
+constexpr int k_native_mesh_port_stage = 4;
 ```
 
-   That enables `native_mesh_ready()` and HF20+ `primary_mesh_send_to_peer`. Do **not**
-   change mainnet default `--arqnet-backend` in the same release.
+   Live `primary_mesh_send_to_peer` still requires HF20+ **and** `--arqnet-backend=arqmq`
+   with CURVE keys. Do **not** change mainnet default `--arqnet-backend` in this release.
 
    Do **not** enable shadow on mainnet production SNs.
 
@@ -54,31 +62,40 @@ utils/arqnet-mesh-soak-monitor.py 127.0.0.1:39994
 utils/arqnet-mesh-soak-monitor.py 127.0.0.1:39994 --once   # exit 0 when sample_ok
 ```
 
-### HF20 (native mesh — scheduled, not yet active)
+### HF20 / HF21 (native mesh + hybrid then exclusive SN)
 
-| Network | Height | Role |
-|---------|--------|------|
-| Stagenet | 240 | First soak |
-| Testnet | 1300 | Intermediate |
-| Mainnet | *not set* | Will be announced after stagenet parity |
+| Network | HF20 | HF21 | Role |
+|---------|------|------|------|
+| Stagenet | 240 | 260 | Hybrid then exclusive (short window) |
+| Testnet | 1300 | 1400 | Intermediate |
+| Mainnet | **4 000 000** | **5 000 000** | v19 until 4M; hybrid POSPOW 4M–5M; exclusive after 5M |
 
-Even after HF20 activates on a net, native mesh stays off until
-`native_mesh_implementation_ready()` (Curve/ZAP peer relay port). Operator
-default backend flip is a later release step.
+- **Until 4 000 000:** major version 19, SNNetwork, miner PoW. Full compatibility with current nodes.
+- **HF20 (hybrid):** miner RandomARQ **and** Pulse SN rounds are both permitted. Native mesh is live on `--arqnet-backend=arqmq` nodes; others stay SNNetwork.
+- **HF21 (exclusive):** intended new style only (Pulse + native mesh). RandomARQ stays **required** until `get_pulse_status.pow_replacement_ready` is true, so the chain cannot stall.
+
+Until mainnet height 4 000 000, upgraded daemons still produce **major version 19**
+blocks (they only vote 20 in `minor_version`). Pre-HF20 peers accept those blocks.
+At 4 000 000, upgraded nodes require major version 20 — operators must upgrade
+before that height. At 5 000 000 they must be ready for exclusive SN operation.
+
+Default `--arqnet-backend=legacy-arqnet` stays in this release. Pass `--arqnet-backend=arqmq`
+before HF21 so exclusive mesh has a CURVE stack.
 
 `get_arqnet_status` reports both:
 
 | Field | Meaning |
 |-------|---------|
 | `transport` | Facade / native stack (`snnetwork` or `arqmq`) |
-| `mesh` | Live peer quorum transport (`snnetwork` while compatibility lock holds) |
+| `mesh` | Live peer quorum transport (`snnetwork` until HF20+ with a CURVE `arqmq` stack) |
 
 ## Before upgrading
 
 1. Backup datadir (`~/.arqma` or custom `--data-dir`).
 2. Confirm Storage Server is running and reachable (uptime proofs still require it).
 3. Note current daemon version with `arqmad --version`.
-4. Keep existing Arq-Net ports and SN keys; no mesh protocol flip in this release line.
+4. Keep existing Arq-Net ports and SN keys; no live mesh protocol flip on mainnet
+   until height **4 000 000**, and only on nodes that opt into `--arqnet-backend=arqmq`.
 
 ## Build / install notes
 
@@ -106,7 +123,8 @@ default backend flip is a later release step.
 | `--arq-router` | Experimental privacy-router scaffold (lives for daemon lifetime) |
 | `--storage-client-url=<url>` | Outbound Storage Server reachability probe (`http://` GET / `https://` TCP) |
 | `arqnet_ping` | Records Arq-Net reachability (not yet a hard uptime gate) |
-| `get_arqnet_status` | `backend`, `transport`, `mesh`, `mesh_shadow` + counters, initialized, last ping |
+| `get_arqnet_status` | `backend`, `transport`, `mesh`, shadow counters, `native_mesh_*`, `sn_operating_mode`, `pulse_*` |
+| `get_pulse_status` | Hybrid/exclusive SN mode, PoW gate, Pulse leader + quorum indices |
 | `get_storage_status` | Storage client scaffold status + last SS ping |
 | `get_service_nodes` `offset`/`limit` | Optional pagination |
 
@@ -115,7 +133,7 @@ default backend flip is a later release step.
 - HF19 burn construction now allowed at HF ≥ 19 (core/wallet aligned).
 - Arq-Net accepts only registered service-node Curve keys.
 - Missing Arq-Net pings do **not** currently block uptime proofs.
-- Mainnet quorum wire path is unchanged (SNNetwork).
+- Mainnet quorum wire path stays SNNetwork until HF20 on `arqmq` nodes; HF21 is exclusive native mesh when CURVE is configured.
 
 ## Rollback
 

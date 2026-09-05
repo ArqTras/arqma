@@ -1,15 +1,16 @@
 openapi: 3.0.3
 info:
   title: Arqmad RPC
-  version: 0.2.1
+  version: 0.3.0
   description: >
     Minimal OpenAPI scaffold for selected Arqma daemon JSON-RPC methods during
     the upgrade branch modernization work. Ping/status helpers are JSON-RPC
     methods (`arqnet_ping`, `storage_server_ping`, `get_arqnet_status`,
-    `get_storage_status`), not REST GET paths.     `get_arqnet_status` returns
-    `backend`, `transport`, `mesh` (peer quorum wire; `snnetwork` while
-    the mainnet compatibility lock holds), plus optional `mesh_shadow` /
-    `mesh_shadow_*` counters when `--arqnet-mesh-shadow` is enabled.
+    `get_pulse_status`, `get_storage_status`), not REST GET paths.
+    `get_arqnet_status` returns `backend`, `transport`, `mesh` (live peer quorum:
+    `snnetwork` until HF20+ with a CURVE `--arqnet-backend=arqmq` stack; exclusive
+    intent at HF21), soak counters, `sn_operating_mode`, and Pulse PoW gates.
+    `get_pulse_status` reports hybrid/exclusive SN mode, leader and quorum indices.
     Privileged wallet-rpc methods
     are documented under the separate `arqma-wallet-rpc` surface; daemon
     operator methods require unrestricted RPC (see `rpc_auth.h`). Cleartext
@@ -75,6 +76,7 @@ components:
             - get_info
             - get_service_nodes
             - get_arqnet_status
+            - get_pulse_status
             - get_storage_status
             - arqnet_ping
             - storage_server_ping

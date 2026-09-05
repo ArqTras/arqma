@@ -61,6 +61,7 @@
 #include "common/notify.h"
 #include "service_node_voting.h"
 #include "service_node_list.h"
+#include "pulse.h"
 #include "common/varint.h"
 #include "common/pruning.h"
 #include "common/lock.h"
@@ -1860,7 +1861,7 @@ bool Blockchain::handle_alternative_block(const block& b, const crypto::hash& id
     {
       get_block_longhash(this, b, proof_of_work, block_height, 0);
     }
-    if(!check_hash(proof_of_work, current_diff))
+    if (service_nodes::pulse::pow_required_for_block(hard_fork_version) && !check_hash(proof_of_work, current_diff))
     {
       MERROR_VER("Block with id: " << id << std::endl << " for alternative chain, does not have enough proof of work: " << proof_of_work << std::endl << " expected difficulty: " << current_diff);
       bvc.m_verification_failed = true;
@@ -3944,7 +3945,7 @@ bool Blockchain::handle_block_to_main_chain(const block& bl, const crypto::hash&
       proof_of_work = get_block_longhash(this, bl, blockchain_height, 0);
 
     // validate proof_of_work versus difficulty target
-    if(!check_hash(proof_of_work, current_diffic))
+    if (service_nodes::pulse::pow_required_for_block(hard_fork_version) && !check_hash(proof_of_work, current_diffic))
     {
       MERROR_VER("Block with id: " << id << std::endl << "does not have enough proof of work: " << proof_of_work << " at height " << blockchain_height << ", unexpected difficulty: " << current_diffic);
       bvc.m_verification_failed = true;

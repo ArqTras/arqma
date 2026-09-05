@@ -2,16 +2,16 @@
 
 Branch: `upgrade`
 
-Foundation engineering for phases 3–12 is landed. Product-scale binaries
-(Storage Server, Lokinet-class router, Session clients, Pulse/Blink) remain
-Milestone C decisions.
+Foundation engineering for phases 3–12 is landed. Pulse SN hybrid/exclusive
+gates are started (Milestone C); full Pulse producer, Storage Server binary,
+Lokinet-class router, Session clients, and Blink remain follow-ups.
 
 ## Status Matrix
 
 | Phase | Status | Implemented now | Still required (Milestone C / later) |
 |-------|--------|-----------------|--------------------------------------|
-| 3 MQ feature parity | Foundation + native transport + dual-run | facade, ACL, `SocketStack` (`transport=arqmq`); peer `mesh=snnetwork` for wire compatibility | Native mesh cutover after stagenet parity |
-| 4 Arq-Net evolution | Foundation done | SN-only auth, ping RPC, dual-stack docs, status+transport RPC | Dual-run CI for mesh on SocketStack |
+| 3 MQ feature parity | Foundation + native transport + dual-run | facade, ACL, `SocketStack`; live `mesh=arqmq` at HF20+ with CURVE; exclusive intent at HF21 | Default backend flip |
+| 4 Arq-Net evolution | Foundation done | SN-only auth, ping, dual-stack, CURVE ping/pong, stage-4, HF20/21 | Stagenet soak re-check |
 | 5 Storage Server | Client foundation | Remote vs InMemory client; status RPC; boundaries doc | Production storage binary + replication |
 | 6 Messaging modules | Foundation done | identity, onion validation, swarm in-memory, envelope, sealed-sender | Full crypto + wire interoperability |
 | 7 RPC modernization | Foundation done | validation, pagination, DoS caps, auth helpers, OpenAPI | Generated OpenAPI + full auth middleware wiring |
@@ -23,6 +23,8 @@ Milestone C decisions.
 
 ## Recommended next milestone outputs
 
-1. Finish Stage C (peer send + `vote_ob` relay); then verify stagenet parity before `native_mesh_ready()` can flip.
+1. Re-run stagenet SN soak; wire Pulse block producer before treating HF21 as PoW-off.
+2. Remaining Milestone C: Storage binary / Blink / Router (Pulse gates already started).
+3. Migrate legacy `core_tests` incrementally under `BUILD_INTEGRATION_TESTS=ON`.
 2. Choose Milestone C primary value-add (Storage / Blink / Pulse / Router).
 3. Migrate legacy `core_tests` incrementally under `BUILD_INTEGRATION_TESTS=ON`.

@@ -36,10 +36,13 @@ class SocketStack;
 
 /// Must match `cryptonote::network_version_20` / `HF_VERSION_NATIVE_ARQNET_MESH`.
 inline constexpr uint8_t k_hf_native_arqnet_mesh = 20;
+/// Must match `cryptonote::network_version_21` / `HF_VERSION_PULSE_EXCLUSIVE`.
+inline constexpr uint8_t k_hf_native_mesh_exclusive = 21;
 /// Messaging facade backends.
 /// `LegacyArqNet` keeps production mesh I/O on `arqnet::SNNetwork`.
-/// `ArqMq` starts the dedicated ArqMQ socket/worker stack (`transport=arqmq`)
-/// while peer quorum relay continues via SNNetwork until dual-run cutover.
+/// `ArqMq` starts the dedicated ArqMQ socket/worker stack (`transport=arqmq`).
+/// Peer quorum stays on SNNetwork unless `native_mesh_live_at` (HF20+ / stage 4 /
+/// CURVE stack).
 enum class Backend
 {
   LegacyArqNet,
@@ -82,27 +85,39 @@ const char* transport_name() noexcept;
 /// Returns true when the dedicated ArqMQ socket stack is running.
 bool native_transport_active() noexcept;
 
-/// Peer Curve/ZMQ mesh transport name (SNNetwork while compatibility mode holds).
+/// Peer Curve/ZMQ mesh capability name (`arqmq` when stage ≥4 and the dedicated
+/// stack is running; otherwise `snnetwork`). Live relay still needs HF20+ and
+/// CURVE — see `native_mesh_live_at`.
 const char* mesh_transport_name() noexcept;
 
-/// True while peer quorum traffic is carried by SNNetwork.
+/// Live peer-quorum transport name at this hard-fork version.
+const char* live_mesh_transport_name(uint8_t hard_fork_version) noexcept;
+
+/// True while the dedicated stack is not carrying peer mesh (legacy default).
 bool peer_mesh_is_snnetwork() noexcept;
 
 /// True when the active hard-fork version permits native mesh cutover (HF20+).
 bool hf_permits_native_mesh(uint8_t hard_fork_version) noexcept;
 
-/// False until Curve/ZAP + peer send + vote_ob relay are ported and verified.
+/// False until Curve/ZAP + peer send + vote_ob relay are ported (stage ≥4).
 bool native_mesh_implementation_ready() noexcept;
 
-/// HF permit AND implementation ready (use from daemon/core with chain HF).
+/// HF permit AND implementation ready (does not require a running SocketStack).
 bool native_mesh_ready_at(uint8_t hard_fork_version) noexcept;
 
-/// Convenience without chain context: false until implementation is ready.
+/// Convenience without chain context: true after the implementation gate (stage ≥4).
 bool native_mesh_ready() noexcept;
+
+/// True when this node should send quorum traffic on SocketStack: HF20+,
+/// stage ≥4, and the active stack has CURVE identity. Otherwise SNNetwork.
+bool native_mesh_live_at(uint8_t hard_fork_version) noexcept;
+
+/// True from HF21: SNNetwork is no longer the intended live mesh (exclusive).
+bool hf_requires_native_mesh_exclusive(uint8_t hard_fork_version) noexcept;
 
 /// Stable reason code while native mesh cannot cut over.
 /// Stages: curve-zap-peer-relay-not-ported → peer-endpoints-missing →
-/// peer-send-path-missing → vote-ob-parity-unverified → (ready / hf-below-native-mesh).
+/// peer-send-path-missing → vote-ob-parity-unverified → none.
 const char* native_mesh_blocker() noexcept;
 
 /// Returns the default ACL configured at init (Denied after shutdown).

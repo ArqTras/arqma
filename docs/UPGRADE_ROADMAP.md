@@ -68,7 +68,8 @@ Platform matrix: [`docs/PLATFORM.md`](PLATFORM.md).
 ## Requires SN economics / product decision (Milestone C)
 
 - Full Storage Server + swarm replication for messaging
-- Pulse-like PoS block production
+- Pulse-like PoS block production (**started:** HF20 hybrid / HF21 exclusive gates +
+  leader/quorum + `get_pulse_status`; producer not yet replacing RandomARQ)
 - Blink-like instant tx quorums
 - Lokinet-class onion routing network
 - Session-class messenger clients
@@ -110,15 +111,19 @@ Remaining before default flip (not blocking Milestone B; preserves compatibility
 
 - [x] Dual-run coexistence: SocketStack + SNNetwork mesh (`mesh=snnetwork` always today)
 - [x] Deny-path unit coverage for unknown Curve peers (`arqnet_auth`)
-- [x] HF20 scaffold (`HF_VERSION_NATIVE_ARQNET_MESH`; stagenet/testnet heights; mainnet TBD)
+- [x] HF20 scaffold (`HF_VERSION_NATIVE_ARQNET_MESH`; stagenet 240 / testnet 1300 / mainnet 4 000 000)
 - [x] Native mesh Stage A/B (Curve/ZAP allow + `PeerTable` on SocketStack)
 - [x] Native mesh Stage C send path (CURVE `send_to_peer` unit-tested)
 - [x] Native mesh Stage C daemon flag + RPC shadow counters (`--arqnet-mesh-shadow`)
 - [x] Live/shadow parity telemetry + dual-write unit coverage
 - [x] Soak monitor script (`utils/arqnet-mesh-soak-monitor.py`)
-- [x] Cutover relay scaffold (HF-gated; stage still 3)
-- [ ] Stagenet shadow soak + `vote_ob` parity → cutover gate (`k_native_mesh_port_stage = 4`)
-- [ ] Stagenet HF20 parity + schedule mainnet height + default flip docs
+- [x] Cutover relay scaffold (HF-gated; stage 4)
+- [x] Soak inbound vote_ob wire parse + RPC parse counters
+- [x] Native CURVE ping→pong reply path on SocketStack
+- [x] Cutover gate (`k_native_mesh_port_stage = 4`); live mesh still SNNetwork without `arqmq`+CURVE+HF20
+- [x] Mainnet HF20 at **4 000 000** (compatible v19 until then)
+- [x] HF21 at **5 000 000** (exclusive SN) + Pulse Milestone C start (`get_pulse_status`)
+- [ ] Re-verify stagenet soak; Pulse producer; default backend flip later
 
 ## Milestone C — product fork-in-the-road
 

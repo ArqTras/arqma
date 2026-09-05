@@ -18,10 +18,11 @@ backend without breaking operators.
    selected by `--arqnet-backend=arqmq` (`transport=arqmq`). Peer mesh still SNNetwork.
 4. **Dual-run coexistence (landed, compatibility mode)** — native stack + SNNetwork mesh
    run together; RPC reports `transport` vs `mesh`; peer wire protocol unchanged.
-5. **Cutover** — after stagenet parity, set `k_native_mesh_port_stage = 4` so
-   `native_mesh_ready()` flips; relay uses `primary_mesh_send_to_peer` at HF20+
-   and inbound `vote_ob` is processed on SocketStack. Default `--arqnet-backend`
-   flips one release later; legacy retained one cycle.
+5. **Cutover (implementation on)** — `k_native_mesh_port_stage = 4` so
+   `native_mesh_ready()` is true. Live relay uses `primary_mesh_send_to_peer`
+   only at HF20+ on nodes with a CURVE `arqmq` stack (`native_mesh_live_at`).
+   Default `--arqnet-backend` stays `legacy-arqnet`; SNNetwork is the fallback
+   so votes are not dropped. Re-run stagenet soak when a live SN quorum exists.
 6. **Optional hard gate** — Arq-Net ping for uptime proofs after operator notice.
 
 ## Operator flags
@@ -38,20 +39,19 @@ backend without breaking operators.
 Following Monero/Oxen practice, native mesh cutover is tied to a **network
 version**, not only an operator flag:
 
-| Net | HF20 height | Notes |
-|-----|-------------|-------|
-| Stagenet | **240** | Soak / parity first |
-| Testnet | **1300** | Intermediate |
-| Mainnet | **unscheduled** | Add only after stagenet mesh parity |
+| Net | HF20 height | HF21 height | Notes |
+|-----|-------------|-------------|-------|
+| Stagenet | **240** | **260** | Hybrid then exclusive |
+| Testnet | **1300** | **1400** | Intermediate |
+| Mainnet | **4 000 000** | **5 000 000** | v19 until 4M; hybrid 4M–5M |
 
 Runtime helpers (`arqmq`):
 
 - `hf_permits_native_mesh(hf)` — true at `network_version_20+`
-- `native_mesh_implementation_ready()` — false until peer send + `vote_ob` parity
-- `native_mesh_ready_at(hf)` — both conditions (daemon should use this)
-- `native_mesh_blocker()` stages:
-  - `vote-ob-parity-unverified` (current: CURVE send path unit-tested; live mesh still SNNetwork)
-  - then ready after daemon wiring + stagenet parity
+- `native_mesh_implementation_ready()` — true at stage ≥4
+- `native_mesh_ready_at(hf)` — HF + implementation (does not require a running stack)
+- `native_mesh_live_at(hf)` — also requires an active CURVE SocketStack (daemon live path)
+- `native_mesh_blocker()` — `none` at stage 4
 
 Alias: `HF_VERSION_NATIVE_ARQNET_MESH` → `network_version_20`.
 
@@ -61,7 +61,7 @@ Alias: `HF_VERSION_NATIVE_ARQNET_MESH` → `network_version_20`.
 - [x] Dual-run coexistence with peer mesh locked on SNNetwork (full wire compatibility)
 - [x] Deny path for unknown Curve peers covered by unit tests (`arqnet_auth` /
       `decide_incoming_curve_peer*`; full ZAP two-process integration still later)
-- [x] HF20 scaffold (stagenet/testnet heights; mainnet height deferred)
+- [x] HF20 scaffold (stagenet/testnet heights; mainnet **4 000 000**)
 - [x] Curve/ZAP allow + CURVE bind on SocketStack (shadow; SNNetwork still live mesh)
 - [x] Peer endpoint bookkeeping (`PeerTable`)
 - [x] Outbound CURVE peer send + inbound `vote_ob` handler path (unit-tested; not live-wired)
@@ -69,8 +69,12 @@ Alias: `HF_VERSION_NATIVE_ARQNET_MESH` → `network_version_20`.
 - [x] Live vs shadow parity telemetry + local dual-write `vote_ob` unit coverage
 - [x] Shadow CURVE listener on ANET+10000 + outbound hint rewrite
 - [x] Soak monitor script (`utils/arqnet-mesh-soak-monitor.py`)
-- [x] Cutover relay scaffold (`primary_mesh_send_to_peer` / HF gate; stage still 3)
+- [x] Cutover relay (`primary_mesh_send_to_peer` / HF gate; stage 4)
 - [x] RPC cutover gate fields on `get_arqnet_status`
-- [x] Native inbound `vote_ob` processing scaffold (dead until stage 4)
-- [ ] Stagenet soak: enable shadow + verify `vote_ob` parity → flip `native_mesh_implementation_ready()`
-- [ ] Schedule mainnet HF20 height + release notes / `OPERATOR_UPGRADE.md` for cutover
+- [x] Native inbound `vote_ob` processing (installed at stage ≥4)
+- [x] Soak inbound `vote_ob` wire parse (`mesh_vote_ob_shadow_parse_*`; same decoder as stage 4)
+- [x] Native CURVE ping/pong reply path on SocketStack (unit-tested)
+- [x] `native_mesh_implementation_ready()` (stage 4); live path `native_mesh_live_at`
+- [x] Mainnet HF20 height **4 000 000** (v19 compatible until then)
+- [x] HF21 **5 000 000** exclusive mesh intent + Pulse `get_pulse_status`
+- [ ] Re-run stagenet soak; Pulse producer; default `--arqnet-backend` flip later

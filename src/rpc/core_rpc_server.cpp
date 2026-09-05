@@ -48,6 +48,7 @@ using namespace epee;
 #include "arqmq/arqmq.h"
 #include "arqmq/mesh_bridge.hpp"
 #include "arq_storage/storage_client.h"
+#include "cryptonote_core/pulse.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "cryptonote_basic/account.h"
 #include "cryptonote_basic/cryptonote_basic_impl.h"
@@ -3177,7 +3178,8 @@ namespace cryptonote
     res.backend = arqmq::to_string(arqmq::current_backend());
     res.initialized = arqmq::is_initialized();
     res.transport = arqmq::transport_name();
-    res.mesh = arqmq::mesh_transport_name();
+    const uint8_t hf = m_core.get_blockchain_storage().get_current_hard_fork_version();
+    res.mesh = arqmq::live_mesh_transport_name(hf);
     res.mesh_shadow = arqmq::native_mesh_shadow_relay_enabled();
     res.mesh_shadow_endpoint = arqmq::native_mesh_shadow_endpoint();
     const auto shadow = arqmq::native_mesh_shadow_stats();
@@ -3189,14 +3191,40 @@ namespace cryptonote
     res.mesh_vote_ob_shadow_ok = shadow.vote_ob_shadow_ok;
     res.mesh_vote_ob_shadow_fail = shadow.vote_ob_shadow_fail;
     res.mesh_vote_ob_shadow_in = shadow.vote_ob_shadow_in;
+    res.mesh_vote_ob_shadow_parse_ok = shadow.vote_ob_shadow_parse_ok;
+    res.mesh_vote_ob_shadow_parse_fail = shadow.vote_ob_shadow_parse_fail;
     res.mesh_shadow_ok_rate_bps = arqmq::native_mesh_shadow_ok_rate_bps();
     res.mesh_shadow_parity_sample_ok = arqmq::native_mesh_shadow_parity_sample_ok();
-    const uint8_t hf = m_core.get_blockchain_storage().get_current_hard_fork_version();
     res.hard_fork_version = hf;
     res.native_mesh_ready = arqmq::native_mesh_ready();
     res.native_mesh_hf_permits = arqmq::hf_permits_native_mesh(hf);
     res.native_mesh_blocker = arqmq::native_mesh_blocker();
+    res.native_mesh_exclusive = arqmq::hf_requires_native_mesh_exclusive(hf);
+    res.sn_operating_mode = service_nodes::pulse::to_string(service_nodes::pulse::sn_operating_mode(hf));
+    res.pulse_pow_required = service_nodes::pulse::pow_required_for_block(hf);
+    res.pulse_blocker = service_nodes::pulse::blocker();
     res.last_arqnet_ping = static_cast<uint64_t>(m_core.m_last_arqnet_ping);
+    res.status = CORE_RPC_STATUS_OK;
+    return true;
+  }
+  //------------------------------------------------------------------------------------------------------------------------------
+  bool core_rpc_server::on_get_pulse_status(const COMMAND_RPC_GET_PULSE_STATUS::request&, COMMAND_RPC_GET_PULSE_STATUS::response& res, epee::json_rpc::error&, const connection_context*)
+  {
+    const uint8_t hf = m_core.get_blockchain_storage().get_current_hard_fork_version();
+    const uint64_t height = m_core.get_current_blockchain_height();
+    const size_t sn_count = m_core.get_service_node_list().get_service_node_count();
+    res.hard_fork_version = hf;
+    res.height = height;
+    res.service_node_count = sn_count;
+    res.sn_operating_mode = service_nodes::pulse::to_string(service_nodes::pulse::sn_operating_mode(hf));
+    res.hybrid_permitted = service_nodes::pulse::hybrid_sn_permitted(hf);
+    res.exclusive_required = service_nodes::pulse::exclusive_sn_required(hf);
+    res.pow_required = service_nodes::pulse::pow_required_for_block(hf);
+    res.pow_replacement_ready = service_nodes::pulse::pow_replacement_ready();
+    res.pulse_blocker = service_nodes::pulse::blocker();
+    res.leader_index = service_nodes::pulse::leader_index(height, sn_count);
+    for (const size_t idx : service_nodes::pulse::quorum_indices(height, sn_count))
+      res.quorum_indices.push_back(idx);
     res.status = CORE_RPC_STATUS_OK;
     return true;
   }

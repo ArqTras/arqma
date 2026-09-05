@@ -5,9 +5,9 @@ This PR lands the **production-grade foundation** for Arqma modernization
 macOS**.
 
 It does **not** claim that full Oxen Storage Server, Lokinet-class routing,
-Session messenger clients, Pulse or Blink are shipped as product clones.
-Those require an explicit Milestone C product choice (see
-`docs/UPGRADE_ROADMAP.md` and `docs/PLATFORM.md`).
+Session messenger clients, or Blink are shipped. Pulse SN **hybrid (HF20) /
+exclusive (HF21)** gates and `get_pulse_status` are started; RandomARQ is still
+required until a Pulse producer is wired. See `docs/PR_SUMMARY.md`.
 
 ### Must-have (satisfied)
 
@@ -35,7 +35,7 @@ Those require an explicit Milestone C product choice (see
 - Production Storage Server binary + swarm replication (Milestone C)
 - Full privacy router binary (Milestone C)
 - Messenger clients / Session protocol wire completeness (Milestone C)
-- Pulse/Blink/L2 consensus changes (SN economics / Milestone C)
+- Pulse/Blink/L2: Pulse **gates + RPC started**; producer and Blink still later
 - Restoring every legacy Monero-era unit fixture / `core_tests` in default CI
 - Native MSVC unit job on `windows-latest` (Windows covered via mingw depends)
 

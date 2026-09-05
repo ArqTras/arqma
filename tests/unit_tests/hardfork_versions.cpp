@@ -37,8 +37,10 @@ TEST(hardfork_versions, network_version_ordering)
   EXPECT_LT(network_version_12, network_version_13);
   EXPECT_LT(network_version_16, network_version_19);
   EXPECT_LT(network_version_19, network_version_20);
+  EXPECT_LT(network_version_20, network_version_21);
   EXPECT_EQ(19u, static_cast<unsigned>(network_version_19));
   EXPECT_EQ(20u, static_cast<unsigned>(network_version_20));
+  EXPECT_EQ(21u, static_cast<unsigned>(network_version_21));
 }
 
 TEST(hardfork_versions, per_byte_and_burn_gates)

@@ -44,8 +44,8 @@ BackendSelection resolve_backend(const std::string_view requested, const Network
     if (network == NetworkClass::Mainnet && !allow_experimental_on_mainnet) {
       out.backend = Backend::LegacyArqNet;
       out.overridden = true;
-      out.reason = "arqmq refused on mainnet: keep legacy-arqnet until dual-run cutover; "
-                   "peer mesh stays on SNNetwork for compatibility";
+      out.reason = "arqmq refused on mainnet: keep legacy-arqnet until operators opt in after "
+                   "HF20 (height 4000000); peer mesh stays on SNNetwork for compatibility";
       return out;
     }
     out.backend = Backend::ArqMq;

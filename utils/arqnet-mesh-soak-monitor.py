@@ -49,6 +49,8 @@ def fmt_row(result: dict) -> str:
         f"sh_ok={result.get('mesh_vote_ob_shadow_ok', 0)} "
         f"sh_fail={result.get('mesh_vote_ob_shadow_fail', 0)} "
         f"sh_in={result.get('mesh_vote_ob_shadow_in', 0)} "
+        f"parse_ok={result.get('mesh_vote_ob_shadow_parse_ok', 0)} "
+        f"parse_fail={result.get('mesh_vote_ob_shadow_parse_fail', 0)} "
         f"ok_bps={result.get('mesh_shadow_ok_rate_bps', 0)} "
         f"sample_ok={result.get('mesh_shadow_parity_sample_ok')}"
     )

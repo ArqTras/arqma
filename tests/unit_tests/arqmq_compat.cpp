@@ -86,15 +86,18 @@ TEST(arqmq_compat, legacy_path_never_starts_native_stack)
   EXPECT_FALSE(arqmq::shutdown());
 }
 
-TEST(arqmq_compat, arqmq_keeps_peer_mesh_on_snnetwork)
+TEST(arqmq_compat, arqmq_reports_native_mesh_capability_without_live_curve)
 {
   EXPECT_FALSE(arqmq::shutdown());
   EXPECT_FALSE(arqmq::init(arqmq::Config{arqmq::Backend::ArqMq, arqmq::CategoryAcl::ServiceNode}));
   EXPECT_EQ(arqmq::Backend::ArqMq, arqmq::current_backend());
   EXPECT_TRUE(arqmq::native_transport_active());
   EXPECT_STREQ(arqmq::k_transport_arqmq, arqmq::transport_name());
-  EXPECT_STREQ(arqmq::k_transport_snnetwork, arqmq::mesh_transport_name());
-  EXPECT_TRUE(arqmq::peer_mesh_is_snnetwork());
+  EXPECT_STREQ(arqmq::k_transport_arqmq, arqmq::mesh_transport_name());
+  EXPECT_FALSE(arqmq::peer_mesh_is_snnetwork());
+  // No CURVE identity yet → live quorum still SNNetwork (HF20 would not skip SNNetwork).
+  EXPECT_FALSE(arqmq::native_mesh_live_at(arqmq::k_hf_native_arqnet_mesh));
+  EXPECT_STREQ(arqmq::k_transport_snnetwork, arqmq::live_mesh_transport_name(arqmq::k_hf_native_arqnet_mesh));
 
   auto* stack = arqmq::active_socket_stack();
   ASSERT_NE(nullptr, stack);
@@ -113,7 +116,7 @@ TEST(arqmq_compat, arqmq_keeps_peer_mesh_on_snnetwork)
   status.command = "arqnet_status";
   status.peer_acl = arqmq::CategoryAcl::Basic;
   EXPECT_FALSE(stack->dispatch(status, &reply));
-  EXPECT_NE(std::string::npos, reply.find("mesh=snnetwork"));
+  EXPECT_NE(std::string::npos, reply.find("mesh=arqmq"));
   EXPECT_NE(std::string::npos, reply.find("transport=arqmq"));
 
   EXPECT_FALSE(arqmq::shutdown());

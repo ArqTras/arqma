@@ -2958,11 +2958,17 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
       uint64_t mesh_vote_ob_shadow_ok = 0;
       uint64_t mesh_vote_ob_shadow_fail = 0;
       uint64_t mesh_vote_ob_shadow_in = 0;
+      uint64_t mesh_vote_ob_shadow_parse_ok = 0;
+      uint64_t mesh_vote_ob_shadow_parse_fail = 0;
       uint32_t mesh_shadow_ok_rate_bps = 0;
       bool mesh_shadow_parity_sample_ok = false;
       bool native_mesh_ready = false;
       bool native_mesh_hf_permits = false;
       std::string native_mesh_blocker;
+      bool native_mesh_exclusive = false;
+      std::string sn_operating_mode;
+      bool pulse_pow_required = true;
+      std::string pulse_blocker;
       uint8_t hard_fork_version = 0;
       uint64_t last_arqnet_ping = 0;
       std::string status;
@@ -2981,13 +2987,60 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
         KV_SERIALIZE(mesh_vote_ob_shadow_ok)
         KV_SERIALIZE(mesh_vote_ob_shadow_fail)
         KV_SERIALIZE(mesh_vote_ob_shadow_in)
+        KV_SERIALIZE(mesh_vote_ob_shadow_parse_ok)
+        KV_SERIALIZE(mesh_vote_ob_shadow_parse_fail)
         KV_SERIALIZE(mesh_shadow_ok_rate_bps)
         KV_SERIALIZE(mesh_shadow_parity_sample_ok)
         KV_SERIALIZE(native_mesh_ready)
         KV_SERIALIZE(native_mesh_hf_permits)
         KV_SERIALIZE(native_mesh_blocker)
+        KV_SERIALIZE(native_mesh_exclusive)
+        KV_SERIALIZE(sn_operating_mode)
+        KV_SERIALIZE(pulse_pow_required)
+        KV_SERIALIZE(pulse_blocker)
         KV_SERIALIZE(hard_fork_version)
         KV_SERIALIZE(last_arqnet_ping)
+        KV_SERIALIZE(status)
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<response_t> response;
+  };
+
+  struct COMMAND_RPC_GET_PULSE_STATUS
+  {
+    struct request_t
+    {
+      BEGIN_KV_SERIALIZE_MAP()
+      END_KV_SERIALIZE_MAP()
+    };
+    typedef epee::misc_utils::struct_init<request_t> request;
+
+    struct response_t
+    {
+      uint8_t hard_fork_version = 0;
+      uint64_t height = 0;
+      uint64_t service_node_count = 0;
+      std::string sn_operating_mode;
+      bool hybrid_permitted = false;
+      bool exclusive_required = false;
+      bool pow_required = true;
+      bool pow_replacement_ready = false;
+      std::string pulse_blocker;
+      uint64_t leader_index = 0;
+      std::vector<uint64_t> quorum_indices;
+      std::string status;
+      BEGIN_KV_SERIALIZE_MAP()
+        KV_SERIALIZE(hard_fork_version)
+        KV_SERIALIZE(height)
+        KV_SERIALIZE(service_node_count)
+        KV_SERIALIZE(sn_operating_mode)
+        KV_SERIALIZE(hybrid_permitted)
+        KV_SERIALIZE(exclusive_required)
+        KV_SERIALIZE(pow_required)
+        KV_SERIALIZE(pow_replacement_ready)
+        KV_SERIALIZE(pulse_blocker)
+        KV_SERIALIZE(leader_index)
+        KV_SERIALIZE(quorum_indices)
         KV_SERIALIZE(status)
       END_KV_SERIALIZE_MAP()
     };

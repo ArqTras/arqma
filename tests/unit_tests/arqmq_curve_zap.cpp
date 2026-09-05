@@ -33,6 +33,7 @@
 #include "arqmq/mesh_bridge.hpp"
 #include "arqmq/peer_table.hpp"
 #include "arqmq/socket_stack.hpp"
+#include "arqnet/bt_serialize.h"
 
 #include <array>
 #include <chrono>
@@ -40,6 +41,7 @@
 #include <cstdint>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 #include <zmq.h>
 
@@ -47,6 +49,21 @@ namespace {
 std::string make_pubkey(const char fill)
 {
   return std::string(32, fill);
+}
+
+std::string make_obligation_vote_payload()
+{
+  arqnet::bt_dict vote{
+      {"v", int64_t{0}},
+      {"t", int64_t{0}},
+      {"h", int64_t{100}},
+      {"g", int64_t{1}},
+      {"i", int64_t{0}},
+      {"s", std::string(64, 'S')},
+      {"wi", int64_t{0}},
+      {"sc", int64_t{0}},
+  };
+  return arqnet::bt_serialize(vote);
 }
 
 struct FrameScratch
@@ -205,18 +222,70 @@ TEST(arqmq_curve_zap, curve_peer_send_delivers_vote_ob)
   server.stop();
 }
 
-TEST(arqmq_curve_zap, native_inbound_install_is_noop_before_cutover)
+TEST(arqmq_curve_zap, curve_ping_replies_pong_to_sender)
 {
-  // install_native_mesh_inbound_handlers lives in arqnet.cpp; gate itself is stage-based.
-  EXPECT_FALSE(arqmq::native_mesh_ready());
-  EXPECT_STREQ("vote-ob-parity-unverified", arqmq::native_mesh_blocker());
+  std::string server_pub;
+  std::string server_sec;
+  std::string client_pub;
+  std::string client_sec;
+  ASSERT_TRUE(make_curve_keypair(server_pub, server_sec));
+  ASSERT_TRUE(make_curve_keypair(client_pub, client_sec));
+
+  std::mutex mu;
+  std::condition_variable cv;
+  bool got_pong = false;
+  std::string pong_peer;
+
+  arqmq::SocketStack server;
+  ASSERT_FALSE(server.start());
+  server.set_curve_identity(server_pub, server_sec);
+  server.set_allow_connection([&](const std::string&, const std::string& pk) {
+    return pk == client_pub ? arqmq::CurvePeerAllow::ServiceNode : arqmq::CurvePeerAllow::Denied;
+  });
+  ASSERT_FALSE(server.bind_curve("tcp://127.0.0.1:0"));
+  const std::string endpoint = server.last_curve_endpoint();
+  ASSERT_FALSE(endpoint.empty());
+
+  arqmq::SocketStack client;
+  ASSERT_FALSE(client.start());
+  client.set_curve_identity(client_pub, client_sec);
+  client.set_allow_connection([](const std::string&, const std::string&) { return arqmq::CurvePeerAllow::Denied; });
+  client.peers().note_peer(server_pub, endpoint, true);
+  client.register_handler("pong", arqmq::CategoryAcl::ServiceNode, [&](const arqmq::InboundRequest& req) {
+    {
+      std::lock_guard<std::mutex> lock{mu};
+      pong_peer = req.peer_pubkey;
+      got_pong = true;
+    }
+    cv.notify_one();
+    return std::string{};
+  });
+
+  EXPECT_FALSE(client.send_to_peer(server_pub, "ping", ""));
+
+  {
+    std::unique_lock<std::mutex> lock{mu};
+    ASSERT_TRUE(cv.wait_for(lock, std::chrono::seconds(3), [&] { return got_pong; }));
+  }
+  EXPECT_EQ(server_pub, pong_peer);
+
+  client.stop();
+  server.stop();
 }
 
-TEST(arqmq_curve_zap, native_mesh_blocker_awaits_vote_ob_parity)
+TEST(arqmq_curve_zap, native_mesh_implementation_gate_is_open)
 {
-  EXPECT_FALSE(arqmq::native_mesh_implementation_ready());
-  EXPECT_STREQ("vote-ob-parity-unverified", arqmq::native_mesh_blocker());
+  EXPECT_TRUE(arqmq::native_mesh_ready());
+  EXPECT_TRUE(arqmq::native_mesh_implementation_ready());
+  EXPECT_STREQ("none", arqmq::native_mesh_blocker());
+}
+
+TEST(arqmq_curve_zap, native_mesh_live_requires_curve_stack)
+{
+  EXPECT_TRUE(arqmq::native_mesh_ready_at(arqmq::k_hf_native_arqnet_mesh));
+  EXPECT_FALSE(arqmq::native_mesh_live_at(arqmq::k_hf_native_arqnet_mesh));
   EXPECT_TRUE(arqmq::peer_mesh_is_snnetwork());
+  EXPECT_STREQ(arqmq::k_transport_snnetwork, arqmq::live_mesh_transport_name(arqmq::k_hf_native_arqnet_mesh));
 }
 
 TEST(arqmq_curve_zap, shadow_relay_opt_in_default_off)
@@ -287,7 +356,7 @@ TEST(arqmq_curve_zap, shadow_dual_write_delivers_vote_ob_via_facade)
   EXPECT_GE(stats.vote_ob_shadow_ok, 1u);
   EXPECT_GE(arqmq::native_mesh_shadow_ok_rate_bps(), 1u);
   EXPECT_FALSE(arqmq::native_mesh_shadow_parity_sample_ok(32, 9500)); // sample too small
-  EXPECT_TRUE(arqmq::native_mesh_shadow_parity_sample_ok(1, 9000));
+  EXPECT_FALSE(arqmq::native_mesh_shadow_parity_sample_ok(1, 9000));  // outbound only; inbound parse required
 
   arqmq::set_native_mesh_shadow_relay_enabled(false);
   EXPECT_FALSE(arqmq::shutdown());
@@ -312,13 +381,70 @@ TEST(arqmq_curve_zap, endpoint_port_offset_rewrites_tcp)
   EXPECT_TRUE(arqmq::endpoint_with_port_offset("tcp://host:70000", 1).empty());
 }
 
-TEST(arqmq_curve_zap, primary_mesh_send_noop_until_cutover_stage)
+TEST(arqmq_curve_zap, primary_mesh_send_safe_without_stack)
 {
-  EXPECT_FALSE(arqmq::native_mesh_ready());
+  EXPECT_TRUE(arqmq::native_mesh_ready());
   EXPECT_TRUE(arqmq::peer_mesh_is_snnetwork());
   EXPECT_STREQ(arqmq::k_transport_snnetwork, arqmq::mesh_transport_name());
-  // Must not throw / must not require an active stack while stage < 4.
   arqmq::primary_mesh_send_to_peer(make_pubkey('Z'), "vote_ob", "x", "tcp://127.0.0.1:19996");
+}
+
+TEST(arqmq_curve_zap, primary_mesh_send_delivers_vote_ob_after_cutover)
+{
+  std::string server_pub;
+  std::string server_sec;
+  std::string client_pub;
+  std::string client_sec;
+  ASSERT_TRUE(make_curve_keypair(server_pub, server_sec));
+  ASSERT_TRUE(make_curve_keypair(client_pub, client_sec));
+
+  std::mutex mu;
+  std::condition_variable cv;
+  bool got = false;
+  std::string got_payload;
+
+  arqmq::SocketStack server;
+  ASSERT_FALSE(server.start());
+  server.set_curve_identity(server_pub, server_sec);
+  server.set_allow_connection([&](const std::string&, const std::string& pk) {
+    return pk == client_pub ? arqmq::CurvePeerAllow::ServiceNode : arqmq::CurvePeerAllow::Denied;
+  });
+  server.register_handler("vote_ob", arqmq::CategoryAcl::ServiceNode, [&](const arqmq::InboundRequest& req) {
+    {
+      std::lock_guard<std::mutex> lock{mu};
+      got_payload = req.payload;
+      got = true;
+    }
+    cv.notify_one();
+    return std::string{"ok"};
+  });
+  ASSERT_FALSE(server.bind_curve("tcp://127.0.0.1:0"));
+  const std::string endpoint = server.last_curve_endpoint();
+  ASSERT_FALSE(endpoint.empty());
+
+  EXPECT_FALSE(arqmq::shutdown());
+  EXPECT_FALSE(arqmq::init(arqmq::Config{arqmq::Backend::ArqMq, arqmq::CategoryAcl::ServiceNode}));
+  auto* client = arqmq::active_socket_stack();
+  ASSERT_NE(nullptr, client);
+  arqmq::configure_mesh_shadow(*client, client_pub, client_sec,
+                               [](const std::string&, const std::string&) { return arqmq::CurvePeerAllow::Denied; });
+  client->peers().note_peer(server_pub, endpoint, true);
+
+  EXPECT_TRUE(arqmq::native_mesh_live_at(arqmq::k_hf_native_arqnet_mesh));
+  EXPECT_STREQ(arqmq::k_transport_arqmq, arqmq::live_mesh_transport_name(arqmq::k_hf_native_arqnet_mesh));
+  EXPECT_FALSE(arqmq::native_mesh_live_at(static_cast<uint8_t>(19)));
+
+  // Empty hint: do not apply ANET+10000 rewrite; send to the bound CURVE port.
+  arqmq::primary_mesh_send_to_peer(server_pub, "vote_ob", "cutover-payload", "");
+
+  {
+    std::unique_lock<std::mutex> lock{mu};
+    ASSERT_TRUE(cv.wait_for(lock, std::chrono::seconds(3), [&] { return got; }));
+  }
+  EXPECT_EQ("cutover-payload", got_payload);
+
+  EXPECT_FALSE(arqmq::shutdown());
+  server.stop();
 }
 
 TEST(arqmq_curve_zap, shadow_listener_receives_offset_dual_write)
@@ -384,6 +510,125 @@ TEST(arqmq_curve_zap, shadow_listener_receives_offset_dual_write)
     ASSERT_TRUE(cv.wait_for(lock, std::chrono::seconds(3), [&] { return got; }));
   }
   EXPECT_GE(arqmq::native_mesh_shadow_stats().vote_ob_shadow_ok, 1u);
+
+  arqmq::set_native_mesh_shadow_relay_enabled(false);
+  EXPECT_FALSE(arqmq::shutdown());
+  server.stop();
+}
+
+TEST(arqmq_curve_zap, vote_ob_wire_payload_rejects_garbage)
+{
+  arqmq::set_vote_ob_payload_validator(nullptr);
+  EXPECT_FALSE(arqmq::vote_ob_wire_payload_ok(""));
+  EXPECT_FALSE(arqmq::vote_ob_wire_payload_ok("vote-payload"));
+  EXPECT_FALSE(arqmq::vote_ob_wire_payload_ok("dual-write-payload"));
+  EXPECT_TRUE(arqmq::vote_ob_wire_payload_ok(make_obligation_vote_payload()));
+}
+
+TEST(arqmq_curve_zap, soak_inbound_parses_bt_vote_ob)
+{
+  arqmq::set_vote_ob_payload_validator(nullptr);
+
+  std::string server_pub;
+  std::string server_sec;
+  std::string client_pub;
+  std::string client_sec;
+  ASSERT_TRUE(make_curve_keypair(server_pub, server_sec));
+  ASSERT_TRUE(make_curve_keypair(client_pub, client_sec));
+
+  arqmq::SocketStack server;
+  ASSERT_FALSE(server.start());
+  arqmq::configure_mesh_shadow(server, server_pub, server_sec, [&](const std::string&, const std::string& pk) {
+    return pk == client_pub ? arqmq::CurvePeerAllow::ServiceNode : arqmq::CurvePeerAllow::Denied;
+  });
+
+  EXPECT_FALSE(arqmq::shutdown());
+  EXPECT_FALSE(arqmq::init(arqmq::Config{arqmq::Backend::ArqMq, arqmq::CategoryAcl::ServiceNode}));
+  auto* client = arqmq::active_socket_stack();
+  ASSERT_NE(nullptr, client);
+  arqmq::configure_mesh_shadow(*client, client_pub, client_sec,
+                               [](const std::string&, const std::string&) { return arqmq::CurvePeerAllow::Denied; });
+  arqmq::set_native_mesh_shadow_relay_enabled(true);
+
+  ASSERT_FALSE(arqmq::start_mesh_shadow_listener(server, "tcp://127.0.0.1:46000"));
+  const std::string shadow_ep = arqmq::native_mesh_shadow_endpoint();
+  ASSERT_FALSE(shadow_ep.empty());
+
+  const std::string payload = make_obligation_vote_payload();
+  ASSERT_TRUE(arqmq::vote_ob_wire_payload_ok(payload));
+
+  arqmq::note_live_mesh_relay("vote_ob");
+  arqmq::shadow_send_to_peer(server_pub, "vote_ob", payload, "tcp://127.0.0.1:46000");
+
+  bool inbound = false;
+  for (int i = 0; i < 80; ++i)
+  {
+    if (arqmq::native_mesh_shadow_stats().vote_ob_shadow_in >= 1)
+    {
+      inbound = true;
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+  ASSERT_TRUE(inbound);
+
+  const auto stats = arqmq::native_mesh_shadow_stats();
+  EXPECT_GE(stats.vote_ob_shadow_ok, 1u);
+  EXPECT_GE(stats.vote_ob_shadow_in, 1u);
+  EXPECT_GE(stats.vote_ob_shadow_parse_ok, 1u);
+  EXPECT_EQ(0u, stats.vote_ob_shadow_parse_fail);
+  EXPECT_TRUE(arqmq::native_mesh_shadow_parity_sample_ok(1, 9000));
+
+  arqmq::set_native_mesh_shadow_relay_enabled(false);
+  EXPECT_FALSE(arqmq::shutdown());
+  server.stop();
+}
+
+TEST(arqmq_curve_zap, soak_inbound_counts_unparseable_vote_ob)
+{
+  arqmq::set_vote_ob_payload_validator(nullptr);
+
+  std::string server_pub;
+  std::string server_sec;
+  std::string client_pub;
+  std::string client_sec;
+  ASSERT_TRUE(make_curve_keypair(server_pub, server_sec));
+  ASSERT_TRUE(make_curve_keypair(client_pub, client_sec));
+
+  arqmq::SocketStack server;
+  ASSERT_FALSE(server.start());
+  arqmq::configure_mesh_shadow(server, server_pub, server_sec, [&](const std::string&, const std::string& pk) {
+    return pk == client_pub ? arqmq::CurvePeerAllow::ServiceNode : arqmq::CurvePeerAllow::Denied;
+  });
+
+  EXPECT_FALSE(arqmq::shutdown());
+  EXPECT_FALSE(arqmq::init(arqmq::Config{arqmq::Backend::ArqMq, arqmq::CategoryAcl::ServiceNode}));
+  auto* client = arqmq::active_socket_stack();
+  ASSERT_NE(nullptr, client);
+  arqmq::configure_mesh_shadow(*client, client_pub, client_sec,
+                               [](const std::string&, const std::string&) { return arqmq::CurvePeerAllow::Denied; });
+  arqmq::set_native_mesh_shadow_relay_enabled(true);
+
+  ASSERT_FALSE(arqmq::start_mesh_shadow_listener(server, "tcp://127.0.0.1:46100"));
+  arqmq::note_live_mesh_relay("vote_ob");
+  arqmq::shadow_send_to_peer(server_pub, "vote_ob", "not-a-vote", "tcp://127.0.0.1:46100");
+
+  bool inbound = false;
+  for (int i = 0; i < 80; ++i)
+  {
+    if (arqmq::native_mesh_shadow_stats().vote_ob_shadow_in >= 1)
+    {
+      inbound = true;
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+  ASSERT_TRUE(inbound);
+
+  const auto stats = arqmq::native_mesh_shadow_stats();
+  EXPECT_GE(stats.vote_ob_shadow_parse_fail, 1u);
+  EXPECT_EQ(0u, stats.vote_ob_shadow_parse_ok);
+  EXPECT_FALSE(arqmq::native_mesh_shadow_parity_sample_ok(1, 9000));
 
   arqmq::set_native_mesh_shadow_relay_enabled(false);
   EXPECT_FALSE(arqmq::shutdown());

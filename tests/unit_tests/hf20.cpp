@@ -38,14 +38,19 @@ TEST(hf20, feature_gate_aligns_with_arqmq_constant)
   ASSERT_EQ(arqmq::k_hf_native_arqnet_mesh, static_cast<uint8_t>(cryptonote::network_version_20));
 }
 
-TEST(hf20, schedules_stagenet_and_testnet_only)
+TEST(hf20, schedules_stagenet_testnet_and_mainnet)
 {
   ASSERT_EQ(240u,
             cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::STAGENET, cryptonote::network_version_20));
   ASSERT_EQ(1300u,
             cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::TESTNET, cryptonote::network_version_20));
-  // Mainnet height deliberately unscheduled until stagenet mesh parity.
-  ASSERT_EQ(cryptonote::HardFork::INVALID_HF_VERSION_HEIGHT,
+  ASSERT_EQ(MAINNET_HARD_FORK_20_HEIGHT,
+            cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::MAINNET, cryptonote::network_version_20));
+  ASSERT_EQ(4000000u, MAINNET_HARD_FORK_20_HEIGHT);
+  // Until 4_000_000 the chain stays on HF19 (compatibility with current mainnet).
+  ASSERT_EQ(1886030u,
+            cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::MAINNET, cryptonote::network_version_19));
+  ASSERT_LT(cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::MAINNET, cryptonote::network_version_19),
             cryptonote::HardFork::get_hardcoded_hard_fork_height(cryptonote::MAINNET, cryptonote::network_version_20));
 }
 
@@ -53,8 +58,13 @@ TEST(hf20, mesh_cutover_requires_hf_and_implementation)
 {
   EXPECT_FALSE(arqmq::hf_permits_native_mesh(static_cast<uint8_t>(cryptonote::network_version_19)));
   EXPECT_TRUE(arqmq::hf_permits_native_mesh(static_cast<uint8_t>(cryptonote::network_version_20)));
-  EXPECT_FALSE(arqmq::native_mesh_implementation_ready());
-  EXPECT_FALSE(arqmq::native_mesh_ready_at(static_cast<uint8_t>(cryptonote::network_version_20)));
-  EXPECT_FALSE(arqmq::native_mesh_ready());
-  EXPECT_STREQ("vote-ob-parity-unverified", arqmq::native_mesh_blocker());
+  EXPECT_TRUE(arqmq::native_mesh_implementation_ready());
+  EXPECT_TRUE(arqmq::native_mesh_ready());
+  EXPECT_TRUE(arqmq::native_mesh_ready_at(static_cast<uint8_t>(cryptonote::network_version_20)));
+  EXPECT_FALSE(arqmq::native_mesh_ready_at(static_cast<uint8_t>(cryptonote::network_version_19)));
+  // No CURVE stack in this test → live relay stays SNNetwork (legacy fallback).
+  EXPECT_FALSE(arqmq::native_mesh_live_at(static_cast<uint8_t>(cryptonote::network_version_20)));
+  EXPECT_FALSE(arqmq::hf_requires_native_mesh_exclusive(static_cast<uint8_t>(cryptonote::network_version_20)));
+  EXPECT_TRUE(arqmq::hf_requires_native_mesh_exclusive(static_cast<uint8_t>(cryptonote::network_version_21)));
+  EXPECT_STREQ("none", arqmq::native_mesh_blocker());
 }

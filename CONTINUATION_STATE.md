@@ -6,47 +6,30 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
 ## Tip
 
-- Tip `428ee2b4` — native inbound vote_ob cutover scaffold
-- Cutover still off (`vote-ob-parity-unverified`); soak remains the ops gate
+- Stage 4 mesh gate on; HF20 **4 000 000** hybrid SN; HF21 **5 000 000** exclusive
+- Pulse Milestone C started (`get_pulse_status`); PoW still required
+- PR notes: `docs/PR_SUMMARY.md` (EN + PL)
 
-## Mainnet readiness locks
+## Mainnet locks until 4 000 000
 
 - Default `--arqnet-backend=legacy-arqnet`
-- Peer mesh always `snnetwork` (`native_mesh_ready() == false`)
-- Mainnet refuses `--arqnet-backend=arqmq` / `--arqnet-mesh-shadow` unless `--arqnet-allow-experimental`
+- Mainnet `arqmq` needs `--arqnet-allow-experimental`
+- v19 wire / miner RandomARQ
 
-## Post-B cutover progress
+## SN operating modes
 
-- [x] Deny-path unit coverage (`arqnet_auth` / `decide_incoming_curve_peer*`)
-- [x] Explicit staged `native_mesh_blocker()` (cutover stays off)
-- [x] HF20 scaffold (`network_version_20` / `HF_VERSION_NATIVE_ARQNET_MESH`)
-  - Stagenet height **240**, testnet **1300**, mainnet **unscheduled**
-  - Gates: `hf_permits_native_mesh` + `native_mesh_ready_at(hf)`
-- [x] Stage A: Curve/ZAP allow on SocketStack (`curve_zap`, `bind_curve`)
-- [x] Stage B: peer endpoint table (`PeerTable`)
-- [x] Stage C send path: CURVE `send_to_peer` + inbound handler (unit-tested)
-- [x] Stage C shadow wiring: CURVE identity on active stack + opt-in `shadow_send_to_peer` (default off)
-- [x] Stage C daemon: `--arqnet-mesh-shadow` + `get_arqnet_status` counters
-- [x] Stage C parity telemetry: live vs shadow + `mesh_shadow_parity_sample_ok`
-- [x] Stage C shadow CURVE listen (ANET+10000) + hint rewrite
-- [x] Soak monitor: `utils/arqnet-mesh-soak-monitor.py`
-- [x] Cutover scaffold: HF-gated primary SocketStack relay (inactive until stage 4)
-- [x] RPC cutover gates: `native_mesh_ready` / `blocker` / `hf_permits` / `hard_fork_version`
-- [x] Native inbound `vote_ob` handler scaffold (installed only when stage ≥4)
-- [ ] **BLOCKED ON OPS:** Stage C soak on ≥2 stagenet SNs → then `k_native_mesh_port_stage = 4`
-- [ ] Stagenet HF20 parity → schedule mainnet height → default flip
+| HF | Heights (mainnet) | Mode | Mesh | Block production |
+|----|-------------------|------|------|------------------|
+| 19 | now → 3 999 999 | legacy | SNNetwork | RandomARQ |
+| 20 | 4 000 000 → 4 999 999 | hybrid | native if `arqmq`+CURVE else SNNetwork | RandomARQ + Pulse rounds (producer not signing yet) |
+| 21 | ≥ 5 000 000 | exclusive | native intended; SNNetwork fallback if no CURVE | Pulse-only **when** `pow_replacement_ready`; else still RandomARQ |
 
-## Soak recipe (operator)
+## Next
 
-```text
-arqmad --stagenet --arqnet-backend=arqmq --arqnet-mesh-shadow
-# firewall: ANET and ANET+10000
-utils/arqnet-mesh-soak-monitor.py 127.0.0.1:39994
-```
+- [ ] Stagenet soak on ≥2 SNs
+- [ ] Pulse block producer + signatures → flip `k_pulse_pow_stage`
+- [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 
-Hold until `mesh_shadow_parity_sample_ok` stays true across a multi-hour quorum window.
+## Quality
 
-## Quality gates
-
-- Local `unit_tests` → **565** passed
-- Tip CI (`566d399b`): **green**
+- Local `unit_tests` → **577** passed

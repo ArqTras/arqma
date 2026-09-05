@@ -58,11 +58,12 @@ TEST(arqnet_auth, vote_ob_requires_service_node_acl)
   EXPECT_TRUE(arqmq::authorize_request("vote_ob", arqmq::CategoryAcl::ServiceNode, 16));
 }
 
-TEST(arqnet_auth, native_mesh_not_ready_keeps_snnetwork_carrier)
+TEST(arqnet_auth, native_mesh_legacy_carrier_until_live_stack)
 {
   EXPECT_TRUE(arqmq::peer_mesh_is_snnetwork());
-  EXPECT_FALSE(arqmq::native_mesh_implementation_ready());
-  EXPECT_FALSE(arqmq::native_mesh_ready_at(arqmq::k_hf_native_arqnet_mesh));
-  EXPECT_FALSE(arqmq::native_mesh_ready());
-  EXPECT_STREQ("vote-ob-parity-unverified", arqmq::native_mesh_blocker());
+  EXPECT_TRUE(arqmq::native_mesh_implementation_ready());
+  EXPECT_TRUE(arqmq::native_mesh_ready_at(arqmq::k_hf_native_arqnet_mesh));
+  EXPECT_TRUE(arqmq::native_mesh_ready());
+  EXPECT_FALSE(arqmq::native_mesh_live_at(arqmq::k_hf_native_arqnet_mesh));
+  EXPECT_STREQ("none", arqmq::native_mesh_blocker());
 }

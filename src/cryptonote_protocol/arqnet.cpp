@@ -51,6 +51,8 @@ struct SNNWrapper {
 };
 
 void install_native_mesh_inbound_handlers(arqmq::SocketStack &stack, SNNWrapper &snw);
+quorum_vote_t deserialize_vote(const bt_value &v);
+bool try_decode_obligation_vote(std::string_view payload, quorum_vote_t *out) noexcept;
 
 template <typename T>
 std::string get_data_as_string(const T &key)
@@ -184,6 +186,10 @@ void *new_snnwrapper(cryptonote::core &core, const std::string &bind)
           return decision == IncomingCurveDecision::ServiceNode ? arqmq::CurvePeerAllow::ServiceNode
                                                                 : arqmq::CurvePeerAllow::Denied;
         });
+    // Soak inbound uses the same decoder the stage-4 native handler will run.
+    arqmq::set_vote_ob_payload_validator([](std::string_view payload) {
+      return try_decode_obligation_vote(payload, nullptr);
+    });
     if (arqmq::native_mesh_shadow_relay_enabled() || arqmq::native_mesh_ready())
     {
       if (const auto ec = arqmq::start_mesh_shadow_listener(*stack, bind))
@@ -373,7 +379,9 @@ private:
   void relay_to_peers_impl(const std::string &cmd, std::array<send_option::serialized, N> relay_data, std::index_sequence<I...>)
   {
     const uint8_t hf = core.get_blockchain_storage().get_current_hard_fork_version();
-    const bool native_primary = arqmq::native_mesh_ready_at(hf);
+    // Native is primary only when HF20+, stage ≥4, and this node has a CURVE stack.
+    // Default `--arqnet-backend=legacy-arqnet` keeps SNNetwork so votes are not dropped.
+    const bool native_primary = arqmq::native_mesh_live_at(hf);
 
     for (auto &peer : peers)
     {
@@ -382,11 +390,15 @@ private:
 
       if (native_primary)
       {
-        // Cutover path (stage≥4 + HF20+): SocketStack is primary; SNNetwork not used for quorum.
+        // HF20 hybrid / HF21 exclusive: SocketStack is primary when CURVE is up.
         if constexpr (N >= 1)
           arqmq::primary_mesh_send_to_peer(peer.first, cmd, relay_data[0].data, peer.second);
         continue;
       }
+
+      if (arqmq::hf_requires_native_mesh_exclusive(hf))
+        MWARNING("HF21 exclusive mesh requested but this node has no CURVE SocketStack; "
+                 "falling back to SNNetwork so votes are not dropped. Pass --arqnet-backend=arqmq.");
 
       if (peer.second.empty())
         snn.send(peer.first, cmd, relay_data[I]..., send_option::optional{});
@@ -448,6 +460,27 @@ quorum_vote_t deserialize_vote(const bt_value &v)
   }
 
   return vote;
+}
+
+bool try_decode_obligation_vote(std::string_view payload, quorum_vote_t *out) noexcept
+{
+  try
+  {
+    if (payload.empty())
+      return false;
+    bt_value decoded;
+    bt_deserialize(payload.data(), payload.size(), decoded);
+    auto vote = deserialize_vote(decoded);
+    if (vote.type != quorum_type::obligations)
+      return false;
+    if (out)
+      *out = vote;
+    return true;
+  }
+  catch (...)
+  {
+    return false;
+  }
 }
 
 void relay_obligation_votes(void *obj, const std::vector<service_nodes::quorum_vote_t> &votes)
@@ -572,7 +605,7 @@ void handle_obligation_vote(SNNetwork::message &m, void *self)
 }
 
 /// Native-mesh inbound path (SocketStack). Active only after cutover stage ≥4.
-/// During soak, shadow handlers only count; SNNetwork remains the live processor.
+/// During soak, shadow handlers count **and** parse vote_ob wire; SNNetwork stays live.
 void install_native_mesh_inbound_handlers(arqmq::SocketStack &stack, SNNWrapper &snw)
 {
   if (!arqmq::native_mesh_ready())
@@ -585,36 +618,47 @@ void install_native_mesh_inbound_handlers(arqmq::SocketStack &stack, SNNWrapper 
                << (req.peer_pubkey.size() == 32 ? as_hex(req.peer_pubkey) : "unknown"));
       return std::string{};
     }
-    if (req.payload.empty())
+
+    quorum_vote_t vote{};
+    if (!try_decode_obligation_vote(req.payload, &vote))
+    {
+      MWARNING("Native-mesh vote_ob deserialize failed from "
+               << (req.peer_pubkey.size() == 32 ? as_hex(req.peer_pubkey) : "unknown"));
+      return std::string{};
+    }
+    if (vote.block_height > snw.core.get_current_blockchain_height())
       return std::string{};
 
-    try
-    {
-      bt_value decoded;
-      bt_deserialize(req.payload.data(), req.payload.size(), decoded);
-      std::vector<quorum_vote_t> vvote;
-      vvote.push_back(deserialize_vote(decoded));
-      auto &vote = vvote.back();
-      if (vote.type != quorum_type::obligations)
-        return std::string{};
-      if (vote.block_height > snw.core.get_current_blockchain_height())
-        return std::string{};
+    std::vector<quorum_vote_t> vvote;
+    vvote.push_back(vote);
+    cryptonote::vote_verification_context vvc{};
+    snw.core.add_service_node_vote(vote, vvc);
+    if (vvc.m_verification_failed)
+      return std::string{};
+    if (vvc.m_added_to_pool)
+      relay_obligation_votes(&snw, std::move(vvote));
+    return std::string{};
+  });
 
-      cryptonote::vote_verification_context vvc{};
-      snw.core.add_service_node_vote(vote, vvc);
-      if (vvc.m_verification_failed)
-        return std::string{};
-      if (vvc.m_added_to_pool)
-        relay_obligation_votes(&snw, std::move(vvote));
-    }
-    catch (const std::exception &e)
+  stack.register_handler("ping", arqmq::CategoryAcl::Basic, [](const arqmq::InboundRequest &req) {
+    if (!arqmq::authorize_request("ping", req.peer_acl, req.payload.size(), req.payload.empty() ? 0 : 1))
     {
-      MWARNING("Native-mesh vote_ob deserialize failed: " << e.what());
+      MWARNING("Dropping native-mesh ping from unauthorized peer "
+               << (req.peer_pubkey.size() == 32 ? as_hex(req.peer_pubkey) : "unknown"));
+      return std::string{};
+    }
+    return std::string{"pong"};
+  });
+  stack.register_handler("pong", arqmq::CategoryAcl::Basic, [](const arqmq::InboundRequest &req) {
+    if (!arqmq::authorize_request("pong", req.peer_acl, req.payload.size(), req.payload.empty() ? 0 : 1))
+    {
+      MWARNING("Dropping native-mesh pong from unauthorized peer "
+               << (req.peer_pubkey.size() == 32 ? as_hex(req.peer_pubkey) : "unknown"));
     }
     return std::string{};
   });
 
-  MINFO("Arq-Net native mesh inbound vote_ob handler installed (cutover active)");
+  MINFO("Arq-Net native mesh inbound vote_ob/ping handlers installed (cutover active)");
 }
 
 template <typename I>

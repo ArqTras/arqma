@@ -54,6 +54,7 @@ set(unit_tests_sources
   hashchain.cpp
   hf19.cpp
   hf20.cpp
+  hf21.cpp
   main.cpp
   memwipe.cpp
   mul_div.cpp

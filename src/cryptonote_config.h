@@ -201,8 +201,12 @@ static constexpr uint64_t P2P_PREAUTH_PACKET_MAX_SIZE_BYTES = P2P_PREAUTH_PACKET
 #define HF_VERSION_BURN                                 cryptonote::network_version_19
 #define HF_VERSION_CLSAG                                cryptonote::network_version_19
 /// HF20: permits native Arq-Net mesh cutover after Curve/ZAP peer relay is ready.
-/// Mainnet height intentionally unscheduled until stagenet parity.
+/// Mainnet stays network_version_19 (SNNetwork / legacy backend) until this height.
 #define HF_VERSION_NATIVE_ARQNET_MESH                   cryptonote::network_version_20
+#define MAINNET_HARD_FORK_20_HEIGHT                     4000000ull
+/// HF21: exclusive new-style SN (Pulse + native mesh). Hybrid POSPOW window is HF20→HF21.
+#define HF_VERSION_PULSE_EXCLUSIVE                      cryptonote::network_version_21
+#define MAINNET_HARD_FORK_21_HEIGHT                     5000000ull
 
 #define PER_KB_FEE_QUANTIZATION_DECIMALS                8
 
@@ -415,6 +419,7 @@ namespace cryptonote
     network_version_18,
     network_version_19,
     network_version_20,
+    network_version_21,
 
     network_version_count,
   };

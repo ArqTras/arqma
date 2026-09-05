@@ -44,12 +44,24 @@
 - Bind opt-in mesh-shadow CURVE listener on ANET+10000 and rewrite dual-write
   peer hints to that port (`mesh_shadow_endpoint`, `mesh_vote_ob_shadow_in`).
 - Add `utils/arqnet-mesh-soak-monitor.py` to poll soak parity via `get_arqnet_status`.
-- Scaffold HF20 cutover relay (`primary_mesh_send_to_peer`); inactive while
-  `k_native_mesh_port_stage == 3` / `vote-ob-parity-unverified`.
+- Scaffold HF20 cutover relay (`primary_mesh_send_to_peer`); live only via
+  `native_mesh_live_at` (stage 4 + HF20+ + CURVE `arqmq` stack). Legacy backend
+  keeps SNNetwork so votes are not dropped.
+- Flip `k_native_mesh_port_stage` to **4** (`native_mesh_blocker=none`). Do not
+  change mainnet default `--arqnet-backend`.
+- Schedule mainnet HF20 at height **4 000 000** (v19 until then) and HF21 at
+  **5 000 000** (hybrid POSPOW SN in between; exclusive new-style after HF21).
+- Start Milestone C Pulse: SN modes `legacy`/`hybrid`/`exclusive`, deterministic
+  leader/quorum, `get_pulse_status` RPC. RandomARQ remains required until a Pulse
+  producer is wired.
 - Expose cutover gates on `get_arqnet_status` (`native_mesh_ready`,
   `native_mesh_blocker`, `native_mesh_hf_permits`, `hard_fork_version`).
 - Scaffold native-mesh inbound `vote_ob` processing (installed only after
-  `native_mesh_ready()` / stage ≥4; soak still count-only on shadow).
+  `native_mesh_ready()` / stage ≥4).
+- Parse inbound shadow `vote_ob` as obligation-vote wire (`mesh_vote_ob_shadow_parse_ok` /
+  `*_parse_fail`); `mesh_shadow_parity_sample_ok` now requires inbound parse parity.
+- Native SocketStack `ping` replies `pong` over CURVE (ROUTER → DEALER) so cutover
+  keepalives have a wire path; inbound `ping`/`pong` handlers install at stage ≥4.
 - Restore `arqnet_ping` RPC and `last_arqnet_ping` daemon info fields.
 - Add testnet hard fork 19 at height 1200.
 - Add `--storage-client-url` for outbound Storage Server TCP reachability probes.

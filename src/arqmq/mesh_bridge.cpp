@@ -48,6 +48,9 @@ std::atomic<uint64_t> g_vote_ob_live{0};
 std::atomic<uint64_t> g_vote_ob_shadow_ok{0};
 std::atomic<uint64_t> g_vote_ob_shadow_fail{0};
 std::atomic<uint64_t> g_vote_ob_shadow_in{0};
+std::atomic<uint64_t> g_vote_ob_shadow_parse_ok{0};
+std::atomic<uint64_t> g_vote_ob_shadow_parse_fail{0};
+std::atomic<VoteObPayloadValidator> g_vote_ob_validator{nullptr};
 std::atomic<int> g_shadow_port_offset{0};
 std::mutex g_shadow_endpoint_mu;
 std::string g_shadow_endpoint;
@@ -62,6 +65,22 @@ void reset_shadow_stats() noexcept
   g_vote_ob_shadow_ok.store(0, std::memory_order_relaxed);
   g_vote_ob_shadow_fail.store(0, std::memory_order_relaxed);
   g_vote_ob_shadow_in.store(0, std::memory_order_relaxed);
+  g_vote_ob_shadow_parse_ok.store(0, std::memory_order_relaxed);
+  g_vote_ob_shadow_parse_fail.store(0, std::memory_order_relaxed);
+}
+
+bool vote_ob_wire_shape_ok(const std::string_view payload) noexcept
+{
+  // Structural stand-in for bt_deserialize(vote_ob) without linking arqnet.
+  // Obligation votes are a bencode dict with keys v,t,h,g,i,s,wi,sc and a 64-byte sig.
+  if (payload.size() < 20 || payload.front() != 'd' || payload.back() != 'e')
+    return false;
+  auto has = [&](const std::string_view token) { return payload.find(token) != std::string_view::npos; };
+  if (!has("1:v") || !has("1:t") || !has("1:h") || !has("1:g") || !has("1:i") || !has("1:s"))
+    return false;
+  if (!has("2:wi") || !has("2:sc") || has("2:bh"))
+    return false;
+  return has("64:");
 }
 
 bool is_vote_ob(const std::string_view command) noexcept
@@ -79,14 +98,18 @@ void clear_shadow_endpoint()
 
 const char* mesh_transport_name() noexcept
 {
-  // After implementation cutover (stage ≥4), RPC/mesh report arqmq. HF gating
-  // for live sends uses native_mesh_ready_at(hf) at the relay site.
-  return native_mesh_ready() ? k_transport_arqmq : k_transport_snnetwork;
+  // Capability: stage ≥4 + running SocketStack. Live sends use native_mesh_live_at.
+  return native_mesh_ready() && native_transport_active() ? k_transport_arqmq : k_transport_snnetwork;
+}
+
+const char* live_mesh_transport_name(const uint8_t hard_fork_version) noexcept
+{
+  return native_mesh_live_at(hard_fork_version) ? k_transport_arqmq : k_transport_snnetwork;
 }
 
 bool peer_mesh_is_snnetwork() noexcept
 {
-  return !native_mesh_ready();
+  return !(native_mesh_ready() && native_transport_active());
 }
 
 bool hf_permits_native_mesh(const uint8_t hard_fork_version) noexcept
@@ -95,13 +118,13 @@ bool hf_permits_native_mesh(const uint8_t hard_fork_version) noexcept
 }
 
 namespace {
-// Incremental native-mesh port stages (compile-time progress; cutover stays off).
+// Incremental native-mesh port stages.
 // 0 = missing Curve/ZAP allow path
 // 1 = Curve/ZAP landed; peer table missing
 // 2 = peer table landed; outbound send missing
 // 3 = peer send landed; stagenet vote_ob parity / daemon wiring unverified
-// 4 = implementation ready (cutover still needs HF20+)
-constexpr int k_native_mesh_port_stage = 3;
+// 4 = implementation ready (live relay still needs HF20+ and a CURVE SocketStack)
+constexpr int k_native_mesh_port_stage = 4;
 } // namespace
 
 bool native_mesh_implementation_ready() noexcept
@@ -120,6 +143,19 @@ bool native_mesh_ready() noexcept
   return native_mesh_implementation_ready();
 }
 
+bool native_mesh_live_at(const uint8_t hard_fork_version) noexcept
+{
+  if (!native_mesh_ready_at(hard_fork_version))
+    return false;
+  auto* stack = active_socket_stack();
+  return stack && stack->curve_zap_configured();
+}
+
+bool hf_requires_native_mesh_exclusive(const uint8_t hard_fork_version) noexcept
+{
+  return hard_fork_version >= k_hf_native_mesh_exclusive && native_mesh_implementation_ready();
+}
+
 const char* native_mesh_blocker() noexcept
 {
   if (k_native_mesh_port_stage < 1)
@@ -130,7 +166,7 @@ const char* native_mesh_blocker() noexcept
     return "peer-send-path-missing";
   if (k_native_mesh_port_stage < 4)
     return "vote-ob-parity-unverified";
-  return "hf-below-native-mesh";
+  return "none";
 }
 
 void attach_compatible_mesh_mirrors(SocketStack& stack)
@@ -190,9 +226,13 @@ std::error_code start_mesh_shadow_listener(SocketStack& stack, const std::string
   if (!stack.curve_zap_configured())
     return std::make_error_code(std::errc::invalid_argument);
 
-  // Count inbound shadow vote_ob for soak observability (does not affect consensus).
-  stack.register_handler("vote_ob", CategoryAcl::ServiceNode, [](const InboundRequest&) {
+  // Count + parse inbound shadow vote_ob (observability only; does not affect consensus).
+  stack.register_handler("vote_ob", CategoryAcl::ServiceNode, [](const InboundRequest& req) {
     g_vote_ob_shadow_in.fetch_add(1, std::memory_order_relaxed);
+    if (vote_ob_wire_payload_ok(req.payload))
+      g_vote_ob_shadow_parse_ok.fetch_add(1, std::memory_order_relaxed);
+    else
+      g_vote_ob_shadow_parse_fail.fetch_add(1, std::memory_order_relaxed);
     return std::string{k_transport_snnetwork};
   });
 
@@ -232,11 +272,16 @@ std::string native_mesh_shadow_endpoint()
 
 MeshShadowStats native_mesh_shadow_stats() noexcept
 {
-  return MeshShadowStats{
-      g_shadow_attempts.load(std::memory_order_relaxed),     g_shadow_ok.load(std::memory_order_relaxed),
-      g_shadow_fail.load(std::memory_order_relaxed),         g_live_relays.load(std::memory_order_relaxed),
-      g_vote_ob_live.load(std::memory_order_relaxed),        g_vote_ob_shadow_ok.load(std::memory_order_relaxed),
-      g_vote_ob_shadow_fail.load(std::memory_order_relaxed), g_vote_ob_shadow_in.load(std::memory_order_relaxed)};
+  return MeshShadowStats{g_shadow_attempts.load(std::memory_order_relaxed),
+                         g_shadow_ok.load(std::memory_order_relaxed),
+                         g_shadow_fail.load(std::memory_order_relaxed),
+                         g_live_relays.load(std::memory_order_relaxed),
+                         g_vote_ob_live.load(std::memory_order_relaxed),
+                         g_vote_ob_shadow_ok.load(std::memory_order_relaxed),
+                         g_vote_ob_shadow_fail.load(std::memory_order_relaxed),
+                         g_vote_ob_shadow_in.load(std::memory_order_relaxed),
+                         g_vote_ob_shadow_parse_ok.load(std::memory_order_relaxed),
+                         g_vote_ob_shadow_parse_fail.load(std::memory_order_relaxed)};
 }
 
 void note_live_mesh_relay(const std::string_view command) noexcept
@@ -268,7 +313,37 @@ bool native_mesh_shadow_parity_sample_ok(const uint64_t min_vote_ob_live, const 
   if (vote_attempts == 0)
     return false;
   const uint32_t rate = static_cast<uint32_t>((vote_ok * 10000ull) / vote_attempts);
-  return rate >= min_ok_rate_bps;
+  if (rate < min_ok_rate_bps)
+    return false;
+
+  const uint64_t vin = g_vote_ob_shadow_in.load(std::memory_order_relaxed);
+  if (vin < min_vote_ob_live)
+    return false;
+  const uint64_t parse_ok = g_vote_ob_shadow_parse_ok.load(std::memory_order_relaxed);
+  const uint64_t parse_fail = g_vote_ob_shadow_parse_fail.load(std::memory_order_relaxed);
+  const uint64_t parse_attempts = parse_ok + parse_fail;
+  if (parse_attempts == 0)
+    return false;
+  const uint32_t parse_rate = static_cast<uint32_t>((parse_ok * 10000ull) / parse_attempts);
+  return parse_rate >= min_ok_rate_bps;
+}
+
+void set_vote_ob_payload_validator(const VoteObPayloadValidator validator) noexcept
+{
+  g_vote_ob_validator.store(validator, std::memory_order_relaxed);
+}
+
+bool vote_ob_wire_payload_ok(const std::string_view payload) noexcept
+{
+  const auto validator = g_vote_ob_validator.load(std::memory_order_relaxed);
+  if (validator) {
+    try {
+      return validator(payload);
+    } catch (...) {
+      return false;
+    }
+  }
+  return vote_ob_wire_shape_ok(payload);
 }
 
 void shadow_send_to_peer(const std::string_view pubkey, const std::string_view command, const std::string_view payload,
@@ -311,7 +386,8 @@ void shadow_send_to_peer(const std::string_view pubkey, const std::string_view c
 void primary_mesh_send_to_peer(const std::string_view pubkey, const std::string_view command,
                                const std::string_view payload, const std::string_view hint)
 {
-  // Dead until k_native_mesh_port_stage >= 4 (stagenet vote_ob parity verified).
+  // Dead unless the implementation gate is open (stage ≥4). Callers that skip
+  // SNNetwork must also require native_mesh_live_at(hf) so legacy nodes fallback.
   if (!native_mesh_ready())
     return;
   auto* stack = active_socket_stack();
