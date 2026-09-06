@@ -20,12 +20,15 @@ int main(int argc, char** argv)
   std::string listen = "127.0.0.1:22021";
   std::string data_dir;
   std::string token;
+  int gossip_interval = 15;
   std::vector<std::string> peers;
   po::options_description desc{"arqma-storage"};
   desc.add_options()("help,h", "show help")("listen", po::value<std::string>(&listen)->default_value(listen),
                                             "host:port (HTTP Storage Server)")(
       "data-dir", po::value<std::string>(&data_dir), "optional on-disk volume for KV / snodes")(
       "token", po::value<std::string>(&token), "optional stack token (or ARQMA_STACK_TOKEN)")(
+      "gossip-interval", po::value<int>(&gossip_interval)->default_value(gossip_interval),
+      "anti-entropy gossip period in seconds (0 disables)")(
       "peer", po::value<std::vector<std::string>>(&peers)->composing(), "replica base URL (repeatable)");
   po::variables_map vm;
   po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -52,6 +55,7 @@ int main(int argc, char** argv)
     server.set_token(token);
   if (!data_dir.empty())
     server.set_data_dir(data_dir);
+  server.set_gossip_interval(std::chrono::seconds{gossip_interval < 0 ? 0 : gossip_interval});
   for (const auto& peer : peers)
     server.add_peer(peer);
   if (const auto ec = server.listen(host, port)) {

@@ -15,6 +15,7 @@
 #include <boost/asio/write.hpp>
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -27,17 +28,74 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <utility>
 #include <vector>
 
 namespace arq_storage {
+namespace {
+std::map<std::string, std::string> parse_digest_body(const std::string_view body)
+{
+  std::map<std::string, std::string> out;
+  std::size_t pos = 0;
+  while (pos < body.size()) {
+    const auto nl = body.find('\n', pos);
+    const auto line = nl == std::string_view::npos ? body.substr(pos) : body.substr(pos, nl - pos);
+    pos = nl == std::string_view::npos ? body.size() : nl + 1;
+    if (line.empty())
+      continue;
+    const auto sp = line.rfind(' ');
+    if (sp == std::string_view::npos || line.size() - sp - 1 != 16)
+      continue;
+    out.emplace(std::string{line.substr(0, sp)}, std::string{line.substr(sp + 1)});
+  }
+  return out;
+}
+
+bool apply_sync_frame(const std::string_view body, std::size_t& pos, std::string& key, std::uint64_t& expiry,
+                      std::string& value)
+{
+  auto read_line = [&](std::string_view& out) -> bool {
+    if (pos >= body.size())
+      return false;
+    const auto nl = body.find('\n', pos);
+    if (nl == std::string_view::npos)
+      return false;
+    out = body.substr(pos, nl - pos);
+    pos = nl + 1;
+    return true;
+  };
+  std::string_view k_line;
+  std::string_view e_line;
+  std::string_view l_line;
+  if (!read_line(k_line) || !read_line(e_line) || !read_line(l_line))
+    return false;
+  if (k_line.size() < 2 || k_line[0] != 'K' || k_line[1] != ' ')
+    return false;
+  if (e_line.size() < 2 || e_line[0] != 'E' || e_line[1] != ' ')
+    return false;
+  if (l_line.size() < 2 || l_line[0] != 'L' || l_line[1] != ' ')
+    return false;
+  key.assign(k_line.substr(2));
+  expiry = static_cast<std::uint64_t>(std::strtoull(std::string{e_line.substr(2)}.c_str(), nullptr, 10));
+  const auto len = static_cast<std::size_t>(std::strtoull(std::string{l_line.substr(2)}.c_str(), nullptr, 10));
+  if (len > max_http_body_bytes || pos + len > body.size())
+    return false;
+  value.assign(body.data() + pos, len);
+  pos += len;
+  return true;
+}
+} // namespace
+
 struct StorageServer::Impl
 {
   boost::asio::io_context io;
   boost::asio::ip::tcp::acceptor acceptor{io};
   std::thread thread;
+  std::thread gossip_thread;
   std::atomic<bool> running{false};
+  std::atomic<int> gossip_interval_sec{15};
   std::atomic<std::uint16_t> port{0};
   std::string host{"127.0.0.1"};
   std::string data_dir;
@@ -148,6 +206,150 @@ struct StorageServer::Impl
         continue;
       const auto ep = parse_endpoint(url);
       http_exchange(ep, "PUT", with_token(path, token), body);
+    }
+  }
+
+  /// Local apply (replicate=0 semantics): store + persist, no fan-out.
+  bool local_put(const std::string& ns, const std::string& key, Stored stored)
+  {
+    std::lock_guard<std::mutex> lock{mu};
+    if (expired(stored))
+      return false;
+    const bool inserting_new = values.find({ns, key}) == values.end();
+    std::size_t ns_count = 0;
+    if (inserting_new) {
+      for (const auto& kv : values) {
+        if (kv.first.first == ns)
+          ++ns_count;
+      }
+    }
+    if (kv_quota_exceeded(values.size(), ns_count, inserting_new))
+      return false;
+    values[{ns, key}] = stored;
+    persist_kv(ns, key, stored);
+    return true;
+  }
+
+  std::string self_url() const { return "http://" + format_http_authority(host, port.load()); }
+
+  void gossip_with_peer(const std::string& peer_url, const std::string& ns)
+  {
+    const auto ep = parse_endpoint(peer_url);
+    if (!ep)
+      return;
+    const auto digest_path = with_token("/v1/digest?ns=" + url_encode(ns), token);
+    const auto digest_res = http_exchange(ep, "GET", digest_path, {}, std::chrono::milliseconds{2000});
+    if (!digest_res)
+      return;
+    const auto remote = parse_digest_body(digest_res.body);
+
+    std::map<std::string, std::string> local;
+    std::map<std::string, Stored> local_entries;
+    {
+      std::lock_guard<std::mutex> lock{mu};
+      for (const auto& kv : values) {
+        if (kv.first.first != ns)
+          continue;
+        if (expired(kv.second))
+          continue;
+        local.emplace(kv.first.second, entry_digest_hex(kv.first.second, kv.second.value, kv.second.expiry));
+        local_entries.emplace(kv.first.second, kv.second);
+      }
+    }
+
+    std::string want;
+    for (const auto& item : remote) {
+      const auto it = local.find(item.first);
+      if (it == local.end() || it->second != item.second) {
+        want.append(item.first);
+        want.push_back('\n');
+      }
+    }
+    if (!want.empty()) {
+      const auto sync_path = with_token("/v1/sync?ns=" + url_encode(ns), token);
+      const auto sync_res = http_exchange(ep, "POST", sync_path, want, std::chrono::milliseconds{2000});
+      if (sync_res) {
+        std::size_t pos = 0;
+        while (pos < sync_res.body.size()) {
+          std::string key;
+          std::uint64_t expiry = 0;
+          std::string value;
+          if (!apply_sync_frame(sync_res.body, pos, key, expiry, value))
+            break;
+          Stored stored;
+          stored.value = std::move(value);
+          stored.expiry = expiry;
+          local_put(ns, key, std::move(stored));
+        }
+      }
+    }
+
+    for (const auto& item : local_entries) {
+      if (remote.count(item.first))
+        continue;
+      auto path = kv_path(ns, item.first) + "&replicate=0";
+      if (item.second.expiry != 0) {
+        const auto now = now_unix();
+        if (item.second.expiry <= now)
+          continue;
+        path += "&ttl=" + std::to_string(item.second.expiry - now);
+      }
+      http_exchange(ep, "PUT", with_token(path, token), item.second.value, std::chrono::milliseconds{2000});
+    }
+  }
+
+  void gossip_once()
+  {
+    std::vector<std::string> peer_urls;
+    std::vector<std::string> namespaces;
+    {
+      std::lock_guard<std::mutex> lock{mu};
+      peer_urls = peers;
+      std::set<std::string> ns_set;
+      for (const auto& kv : values) {
+        if (expired(kv.second))
+          continue;
+        ns_set.insert(kv.first.first);
+      }
+      namespaces.assign(ns_set.begin(), ns_set.end());
+    }
+    const auto self = self_url();
+    std::size_t peer_n = 0;
+    for (auto url : peer_urls) {
+      if (peer_n >= max_gossip_peers)
+        break;
+      if (!url.empty() && url.back() == '/')
+        url.pop_back();
+      if (url.empty() || url == self)
+        continue;
+      ++peer_n;
+      std::size_t ns_n = 0;
+      for (const auto& ns : namespaces) {
+        if (ns_n >= max_gossip_namespaces)
+          break;
+        ++ns_n;
+        if (!running.load())
+          return;
+        gossip_with_peer(url, ns);
+      }
+    }
+  }
+
+  void gossip_run()
+  {
+    while (running.load()) {
+      const int interval = gossip_interval_sec.load();
+      if (interval <= 0)
+        break;
+      const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{interval};
+      while (running.load() && gossip_interval_sec.load() > 0 && std::chrono::steady_clock::now() < deadline)
+        std::this_thread::sleep_for(std::chrono::milliseconds{100});
+      if (!running.load() || gossip_interval_sec.load() <= 0)
+        break;
+      try {
+        gossip_once();
+      } catch (...) {
+      }
     }
   }
 
@@ -359,6 +561,85 @@ struct StorageServer::Impl
       return http.str();
     }
 
+    if (path_only == "/v1/digest" && method == "GET") {
+      const auto ns = query_get(path, "ns");
+      if (ns.empty() || ns.size() > max_kv_name_bytes)
+        return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+      std::string payload;
+      std::vector<std::pair<std::string, std::string>> drop;
+      {
+        std::lock_guard<std::mutex> lock{mu};
+        for (const auto& kv : values) {
+          if (kv.first.first != ns)
+            continue;
+          if (expired(kv.second)) {
+            drop.push_back(kv.first);
+            continue;
+          }
+          payload.append(kv.first.second);
+          payload.push_back(' ');
+          payload.append(entry_digest_hex(kv.first.second, kv.second.value, kv.second.expiry));
+          payload.push_back('\n');
+        }
+        for (const auto& item : drop) {
+          erase_kv_file(item.first, item.second);
+          values.erase(item);
+        }
+      }
+      std::ostringstream oss;
+      oss << "HTTP/1.1 200 OK\r\nContent-Length: " << payload.size() << "\r\nConnection: close\r\n\r\n" << payload;
+      return oss.str();
+    }
+
+    if (path_only == "/v1/sync" && method == "POST") {
+      const auto ns = query_get(path, "ns");
+      if (ns.empty() || ns.size() > max_kv_name_bytes)
+        return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+      std::vector<std::string> keys;
+      {
+        std::size_t pos = 0;
+        while (pos < body.size()) {
+          const auto nl = body.find('\n', pos);
+          const auto line = nl == std::string::npos ? body.substr(pos) : body.substr(pos, nl - pos);
+          pos = nl == std::string::npos ? body.size() : nl + 1;
+          if (!line.empty() && line.size() <= max_kv_name_bytes)
+            keys.push_back(line);
+        }
+      }
+      std::string payload;
+      {
+        std::lock_guard<std::mutex> lock{mu};
+        for (const auto& key : keys) {
+          if (payload.size() >= max_sync_response_bytes)
+            break;
+          const auto it = values.find({ns, key});
+          if (it == values.end())
+            continue;
+          if (expired(it->second)) {
+            erase_kv_file(ns, key);
+            values.erase(it);
+            continue;
+          }
+          const auto& stored = it->second;
+          if (payload.size() + key.size() + stored.value.size() + 64 > max_sync_response_bytes && !payload.empty())
+            break;
+          payload.append("K ");
+          payload.append(key);
+          payload.push_back('\n');
+          payload.append("E ");
+          payload.append(std::to_string(stored.expiry));
+          payload.push_back('\n');
+          payload.append("L ");
+          payload.append(std::to_string(stored.value.size()));
+          payload.push_back('\n');
+          payload.append(stored.value);
+        }
+      }
+      std::ostringstream oss;
+      oss << "HTTP/1.1 200 OK\r\nContent-Length: " << payload.size() << "\r\nConnection: close\r\n\r\n" << payload;
+      return oss.str();
+    }
+
     return "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
   }
 
@@ -454,6 +735,8 @@ std::error_code StorageServer::listen(const std::string& host, const std::uint16
     impl_->host = host;
     impl_->running = true;
     impl_->thread = std::thread([this] { impl_->run(); });
+    if (impl_->gossip_interval_sec.load() > 0)
+      impl_->gossip_thread = std::thread([this] { impl_->gossip_run(); });
     return {};
   } catch (...) {
     return std::make_error_code(std::errc::address_in_use);
@@ -486,6 +769,8 @@ void StorageServer::stop()
   impl_->io.stop();
   if (impl_->thread.joinable())
     impl_->thread.join();
+  if (impl_->gossip_thread.joinable())
+    impl_->gossip_thread.join();
   impl_->io.restart();
   impl_->port = 0;
 }
@@ -533,5 +818,13 @@ void StorageServer::add_peer(std::string base_url)
 void StorageServer::set_token(std::string token)
 {
   impl_->token = std::move(token);
+}
+
+void StorageServer::set_gossip_interval(std::chrono::seconds interval)
+{
+  const int sec = interval.count() < 0 ? 0 : static_cast<int>(interval.count());
+  impl_->gossip_interval_sec.store(sec);
+  if (sec > 0 && impl_->running.load() && !impl_->gossip_thread.joinable())
+    impl_->gossip_thread = std::thread([this] { impl_->gossip_run(); });
 }
 } // namespace arq_storage

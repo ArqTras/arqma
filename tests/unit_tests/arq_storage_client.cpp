@@ -390,6 +390,46 @@ TEST(arq_storage_server, gossips_snode_list_to_members)
   replica.stop();
 }
 
+TEST(arq_storage_server, gossips_kv_via_anti_entropy)
+{
+  arq_storage::StorageServer primary;
+  arq_storage::StorageServer replica;
+  // Disable one-shot fan-out timing: gossip (not PUT replicate) must converge.
+  primary.set_gossip_interval(std::chrono::seconds{1});
+  replica.set_gossip_interval(std::chrono::seconds{1});
+  ASSERT_FALSE(primary.listen("127.0.0.1", 0));
+  ASSERT_FALSE(replica.listen("127.0.0.1", 0));
+  primary.add_peer(replica.base_url());
+  replica.add_peer(primary.base_url());
+
+  const auto primary_ep = arq_storage::parse_endpoint(primary.base_url());
+  ASSERT_TRUE(primary_ep);
+  // replicate=0 so only anti-entropy gossip propagates the key.
+  const auto put = arq_storage::http_exchange(primary_ep, "PUT", "/v1/kv?ns=gossip&key=payload&replicate=0", "from-a");
+  ASSERT_TRUE(put);
+
+  const auto digest = arq_storage::http_exchange(primary_ep, "GET", "/v1/digest?ns=gossip", {});
+  ASSERT_TRUE(digest);
+  EXPECT_NE(std::string::npos, digest.body.find("payload "));
+  const auto expected = arq_storage::entry_digest_hex("payload", "from-a", 0);
+  EXPECT_NE(std::string::npos, digest.body.find(expected));
+
+  bool converged = false;
+  for (int i = 0; i < 40; ++i) {
+    std::this_thread::sleep_for(std::chrono::milliseconds{250});
+    arq_storage::Config cfg{arq_storage::Backend::Remote, replica.base_url(), std::chrono::milliseconds{2000}};
+    arq_storage::StorageClient reader{cfg};
+    const auto got = reader.retrieve("gossip", "payload");
+    if (!got.error && got.value == "from-a") {
+      converged = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(converged);
+  primary.stop();
+  replica.stop();
+}
+
 TEST(arq_storage_server, rejects_oversized_content_length)
 {
   arq_storage::StorageServer server;

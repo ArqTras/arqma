@@ -23,6 +23,9 @@ constexpr std::size_t max_swarm_fallback = 8;
 constexpr std::size_t max_snode_urls = 32;
 constexpr std::size_t max_kv_entries = 4096;
 constexpr std::size_t max_kv_entries_per_namespace = 512;
+constexpr std::size_t max_sync_response_bytes = 512 * 1024;
+constexpr std::size_t max_gossip_peers = 8;
+constexpr std::size_t max_gossip_namespaces = 8;
 
 inline bool kv_quota_exceeded(std::size_t total, std::size_t ns_count, bool inserting_new) noexcept
 {
@@ -51,6 +54,28 @@ inline std::uint64_t fnv1a64(const std::string_view raw, std::uint64_t seed) noe
   for (unsigned char c : raw)
     seed = (seed ^ static_cast<std::uint64_t>(c)) * 1099511628211ull;
   return seed;
+}
+
+/// 16 hex chars from FNV-1a64(key + '\\0' + value + expiry LE bytes).
+inline std::string entry_digest_hex(const std::string_view key, const std::string_view value,
+                                    const std::uint64_t expiry)
+{
+  std::string raw;
+  raw.reserve(key.size() + 1 + value.size() + 8);
+  raw.append(key);
+  raw.push_back('\0');
+  raw.append(value);
+  for (int i = 0; i < 8; ++i)
+    raw.push_back(static_cast<char>((expiry >> (8 * i)) & 0xff));
+  const auto h = fnv1a64(raw, 14695981039346656037ull);
+  static const char* digits = "0123456789abcdef";
+  std::string out(16, '0');
+  for (int i = 0; i < 8; ++i) {
+    const unsigned v = static_cast<unsigned>((h >> (8 * (7 - i))) & 0xff);
+    out[static_cast<std::size_t>(i) * 2] = digits[v >> 4];
+    out[static_cast<std::size_t>(i) * 2 + 1] = digits[v & 0xf];
+  }
+  return out;
 }
 
 /// Stable 32-hex inbox id so URLs do not carry the raw x25519 pubkey.

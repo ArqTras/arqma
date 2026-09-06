@@ -5,6 +5,7 @@
 #pragma once
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -34,6 +35,8 @@ public:
   void add_peer(std::string base_url);
   /// When non-empty, `/v1/*` requires matching `token=` (status stays open).
   void set_token(std::string token);
+  /// Anti-entropy gossip period. `0` disables. Default 15s.
+  void set_gossip_interval(std::chrono::seconds interval);
 
   std::uint16_t port() const noexcept;
   bool running() const noexcept;
