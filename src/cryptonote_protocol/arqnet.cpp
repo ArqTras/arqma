@@ -4,6 +4,7 @@
 #include "cryptonote_core/service_node_voting.h"
 #include "cryptonote_core/service_node_rules.h"
 #include "cryptonote_core/tx_pool.h"
+#include "arq_blink/blink.h"
 #include "arqnet/sn_network.h"
 #include "arqnet/conn_matrix.h"
 #include "arqmq/command_registry.hpp"
@@ -59,6 +60,7 @@ void install_native_mesh_inbound_handlers(arqmq::SocketStack &stack, SNNWrapper 
 quorum_vote_t deserialize_vote(const bt_value &v);
 bool try_decode_obligation_vote(std::string_view payload, quorum_vote_t *out) noexcept;
 bool try_decode_pulse_vote(std::string_view payload, service_nodes::pulse::RelayVote &out) noexcept;
+bool try_decode_blink_vote(std::string_view payload, arq_blink::RelayVote &out) noexcept;
 
 template <typename T>
 std::string get_data_as_string(const T &key)
@@ -200,6 +202,10 @@ void *new_snnwrapper(cryptonote::core &core, const std::string &bind)
     arqmq::set_pulse_rnd_payload_validator([](std::string_view payload) {
       service_nodes::pulse::RelayVote vote{};
       return try_decode_pulse_vote(payload, vote);
+    });
+    arqmq::set_blink_tx_payload_validator([](std::string_view payload) {
+      arq_blink::RelayVote vote{};
+      return try_decode_blink_vote(payload, vote);
     });
     if (arqmq::native_mesh_shadow_relay_enabled() || arqmq::native_mesh_ready())
     {
@@ -638,6 +644,27 @@ bool try_decode_pulse_vote(const std::string_view payload, service_nodes::pulse:
   }
 }
 
+bool try_decode_blink_vote(const std::string_view payload, arq_blink::RelayVote &out) noexcept
+{
+  if (arq_blink::decode_relay_vote(payload, out))
+    return true;
+  try
+  {
+    if (payload.empty())
+      return false;
+    bt_value decoded;
+    bt_deserialize(payload.data(), payload.size(), decoded);
+    const auto *s = boost::get<std::string>(&decoded);
+    if (!s)
+      return false;
+    return arq_blink::decode_relay_vote(*s, out);
+  }
+  catch (const std::exception &)
+  {
+    return false;
+  }
+}
+
 void relay_pulse_vote(const service_nodes::pulse::RelayVote &vote)
 {
   if (!g_pulse_snw || !g_pulse_snw->core.get_service_node_keys())
@@ -657,6 +684,28 @@ void relay_pulse_vote(const service_nodes::pulse::RelayVote &vote)
   if (!pinfo.my_position_count)
     return;
   pinfo.relay_to_peers("pulse_rnd", blob);
+}
+
+void relay_blink_vote(const arq_blink::RelayVote &vote)
+{
+  if (!g_pulse_snw || !g_pulse_snw->core.get_service_node_keys())
+    return;
+  const auto active = g_pulse_snw->core.get_service_node_list().get_active_service_node_pubkeys();
+  const auto indices = arq_blink::quorum_indices(vote.height, active.size());
+  if (indices.empty())
+    return;
+  auto q = std::make_shared<quorum>();
+  q->validators.reserve(indices.size());
+  for (const auto i : indices)
+    q->validators.push_back(active[i]);
+  std::string blob;
+  if (!arq_blink::encode_relay_vote(vote, blob))
+    return;
+  std::shared_ptr<const quorum> cq = std::move(q);
+  peer_info pinfo{*g_pulse_snw, quorum_type::obligations, cq};
+  if (!pinfo.my_position_count)
+    return;
+  pinfo.relay_to_peers("blink_tx", blob);
 }
 
 bool apply_pulse_vote(SNNWrapper &snw, const service_nodes::pulse::RelayVote &vote, const bool relay_if_new)
@@ -716,9 +765,28 @@ void handle_pulse_round(SNNetwork::message &m, void *self)
   apply_pulse_vote(SNNWrapper::from(self), vote, true);
 }
 
+void handle_blink_tx(SNNetwork::message &m, void * /*self*/)
+{
+  const auto peer_acl = m.sn ? arqmq::CategoryAcl::ServiceNode : arqmq::CategoryAcl::Denied;
+  if (!arqmq::authorize_request("blink_tx", peer_acl, approx_payload_bytes(m.data), m.data.size()))
+  {
+    MWARNING("Dropping blink_tx from unauthorized peer " << as_hex(m.pubkey));
+    return;
+  }
+  if (m.data.size() != 1)
+    return;
+  const auto *blob = boost::get<std::string>(&m.data[0]);
+  if (!blob)
+    return;
+  arq_blink::RelayVote vote{};
+  if (!arq_blink::decode_relay_vote(*blob, vote))
+    return;
+  arq_blink::apply_relay_vote(vote, true);
+}
+
 /// Native-mesh inbound path (SocketStack). Active only after cutover stage ≥4.
 /// Overwrites soak listener handlers; still records inbound parse counters via
-/// `note_inbound_mesh_shadow` (`vote_ob` + `pulse_rnd`). SNNetwork stays live.
+/// `note_inbound_mesh_shadow` (`vote_ob` + `pulse_rnd` + `blink_tx`). SNNetwork stays live.
 void install_native_mesh_inbound_handlers(arqmq::SocketStack &stack, SNNWrapper &snw)
 {
   if (!arqmq::native_mesh_ready())
@@ -769,6 +837,21 @@ void install_native_mesh_inbound_handlers(arqmq::SocketStack &stack, SNNWrapper 
     return std::string{};
   });
 
+  stack.register_handler("blink_tx", arqmq::CategoryAcl::ServiceNode, [](const arqmq::InboundRequest &req) {
+    arqmq::note_inbound_mesh_shadow("blink_tx", req.payload);
+    if (!arqmq::authorize_request("blink_tx", req.peer_acl, req.payload.size(), 1))
+    {
+      MWARNING("Dropping native-mesh blink_tx from unauthorized peer "
+               << (req.peer_pubkey.size() == 32 ? as_hex(req.peer_pubkey) : "unknown"));
+      return std::string{};
+    }
+    arq_blink::RelayVote vote{};
+    if (!try_decode_blink_vote(req.payload, vote))
+      return std::string{};
+    arq_blink::apply_relay_vote(vote, true);
+    return std::string{};
+  });
+
   stack.register_handler("ping", arqmq::CategoryAcl::Basic, [](const arqmq::InboundRequest &req) {
     if (!arqmq::authorize_request("ping", req.peer_acl, req.payload.size(), req.payload.empty() ? 0 : 1))
     {
@@ -787,7 +870,7 @@ void install_native_mesh_inbound_handlers(arqmq::SocketStack &stack, SNNWrapper 
     return std::string{};
   });
 
-  MINFO("Arq-Net native mesh inbound vote_ob/ping handlers installed (cutover active)");
+  MINFO("Arq-Net native mesh inbound vote_ob/pulse_rnd/blink_tx/ping handlers installed (cutover active)");
 }
 
 template <typename I>
@@ -842,9 +925,12 @@ void init_core_callbacks()
   cryptonote::arqnet_delete = delete_snnwrapper;
   cryptonote::arqnet_relay_obligation_votes = relay_obligation_votes;
   service_nodes::pulse::set_relay_new_vote(relay_pulse_vote);
+  arq_blink::set_wire_connected(true);
+  arq_blink::set_relay_new_vote(relay_blink_vote);
 
   SNNetwork::register_command("vote_ob", SNNetwork::command_type::quorum, handle_obligation_vote);
   SNNetwork::register_command("pulse_rnd", SNNetwork::command_type::quorum, handle_pulse_round);
+  SNNetwork::register_command("blink_tx", SNNetwork::command_type::quorum, handle_blink_tx);
   SNNetwork::register_command("ping", SNNetwork::command_type::public_, handle_ping);
   SNNetwork::register_command("pong", SNNetwork::command_type::public_, handle_pong);
 }

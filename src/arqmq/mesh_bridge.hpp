@@ -86,6 +86,12 @@ struct MeshShadowStats
   uint64_t pulse_rnd_shadow_in = 0;
   uint64_t pulse_rnd_shadow_parse_ok = 0;
   uint64_t pulse_rnd_shadow_parse_fail = 0;
+  uint64_t blink_tx_live = 0;
+  uint64_t blink_tx_shadow_ok = 0;
+  uint64_t blink_tx_shadow_fail = 0;
+  uint64_t blink_tx_shadow_in = 0;
+  uint64_t blink_tx_shadow_parse_ok = 0;
+  uint64_t blink_tx_shadow_parse_fail = 0;
 };
 
 /// Cumulative shadow/live counters (reset when shadow is toggled on).
@@ -94,7 +100,7 @@ MeshShadowStats native_mesh_shadow_stats() noexcept;
 /// Record one live SNNetwork peer relay (call alongside snn.send).
 void note_live_mesh_relay(std::string_view command) noexcept;
 
-/// Count an inbound SocketStack `vote_ob` / `pulse_rnd` (shadow listener or native handler).
+/// Count an inbound SocketStack `vote_ob` / `pulse_rnd` / `blink_tx` (shadow listener or native handler).
 void note_inbound_mesh_shadow(std::string_view command, std::string_view payload) noexcept;
 
 /// Shadow ok-rate in basis points (0..10000). Returns 0 when attempts==0.
@@ -119,6 +125,12 @@ void set_pulse_rnd_payload_validator(PulseRndPayloadValidator validator) noexcep
 
 /// True when `payload` is a well-formed Pulse `pulse_rnd` packed vote.
 bool pulse_rnd_wire_payload_ok(std::string_view payload) noexcept;
+
+using BlinkTxPayloadValidator = bool (*)(std::string_view payload);
+void set_blink_tx_payload_validator(BlinkTxPayloadValidator validator) noexcept;
+
+/// True when `payload` is a well-formed Blink `blink_tx` packed vote.
+bool blink_tx_wire_payload_ok(std::string_view payload) noexcept;
 
 /// Best-effort shadow send; never throws. No-op unless shadow relay is enabled
 /// and the active stack has CURVE identity configured.

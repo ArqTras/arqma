@@ -100,6 +100,7 @@ TEST(arqmq_facade, command_registry_maps_builtin_acls)
 {
   EXPECT_EQ(arqmq::CategoryAcl::ServiceNode, arqmq::required_acl_for("vote_ob"));
   EXPECT_EQ(arqmq::CategoryAcl::ServiceNode, arqmq::required_acl_for("pulse_rnd"));
+  EXPECT_EQ(arqmq::CategoryAcl::ServiceNode, arqmq::required_acl_for("blink_tx"));
   EXPECT_EQ(arqmq::CategoryAcl::Basic, arqmq::required_acl_for("arqnet_status"));
   EXPECT_EQ(arqmq::CategoryAcl::Admin, arqmq::required_acl_for("admin_shutdown"));
   EXPECT_EQ(arqmq::CategoryAcl::Denied, arqmq::required_acl_for("unknown.command"));
