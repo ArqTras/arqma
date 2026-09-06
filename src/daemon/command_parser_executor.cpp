@@ -268,6 +268,16 @@ bool t_command_parser_executor::print_blink(const std::vector<std::string>& args
   return m_executor.print_blink();
 }
 
+bool t_command_parser_executor::print_storage(const std::vector<std::string>& args)
+{
+  if (!args.empty())
+  {
+    std::cout << "use: print_storage" << std::endl;
+    return true;
+  }
+  return m_executor.print_storage();
+}
+
 bool t_command_parser_executor::print_sn_key(const std::vector<std::string>& args)
 {
   if(!args.empty())

@@ -280,7 +280,7 @@ and an explicit operator decision (still needs `--arqnet-allow-experimental` for
 | `print_pulse` | Daemon console dump of `get_pulse_status` |
 | `get_blink_status` / `print_blink` | In-daemon Blink quorum (7 of 10) + `wire_connected` + `mesh_blink_tx_*`. Does not replace Pulse or RandomARQ |
 | `get_block_header_*` | Optional `pulse_certificate`, `pulse_round`, `pulse_signature_count`, `pulse_payload_hash` when miner extra has Pulse |
-| `get_storage_status` | Storage client reachability + `GET /status` telemetry (`gossip_interval_sec`, `peer_count`, `snode_count`, `kv_entries`, `gossip_rounds`, `digest_ok` / `sync_ok` / `membership_ok` / `gossip_fail`) |
+| `get_storage_status` / `print_storage` | Storage client reachability + `GET /status` telemetry (`gossip_interval_sec`, `peer_count`, `snode_count`, `kv_entries`, `gossip_rounds`, `digest_ok` / `sync_ok` / `membership_ok` / `gossip_fail`) |
 | `get_service_nodes` `offset`/`limit` | Optional pagination |
 
 Companion processes (same repo, separate PIDs — [`docs/PRODUCT.md`](PRODUCT.md)):
@@ -320,7 +320,7 @@ bodies are capped at 1 MiB on Linux, macOS, and Windows. Repeat `--router`
 needs `--storage-url`. `PUT /v1/snodes` merges unique HTTP member URLs (cap 32)
 and pushes the list onto those members. `arqma-msg swarm` lists or announces
 membership. Anti-entropy repair: `GET /v1/digest?ns=` + `POST /v1/sync?ns=` and `arqma-storage --gossip-interval=15` (0 disables). Still not a full Oxen swarm.
-Probe gossip health via `GET http://127.0.0.1:22021/status` or daemon `get_storage_status` (`peer_count`, `gossip_rounds`, `digest_ok`, `sync_ok`, `membership_ok`, `gossip_fail`). Blink mesh soak: watch `mesh_blink_tx_shadow_parse_ok` / `*_parse_fail` on `get_blink_status` / `get_arqnet_status` (observability only).
+Probe gossip health via `GET http://127.0.0.1:22021/status` or daemon `get_storage_status` / `print_storage` (`peer_count`, `gossip_rounds`, `digest_ok`, `sync_ok`, `membership_ok`, `gossip_fail`). Blink mesh soak: watch `mesh_blink_tx_shadow_parse_ok` / `*_parse_fail` on `get_blink_status` / `get_arqnet_status` (observability only).
 
 ## Compatibility
 

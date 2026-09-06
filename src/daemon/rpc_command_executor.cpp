@@ -996,6 +996,44 @@ bool t_rpc_command_executor::print_blink()
   return true;
 }
 
+bool t_rpc_command_executor::print_storage()
+{
+  cryptonote::COMMAND_RPC_GET_STORAGE_STATUS::request req;
+  cryptonote::COMMAND_RPC_GET_STORAGE_STATUS::response res;
+  epee::json_rpc::error error_resp;
+  const std::string fail_message = "Unsuccessful";
+
+  if (m_is_rpc)
+  {
+    if (!m_rpc_client->json_rpc_request(req, res, "get_storage_status", fail_message.c_str()))
+      return true;
+  }
+  else
+  {
+    if (!m_rpc_server->on_get_storage_status(req, res, error_resp) || res.status != CORE_RPC_STATUS_OK)
+    {
+      tools::fail_msg_writer() << make_error(fail_message, res.status);
+      return true;
+    }
+  }
+
+  tools::success_msg_writer()
+      << "Storage reachable=" << (res.client_reachable ? "true" : "false")
+      << " service=" << (res.service.empty() ? "-" : res.service)
+      << " last_ping=" << res.last_storage_server_ping
+      << "\n  peers=" << res.peer_count
+      << " snodes=" << res.snode_count
+      << " kv=" << res.kv_entries
+      << " gossip_interval_sec=" << res.gossip_interval_sec
+      << "\n  gossip_rounds=" << res.gossip_rounds
+      << " digest_ok=" << res.digest_ok
+      << " sync_ok=" << res.sync_ok
+      << " membership_ok=" << res.membership_ok
+      << " gossip_fail=" << res.gossip_fail
+      << "\n  error=" << (res.client_error.empty() ? "-" : res.client_error);
+  return true;
+}
+
 bool t_rpc_command_executor::set_log_level(int8_t level) {
   cryptonote::COMMAND_RPC_SET_LOG_LEVEL::request req;
   cryptonote::COMMAND_RPC_SET_LOG_LEVEL::response res;

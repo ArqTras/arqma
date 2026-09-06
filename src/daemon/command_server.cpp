@@ -121,6 +121,12 @@ t_command_server::t_command_server(
     , "Print Blink quorum status (get_blink_status). Blink does not replace Pulse or RandomARQ."
     );
   m_command_lookup.set_handler(
+      "print_storage"
+    , std::bind(&t_command_parser_executor::print_storage, &m_parser, p::_1)
+    , "print_storage"
+    , "Print Storage client status (get_storage_status): reachability + gossip/catalog counters."
+    );
+  m_command_lookup.set_handler(
       "print_sn_key"
     , std::bind(&t_command_parser_executor::print_sn_key, &m_parser, p::_1)
     , "print_sn_key"

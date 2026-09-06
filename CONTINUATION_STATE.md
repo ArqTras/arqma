@@ -90,6 +90,7 @@ Windows/macOS/Linux arm: `make depends` / `.github/workflows/depends.yml`
 - [x] Storage epidemic snode membership gossip (`GET /v1/snodes` catalog + peer merge)
 - [x] Storage `/status` + `get_storage_status` gossip telemetry
 - [x] Blink `blink_tx` mesh shadow unit tests (parse ok / parse fail)
+- [x] Daemon `print_storage` + soak monitor storage gossip line + counter asserts
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 - [ ] Multi-SN stagenet soak (needs live quorum; see `docs/OPERATOR_UPGRADE.md`)

@@ -428,6 +428,14 @@ TEST(arq_storage_server, gossips_kv_via_anti_entropy)
     }
   }
   EXPECT_TRUE(converged);
+  {
+    arq_storage::StorageClient replica_status{{arq_storage::Backend::Remote, replica.base_url()}};
+    const auto snap = replica_status.fetch_status();
+    EXPECT_TRUE(snap.reachable);
+    EXPECT_GE(snap.gossip_rounds, 1u);
+    EXPECT_GE(snap.digest_ok, 1u);
+    EXPECT_GE(snap.sync_ok, 1u);
+  }
   primary.stop();
   replica.stop();
 }
@@ -466,6 +474,13 @@ TEST(arq_storage_server, gossips_snode_membership_via_anti_entropy)
     }
   }
   EXPECT_TRUE(converged);
+  {
+    arq_storage::StorageClient replica_status{{arq_storage::Backend::Remote, replica.base_url()}};
+    const auto snap = replica_status.fetch_status();
+    EXPECT_TRUE(snap.reachable);
+    EXPECT_GE(snap.gossip_rounds, 1u);
+    EXPECT_GE(snap.membership_ok, 1u);
+  }
   primary.stop();
   replica.stop();
 }
@@ -527,6 +542,11 @@ TEST(arq_storage_server, status_reports_peers_and_kv)
   EXPECT_EQ(1u, snap.peer_count);
   EXPECT_EQ(1u, snap.snode_count);
   EXPECT_GE(snap.kv_entries, 1u);
+  EXPECT_EQ(0u, snap.gossip_rounds);
+  EXPECT_EQ(0u, snap.digest_ok);
+  EXPECT_EQ(0u, snap.sync_ok);
+  EXPECT_EQ(0u, snap.membership_ok);
+  EXPECT_EQ(0u, snap.gossip_fail);
   server.stop();
 }
 

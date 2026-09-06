@@ -35,7 +35,7 @@ arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
 ```
 
 Useful RPC (unrestricted): `get_info`, `get_arqnet_status`, `get_pulse_status`,
-`get_blink_status`, `get_storage_status`. Console: `print_pulse`, `print_blink`.
+`get_blink_status`, `get_storage_status`. Console: `print_pulse`, `print_blink`, `print_storage`.
 
 | Common flag | Purpose |
 |-------------|---------|

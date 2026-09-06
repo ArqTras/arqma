@@ -19,7 +19,8 @@ info:
     Daemon `print_pulse` dumps the same fields. Block header RPC adds
     `pulse_certificate` / `pulse_round` / `pulse_signature_count` / `pulse_payload_hash`
     when miner extra carries a Pulse certificate.
-    `get_blink_status` / `print_blink` report the in-daemon Blink collector
+    `get_blink_status` / `print_blink` report the in-daemon Blink collector.
+    `get_storage_status` / `print_storage` report companion storage reachability and gossip counters
     (7 of 10); Blink does not replace Pulse or RandomARQ.
     Companion processes `arqma-storage` and `arqma-router` live in this repo
     (`docs/PRODUCT.md`); `arqmad` still only probes them.
@@ -194,6 +195,51 @@ components:
         error:
           type: object
           additionalProperties: true
+
+    GetStorageStatusResult:
+      type: object
+      description: >
+        Result of `get_storage_status` (also printed by daemon `print_storage`).
+        Values come from companion `arqma-storage` `GET /status` when reachable.
+      properties:
+        client_reachable:
+          type: boolean
+        last_storage_server_ping:
+          type: integer
+          format: uint64
+        client_error:
+          type: string
+        gossip_interval_sec:
+          type: integer
+          format: uint64
+        peer_count:
+          type: integer
+          format: uint64
+        snode_count:
+          type: integer
+          format: uint64
+        kv_entries:
+          type: integer
+          format: uint64
+        gossip_rounds:
+          type: integer
+          format: uint64
+        digest_ok:
+          type: integer
+          format: uint64
+        sync_ok:
+          type: integer
+          format: uint64
+        membership_ok:
+          type: integer
+          format: uint64
+        gossip_fail:
+          type: integer
+          format: uint64
+        service:
+          type: string
+        status:
+          type: string
     PingResponse:
       type: object
       properties:
