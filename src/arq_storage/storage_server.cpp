@@ -232,6 +232,94 @@ struct StorageServer::Impl
 
   std::string self_url() const { return "http://" + format_http_authority(host, port.load()); }
 
+  static std::vector<std::string> parse_pubkey_lines(const std::string_view body)
+  {
+    std::vector<std::string> out;
+    std::string line;
+    std::istringstream iss{std::string{body}};
+    while (std::getline(iss, line)) {
+      if (!line.empty() && line.back() == '\r')
+        line.pop_back();
+      while (!line.empty() && (line.back() == ' ' || line.back() == '\t'))
+        line.pop_back();
+      std::size_t start = 0;
+      while (start < line.size() && (line[start] == ' ' || line[start] == '\t'))
+        ++start;
+      if (start)
+        line = line.substr(start);
+      if (line.empty() || line.size() > max_kv_name_bytes)
+        continue;
+      out.push_back(std::move(line));
+      if (out.size() >= max_gossip_snode_pubs)
+        break;
+    }
+    return out;
+  }
+
+  /// Pull/merge swarm membership lists with a peer (epidemic; replicate=0).
+  void gossip_membership_with_peer(const std::string& peer_url)
+  {
+    const auto ep = parse_endpoint(peer_url);
+    if (!ep)
+      return;
+    const auto catalog_res =
+        http_exchange(ep, "GET", with_token("/v1/snodes", token), {}, std::chrono::milliseconds{2000});
+    std::vector<std::string> remote_pubs;
+    if (catalog_res)
+      remote_pubs = parse_pubkey_lines(catalog_res.body);
+
+    std::map<std::string, std::string> local_copy;
+    {
+      std::lock_guard<std::mutex> lock{mu};
+      local_copy = snodes;
+    }
+
+    std::vector<std::string> pubs;
+    std::set<std::string> seen;
+    auto push_pub = [&](const std::string& pub) {
+      if (pub.empty() || pub.size() > max_kv_name_bytes || !seen.insert(pub).second)
+        return;
+      if (pubs.size() >= max_gossip_snode_pubs)
+        return;
+      pubs.push_back(pub);
+    };
+    for (const auto& kv : local_copy)
+      push_pub(kv.first);
+    for (const auto& pub : remote_pubs)
+      push_pub(pub);
+
+    for (const auto& pub : pubs) {
+      if (!running.load())
+        return;
+      const auto get_path = with_token(snodes_path(pub), token);
+      const auto remote_res = http_exchange(ep, "GET", get_path, {}, std::chrono::milliseconds{2000});
+      const auto remote_urls =
+          remote_res ? parse_url_lines(remote_res.body) : std::vector<std::string>{};
+
+      std::string merged;
+      std::vector<std::string> member_urls;
+      bool local_changed = false;
+      {
+        std::lock_guard<std::mutex> lock{mu};
+        const auto it = snodes.find(pub);
+        const auto existing = it == snodes.end() ? std::vector<std::string>{} : parse_url_lines(it->second);
+        member_urls = merge_snode_urls(existing, remote_urls);
+        merged = join_url_lines(member_urls);
+        if (it == snodes.end() || it->second != merged) {
+          snodes[pub] = merged;
+          persist_snodes(pub, merged);
+          local_changed = true;
+        }
+      }
+      (void)local_changed;
+      const std::string remote_body = remote_res ? remote_res.body : std::string{};
+      if (merged != remote_body && !merged.empty()) {
+        http_exchange(ep, "PUT", with_token(snodes_path(pub) + "&replicate=0", token), merged,
+                      std::chrono::milliseconds{2000});
+      }
+    }
+  }
+
   void gossip_with_peer(const std::string& peer_url, const std::string& ns)
   {
     const auto ep = parse_endpoint(peer_url);
@@ -323,6 +411,9 @@ struct StorageServer::Impl
       if (url.empty() || url == self)
         continue;
       ++peer_n;
+      if (!running.load())
+        return;
+      gossip_membership_with_peer(url);
       std::size_t ns_n = 0;
       for (const auto& ns : namespaces) {
         if (ns_n >= max_gossip_namespaces)
@@ -486,8 +577,27 @@ struct StorageServer::Impl
 
     if (path_only == "/v1/snodes") {
       const auto pub = query_get(path, "pubkey");
-      if (pub.empty())
+      if (pub.empty()) {
+        if (method == "GET") {
+          std::string payload;
+          {
+            std::lock_guard<std::mutex> lock{mu};
+            std::size_t n = 0;
+            for (const auto& kv : snodes) {
+              if (n >= max_gossip_snode_pubs)
+                break;
+              payload.append(kv.first);
+              payload.push_back('\n');
+              ++n;
+            }
+          }
+          std::ostringstream oss;
+          oss << "HTTP/1.1 200 OK\r\nContent-Length: " << payload.size() << "\r\nConnection: close\r\n\r\n"
+              << payload;
+          return oss.str();
+        }
         return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+      }
       if (method == "PUT") {
         std::string merged;
         std::vector<std::string> member_urls;

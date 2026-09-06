@@ -9,7 +9,7 @@ info:
     `get_pulse_status`, `get_storage_status`, `get_blink_status`), not REST GET paths.
     `get_arqnet_status` returns `backend`, `transport`, `mesh` (live peer quorum:
     `snnetwork` until HF20+ with a CURVE `--arqnet-backend=arqmq` stack; exclusive
-    intent at HF21), soak counters (`mesh_vote_ob_*`, `mesh_pulse_rnd_*`),
+    intent at HF21), soak counters (`mesh_vote_ob_*`, `mesh_pulse_rnd_*, mesh_blink_tx_*`),
     `sn_operating_mode`, and Pulse PoW gates.
     `get_pulse_status` reports hybrid/exclusive SN mode, wait-window `round`,
     leader, quorum, collector signature count, `majority_ok`, and local signature

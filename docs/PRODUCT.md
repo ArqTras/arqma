@@ -26,7 +26,7 @@ utils/arqma-msg-ui.py    # http://127.0.0.1:8787/
 ```
 
 Blink lives **in-process** as `src/arq_blink` (quorum sign/verify + collector).
-`get_blink_status` reports that collector. `blink_tx` Arq-Net wire is connected (collector + mesh relay); it still does **not**
+`get_blink_status` reports that collector plus `wire_connected` and `mesh_blink_tx_*` soak counters. `blink_tx` Arq-Net wire is connected (collector + mesh relay); it still does **not**
 pre-confirm transactions as a Pulse/RandomARQ replacement. It does **not** replace
 Pulse or RandomARQ.
 

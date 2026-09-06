@@ -26,6 +26,7 @@ constexpr std::size_t max_kv_entries_per_namespace = 512;
 constexpr std::size_t max_sync_response_bytes = 512 * 1024;
 constexpr std::size_t max_gossip_peers = 8;
 constexpr std::size_t max_gossip_namespaces = 8;
+constexpr std::size_t max_gossip_snode_pubs = 16;
 
 inline bool kv_quota_exceeded(std::size_t total, std::size_t ns_count, bool inserting_new) noexcept
 {

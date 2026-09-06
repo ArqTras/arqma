@@ -985,7 +985,14 @@ bool t_rpc_command_executor::print_blink()
       << " majority=" << (res.majority_ok ? "true" : "false")
       << "\n  replaces_pow=" << (res.replaces_pow ? "true" : "false")
       << " replaces_pulse=" << (res.replaces_pulse ? "true" : "false")
-      << " blocker=" << (res.blink_blocker.empty() ? "-" : res.blink_blocker);
+      << " wire=" << (res.wire_connected ? "true" : "false")
+      << " blocker=" << (res.blink_blocker.empty() ? "-" : res.blink_blocker)
+      << "\n  blink_tx live=" << res.mesh_blink_tx_live
+      << " sh_ok=" << res.mesh_blink_tx_shadow_ok
+      << " sh_fail=" << res.mesh_blink_tx_shadow_fail
+      << " sh_in=" << res.mesh_blink_tx_shadow_in
+      << " parse_ok=" << res.mesh_blink_tx_shadow_parse_ok
+      << " parse_fail=" << res.mesh_blink_tx_shadow_parse_fail;
   return true;
 }
 

@@ -27,6 +27,7 @@ arqmad --stagenet --arqnet-backend=arqmq --arqnet-mesh-shadow
    | `mesh_vote_ob_shadow_in` | inbound shadow `vote_ob` frames (receivers) |
    | `mesh_vote_ob_shadow_parse_ok` / `*_parse_fail` | inbound payloads that decode as obligation-vote wire |
    | `mesh_pulse_rnd_live` / `mesh_pulse_rnd_shadow_*` | Pulse `pulse_rnd` dual-write + inbound parse (observability; not in `sample_ok`) |
+   | `mesh_blink_tx_live` / `mesh_blink_tx_shadow_*` | Blink `blink_tx` dual-write + inbound parse (observability; not in `sample_ok`) |
    | `mesh_shadow_ok_rate_bps` | overall shadow success (0–10000) |
    | `mesh_shadow_parity_sample_ok` | ≥32 live `vote_ob` + ≥95% shadow send ok **and** inbound parse ok |
    | `native_mesh_ready` / `native_mesh_blocker` | implementation gate (stage 4 → `none`) |
@@ -274,10 +275,10 @@ and an explicit operator decision (still needs `--arqnet-allow-experimental` for
 | `--arq-router` | Hold experimental router lifecycle in the daemon (companion `arqma-router` is the HTTP process) |
 | `--storage-client-url=<url>` | Outbound Storage Server reachability probe (`http://` GET / `https://` TCP) — point at `arqma-storage` |
 | `arqnet_ping` | Records Arq-Net reachability (not yet a hard uptime gate) |
-| `get_arqnet_status` | `backend`, `transport`, `mesh`, shadow counters (`vote_ob` + `pulse_rnd`), `native_mesh_*`, `sn_operating_mode`, `pulse_*` |
+| `get_arqnet_status` | `backend`, `transport`, `mesh`, shadow counters (`vote_ob` + `pulse_rnd` + `blink_tx`), `native_mesh_*`, `sn_operating_mode`, `pulse_*` |
 | `get_pulse_status` | Hybrid/exclusive SN mode, PoW gate, Pulse `round` / leader / quorum / collector `signature_count` / `majority_ok` / `certificate_ready` / `payload_hash` / `local_signature_ready` |
 | `print_pulse` | Daemon console dump of `get_pulse_status` |
-| `get_blink_status` / `print_blink` | In-daemon Blink quorum (7 of 10). Does not replace Pulse or RandomARQ |
+| `get_blink_status` / `print_blink` | In-daemon Blink quorum (7 of 10) + `wire_connected` + `mesh_blink_tx_*`. Does not replace Pulse or RandomARQ |
 | `get_block_header_*` | Optional `pulse_certificate`, `pulse_round`, `pulse_signature_count`, `pulse_payload_hash` when miner extra has Pulse |
 | `get_storage_status` | Storage client status + last SS ping (`arqma-storage`) |
 | `get_service_nodes` `offset`/`limit` | Optional pagination |

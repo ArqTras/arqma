@@ -56,6 +56,7 @@ void set_relay_new_vote(void (*fn)(const RelayVote&));
 
 /// When true, `blocker()` reports wire connectivity as ready (`"none"`).
 void set_wire_connected(bool connected) noexcept;
+bool wire_connected() noexcept;
 
 const char* blocker() noexcept;
 

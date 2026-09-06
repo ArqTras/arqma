@@ -3179,6 +3179,12 @@ bool core_rpc_server::on_get_arqnet_status(const COMMAND_RPC_GET_ARQNET_STATUS::
   res.mesh_pulse_rnd_shadow_in = shadow.pulse_rnd_shadow_in;
   res.mesh_pulse_rnd_shadow_parse_ok = shadow.pulse_rnd_shadow_parse_ok;
   res.mesh_pulse_rnd_shadow_parse_fail = shadow.pulse_rnd_shadow_parse_fail;
+  res.mesh_blink_tx_live = shadow.blink_tx_live;
+  res.mesh_blink_tx_shadow_ok = shadow.blink_tx_shadow_ok;
+  res.mesh_blink_tx_shadow_fail = shadow.blink_tx_shadow_fail;
+  res.mesh_blink_tx_shadow_in = shadow.blink_tx_shadow_in;
+  res.mesh_blink_tx_shadow_parse_ok = shadow.blink_tx_shadow_parse_ok;
+  res.mesh_blink_tx_shadow_parse_fail = shadow.blink_tx_shadow_parse_fail;
   res.mesh_shadow_ok_rate_bps = arqmq::native_mesh_shadow_ok_rate_bps();
   res.mesh_shadow_parity_sample_ok = arqmq::native_mesh_shadow_parity_sample_ok();
   res.hard_fork_version = hf;
@@ -3281,6 +3287,14 @@ bool core_rpc_server::on_get_blink_status(const COMMAND_RPC_GET_BLINK_STATUS::re
   res.majority_ok = col.majority_ok();
   res.replaces_pow = false;
   res.replaces_pulse = false;
+  res.wire_connected = arq_blink::wire_connected();
+  const auto shadow = arqmq::native_mesh_shadow_stats();
+  res.mesh_blink_tx_live = shadow.blink_tx_live;
+  res.mesh_blink_tx_shadow_ok = shadow.blink_tx_shadow_ok;
+  res.mesh_blink_tx_shadow_fail = shadow.blink_tx_shadow_fail;
+  res.mesh_blink_tx_shadow_in = shadow.blink_tx_shadow_in;
+  res.mesh_blink_tx_shadow_parse_ok = shadow.blink_tx_shadow_parse_ok;
+  res.mesh_blink_tx_shadow_parse_fail = shadow.blink_tx_shadow_parse_fail;
   res.blink_blocker = arq_blink::blocker();
   res.status = CORE_RPC_STATUS_OK;
   return true;

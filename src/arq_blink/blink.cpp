@@ -127,9 +127,14 @@ void set_wire_connected(const bool connected) noexcept
   g_wire_connected.store(connected, std::memory_order_relaxed);
 }
 
+bool wire_connected() noexcept
+{
+  return g_wire_connected.load(std::memory_order_relaxed);
+}
+
 const char* blocker() noexcept
 {
-  if (g_wire_connected.load(std::memory_order_relaxed))
+  if (wire_connected())
     return "none";
   return "blink-wire-not-connected";
 }

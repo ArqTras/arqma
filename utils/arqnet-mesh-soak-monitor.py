@@ -79,6 +79,12 @@ def fmt_row(rpc: str, result: dict) -> str:
         f"pulse_in={result.get('mesh_pulse_rnd_shadow_in', 0)} "
         f"pulse_parse_ok={result.get('mesh_pulse_rnd_shadow_parse_ok', 0)} "
         f"pulse_parse_fail={result.get('mesh_pulse_rnd_shadow_parse_fail', 0)} "
+        f"live_blink={result.get('mesh_blink_tx_live', 0)} "
+        f"blink_ok={result.get('mesh_blink_tx_shadow_ok', 0)} "
+        f"blink_fail={result.get('mesh_blink_tx_shadow_fail', 0)} "
+        f"blink_in={result.get('mesh_blink_tx_shadow_in', 0)} "
+        f"blink_parse_ok={result.get('mesh_blink_tx_shadow_parse_ok', 0)} "
+        f"blink_parse_fail={result.get('mesh_blink_tx_shadow_parse_fail', 0)} "
         f"ok_bps={result.get('mesh_shadow_ok_rate_bps', 0)} "
         f"sample_ok={result.get('mesh_shadow_parity_sample_ok')}"
     )
@@ -102,6 +108,7 @@ def aggregate(rows: list[tuple[str, dict, dict, str | None]]) -> dict:
     sample_ok = [rpc for rpc, arq, _ in reachable if arq.get("mesh_shadow_parity_sample_ok")]
     parse_fail = sum(int(arq.get("mesh_vote_ob_shadow_parse_fail", 0) or 0) for _, arq, _ in reachable)
     pulse_parse_fail = sum(int(arq.get("mesh_pulse_rnd_shadow_parse_fail", 0) or 0) for _, arq, _ in reachable)
+    blink_parse_fail = sum(int(arq.get("mesh_blink_tx_shadow_parse_fail", 0) or 0) for _, arq, _ in reachable)
     return {
         "nodes": len(rows),
         "reachable": len(reachable),
@@ -110,6 +117,7 @@ def aggregate(rows: list[tuple[str, dict, dict, str | None]]) -> dict:
         "all_sample_ok": bool(reachable) and len(sample_ok) == len(reachable),
         "parse_fail_sum": parse_fail,
         "pulse_parse_fail_sum": pulse_parse_fail,
+        "blink_parse_fail_sum": blink_parse_fail,
         "errors": [(rpc, err) for rpc, _, _, err in rows if err is not None],
     }
 
@@ -174,7 +182,8 @@ def main() -> int:
             f"nodes={summary['nodes']} reachable={summary['reachable']} "
             f"sample_ok={summary['sample_ok']} all_ok={summary['all_sample_ok']} "
             f"vote_parse_fail_sum={summary['parse_fail_sum']} "
-            f"pulse_parse_fail_sum={summary['pulse_parse_fail_sum']}",
+            f"pulse_parse_fail_sum={summary['pulse_parse_fail_sum']} "
+            f"blink_parse_fail_sum={summary['blink_parse_fail_sum']}",
             flush=True,
         )
 

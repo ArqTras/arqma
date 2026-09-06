@@ -432,6 +432,44 @@ TEST(arq_storage_server, gossips_kv_via_anti_entropy)
   replica.stop();
 }
 
+TEST(arq_storage_server, gossips_snode_membership_via_anti_entropy)
+{
+  arq_storage::StorageServer primary;
+  arq_storage::StorageServer replica;
+  primary.set_gossip_interval(std::chrono::seconds{0});
+  replica.set_gossip_interval(std::chrono::seconds{1});
+  ASSERT_FALSE(primary.listen("127.0.0.1", 0));
+  ASSERT_FALSE(replica.listen("127.0.0.1", 0));
+  primary.add_peer(replica.base_url());
+  replica.add_peer(primary.base_url());
+
+  const auto primary_ep = arq_storage::parse_endpoint(primary.base_url());
+  ASSERT_TRUE(primary_ep);
+  const std::string members = replica.base_url() + "\nhttp://127.0.0.1:9\n";
+  // replicate=0: only epidemic membership gossip should teach B about pubkey pk.
+  ASSERT_TRUE(arq_storage::http_exchange(primary_ep, "PUT", "/v1/snodes?pubkey=pk&replicate=0", members));
+
+  const auto catalog = arq_storage::http_exchange(primary_ep, "GET", "/v1/snodes", {});
+  ASSERT_TRUE(catalog);
+  EXPECT_NE(std::string::npos, catalog.body.find("pk"));
+
+  bool converged = false;
+  for (int i = 0; i < 40; ++i) {
+    std::this_thread::sleep_for(std::chrono::milliseconds{250});
+    arq_storage::Config cfg{arq_storage::Backend::Remote, replica.base_url(), std::chrono::milliseconds{2000}};
+    arq_storage::StorageClient reader{cfg};
+    const auto got = reader.get_snodes_for_pubkey("pk");
+    if (!got.error && got.value.size() == 2u && got.value[0] == replica.base_url() &&
+        got.value[1] == "http://127.0.0.1:9") {
+      converged = true;
+      break;
+    }
+  }
+  EXPECT_TRUE(converged);
+  primary.stop();
+  replica.stop();
+}
+
 TEST(arq_storage_server, rejects_oversized_content_length)
 {
   arq_storage::StorageServer server;

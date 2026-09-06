@@ -20,10 +20,13 @@ TEST(arq_blink, quorum_rotates_from_leader)
   const auto q = arq_blink::quorum_indices(100, 20);
   ASSERT_EQ(arq_blink::k_quorum_size, q.size());
   EXPECT_EQ(arq_blink::leader_index(100, 20), q.front());
+  EXPECT_FALSE(arq_blink::wire_connected());
   EXPECT_EQ(std::string("blink-wire-not-connected"), arq_blink::blocker());
   arq_blink::set_wire_connected(true);
+  EXPECT_TRUE(arq_blink::wire_connected());
   EXPECT_EQ(std::string("none"), arq_blink::blocker());
   arq_blink::set_wire_connected(false);
+  EXPECT_FALSE(arq_blink::wire_connected());
   EXPECT_EQ(std::string("blink-wire-not-connected"), arq_blink::blocker());
 }
 
