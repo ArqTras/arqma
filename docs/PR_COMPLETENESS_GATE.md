@@ -38,9 +38,9 @@ https://github.com/ArqTras/arqma/pull/3.
 ### Explicitly deferred (documented)
 
 - Native mesh cutover: stage 4 is on; live `vote_ob` uses SocketStack only with HF20+ `arqmq`+CURVE (SNNetwork fallback otherwise)
-- Storage swarm gossip protocol beyond `/v1/snodes` URL lists (KV + TTL + inbox fan-out + read fallback + membership merge/push are in-tree)
+- [partial] Storage anti-entropy gossip (`/v1/digest` + `/v1/sync` + `--gossip-interval`); full epidemic membership protocol still deferred
 - Session-class client UX beyond `arqma-msg`
-- Pulse/Blink/L2: Pulse **hybrid producer started**; Blink collector/RPC in-tree (does not replace Pulse or PoW)
+- Pulse/Blink/L2: Pulse **hybrid producer started**; Blink `blink_tx` wire + collector in-tree (does not replace Pulse or PoW)
 - Restoring every legacy Monero-era unit fixture / `core_tests` in default CI
 - Native MSVC unit job on `windows-latest` (Windows covered via mingw depends)
 - Multi-SN stagenet mesh/Pulse soak (operator-run; single-VM CI cannot host a quorum)

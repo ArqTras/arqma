@@ -318,7 +318,7 @@ bodies are capped at 1 MiB on Linux, macOS, and Windows. Repeat `--router`
 (outermost first, max 3); intermediate hops forward leftover onion, the last hop
 needs `--storage-url`. `PUT /v1/snodes` merges unique HTTP member URLs (cap 32)
 and pushes the list onto those members. `arqma-msg swarm` lists or announces
-membership. That is still not a full epidemic gossip protocol.
+membership. Anti-entropy repair: `GET /v1/digest?ns=` + `POST /v1/sync?ns=` and `arqma-storage --gossip-interval=15` (0 disables). Still not a full Oxen swarm.
 
 ## Compatibility
 

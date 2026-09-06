@@ -26,8 +26,8 @@ utils/arqma-msg-ui.py    # http://127.0.0.1:8787/
 ```
 
 Blink lives **in-process** as `src/arq_blink` (quorum sign/verify + collector).
-`get_blink_status` reports that collector. There is **no** Arq-Net Blink wire yet,
-so it does **not** pre-confirm transactions on the network. It does **not** replace
+`get_blink_status` reports that collector. `blink_tx` Arq-Net wire is connected (collector + mesh relay); it still does **not**
+pre-confirm transactions as a Pulse/RandomARQ replacement. It does **not** replace
 Pulse or RandomARQ.
 
 ## Local stack
@@ -63,7 +63,7 @@ returns the FNV swarm id plus those member URLs. `arqma-msg` get / inbox / open
 read from those members when the local node has no copy. HTTP bodies are capped
 at 1 MiB; listen addresses accept IPv6 (`[::1]:22021`). `PUT /v1/snodes` merges
 unique HTTP member URLs (cap 32) and pushes the list to those members. This is
-not a full epidemic gossip protocol.
+plus anti-entropy `GET /v1/digest` / `POST /v1/sync` and optional `--gossip-interval` peer repair (still not a full Oxen-style swarm).
 
 `get_storage_status` / `storage_server_ping` talk to `arqma-storage`.
 `get_blink_status` / `print_blink` report the in-daemon Blink collector.

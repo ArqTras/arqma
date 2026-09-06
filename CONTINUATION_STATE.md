@@ -84,6 +84,8 @@ Windows/macOS/Linux arm: `make depends` / `.github/workflows/depends.yml`
 - [x] Document 3-OS local env (Linux apt / macOS brew / Windows mingw) aligned with CI
 - [x] Binary launch guide (`docs/BINARIES.md`) for every shipped binary
 - [x] Messenger UI styled like Arqma Qt GUI (`utils/arqma-msg-ui.py`)
+- [x] Storage anti-entropy gossip (`/v1/digest`, `/v1/sync`, `--gossip-interval`)
+- [x] Blink Arq-Net wire (`blink_tx`) + mesh shadow handlers
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 - [ ] Multi-SN stagenet soak (needs live quorum; see `docs/OPERATOR_UPGRADE.md`)
