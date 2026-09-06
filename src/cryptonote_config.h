@@ -151,6 +151,8 @@ using namespace std::literals;
 #define P2P_DEFAULT_PACKET_MAX_SIZE                     50000000   // 50MB maximum packet size
 #define P2P_DEFAULT_PEERS_IN_HANDSHAKE                  250
 #define P2P_MAX_PEERS_IN_HANDSHAKE                      250
+/// Pre-handshake Levin budget (matches epee LEVIN_INITIAL_MAX_PACKET_SIZE).
+#define P2P_PREAUTH_PACKET_MAX_SIZE                     (256 * 1024)
 #define P2P_DEFAULT_CONNECTION_TIMEOUT                  5000       // 5 seconds
 #define P2P_DEFAULT_SOCKS_CONNECT_TIMEOUT               20         // seconds
 #define P2P_DEFAULT_PING_CONNECTION_TIMEOUT             2000       // 2 seconds
@@ -163,6 +165,18 @@ constexpr auto P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT     = 5s;
 
 #define P2P_DEFAULT_LIMIT_RATE_UP                       8192       // kbps
 #define P2P_DEFAULT_LIMIT_RATE_DOWN                     32768      // kbps
+
+static constexpr uint32_t P2P_DEFAULT_TOTAL_CONNECTIONS =
+    P2P_DEFAULT_CONNECTIONS_COUNT_OUT + P2P_DEFAULT_CONNECTIONS_COUNT_IN;
+static constexpr uint32_t P2P_DEFAULT_TOTAL_CONNECTIONS_TEST =
+    P2P_DEFAULT_CONNECTIONS_COUNT_TEST_OUT + P2P_DEFAULT_CONNECTIONS_COUNT_TEST_IN;
+static constexpr uint64_t P2P_DEFAULT_LIMIT_RATE_UP_KBPS = P2P_DEFAULT_LIMIT_RATE_UP;
+static constexpr uint64_t P2P_DEFAULT_LIMIT_RATE_DOWN_KBPS = P2P_DEFAULT_LIMIT_RATE_DOWN;
+static constexpr uint64_t P2P_DEFAULT_PACKET_MAX_SIZE_BYTES = P2P_DEFAULT_PACKET_MAX_SIZE;
+static constexpr uint64_t P2P_DEFAULT_PACKET_MAX_SIZE_MB = P2P_DEFAULT_PACKET_MAX_SIZE_BYTES / 1000 / 1000;
+static constexpr uint64_t P2P_DEFAULT_PACKET_MAX_SIZE_HEADROOM_BYTES =
+    P2P_DEFAULT_PACKET_MAX_SIZE_BYTES - CRYPTONOTE_MAX_TX_SIZE;
+static constexpr uint64_t P2P_PREAUTH_PACKET_MAX_SIZE_BYTES = P2P_PREAUTH_PACKET_MAX_SIZE;
 
 #define P2P_FAILED_ADDR_FORGET_SECONDS                  (60*60)    // 1 day
 #define P2P_IP_BLOCKTIME                                (60*60*24) // 2 days
@@ -186,6 +200,13 @@ constexpr auto P2P_DEFAULT_HANDSHAKE_INVOKE_TIMEOUT     = 5s;
 #define HF_VERSION_PER_OUTPUT_FEE                       cryptonote::network_version_19
 #define HF_VERSION_BURN                                 cryptonote::network_version_19
 #define HF_VERSION_CLSAG                                cryptonote::network_version_19
+/// HF20: permits native Arq-Net mesh cutover after Curve/ZAP peer relay is ready.
+/// Mainnet stays network_version_19 (SNNetwork / legacy backend) until this height.
+#define HF_VERSION_NATIVE_ARQNET_MESH                   cryptonote::network_version_20
+#define MAINNET_HARD_FORK_20_HEIGHT                     4000000ull
+/// HF21: exclusive new-style SN (Pulse + native mesh). Hybrid POSPOW window is HF20→HF21.
+#define HF_VERSION_PULSE_EXCLUSIVE                      cryptonote::network_version_21
+#define MAINNET_HARD_FORK_21_HEIGHT                     5000000ull
 
 #define PER_KB_FEE_QUANTIZATION_DECIMALS                8
 
@@ -219,6 +240,14 @@ static constexpr double POISSON_LOG_P_REJECT = -75.0; // Reject reorg if the pro
 static_assert(STAKING_SHARE_PARTS % MAX_NUMBER_OF_CONTRIBUTORS == 0, "Use a multiple of four, so that it divides easily by max number of contributors.");
 static_assert(STAKING_SHARE_PARTS % 2 == 0, "Use a multiple of two, so that it divides easily by two contributors.");
 static_assert(STAKING_SHARE_PARTS % 3 == 0, "Use a multiple of three, so that it divides easily by three contributors.");
+static_assert(P2P_DEFAULT_PACKET_MAX_SIZE_BYTES == 50 * 1000 * 1000,
+    "P2P packet ceiling is documented as a 50 MB budget.");
+static_assert(P2P_DEFAULT_PACKET_MAX_SIZE_BYTES > CRYPTONOTE_MAX_TX_SIZE,
+    "P2P packet budget must remain larger than one max-sized transaction.");
+static_assert(P2P_PREAUTH_PACKET_MAX_SIZE_BYTES < P2P_DEFAULT_PACKET_MAX_SIZE_BYTES,
+    "pre-auth packet budget must stay below the full packet ceiling.");
+static_assert(P2P_PREAUTH_PACKET_MAX_SIZE_BYTES == 256 * 1024,
+    "pre-auth packet budget must stay aligned with Levin initial max.");
 
 #ifndef UPTIME_PROOF_BASE_MINUTE
 #define UPTIME_PROOF_BASE_MINUTE                        60
@@ -231,7 +260,7 @@ static_assert(STAKING_SHARE_PARTS % 3 == 0, "Use a multiple of three, so that it
 #define UPTIME_PROOF_MAX_TIME_IN_SECONDS                (UPTIME_PROOF_FREQUENCY_IN_SECONDS * 2 + UPTIME_PROOF_BUFFER_IN_SECONDS)
 
 #define STORAGE_SERVER_PING_LIFETIME                    UPTIME_PROOF_FREQUENCY_IN_SECONDS
-//#define ARQNET_PING_LIFETIME                            UPTIME_PROOF_FREQUENCY_IN_SECONDS
+#define ARQNET_PING_LIFETIME                            UPTIME_PROOF_FREQUENCY_IN_SECONDS
 
 #define DNS_BANLIST_LIFETIME                          (86400 * 8) // 8 days
 
@@ -389,6 +418,8 @@ namespace cryptonote
     network_version_17,
     network_version_18,
     network_version_19,
+    network_version_20,
+    network_version_21,
 
     network_version_count,
   };

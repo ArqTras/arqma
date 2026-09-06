@@ -116,7 +116,7 @@ jobs:
         shell: bash
         run: |
           shopt -s nullglob globstar
-          mapfile -d '' files < <(find src/arqmq src/arq_storage src/arq_messaging src/arq_router \
+          mapfile -d '' files < <(find src/arqmq src/arq_storage src/arq_messaging src/arq_router src/arq_blink \
             -type f \( -name '*.h' -o -name '*.hpp' -o -name '*.cpp' \) -print0)
           files+=(src/rpc/rpc_validation.h src/rpc/rpc_validation.cpp src/rpc/rpc_auth.h)
 
