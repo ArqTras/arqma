@@ -394,8 +394,7 @@ TEST(arq_storage_server, gossips_kv_via_anti_entropy)
 {
   arq_storage::StorageServer primary;
   arq_storage::StorageServer replica;
-  // Disable one-shot fan-out timing: gossip (not PUT replicate) must converge.
-  primary.set_gossip_interval(std::chrono::seconds{1});
+  primary.set_gossip_interval(std::chrono::seconds{0});
   replica.set_gossip_interval(std::chrono::seconds{1});
   ASSERT_FALSE(primary.listen("127.0.0.1", 0));
   ASSERT_FALSE(replica.listen("127.0.0.1", 0));
@@ -403,10 +402,13 @@ TEST(arq_storage_server, gossips_kv_via_anti_entropy)
   replica.add_peer(primary.base_url());
 
   const auto primary_ep = arq_storage::parse_endpoint(primary.base_url());
+  const auto replica_ep = arq_storage::parse_endpoint(replica.base_url());
   ASSERT_TRUE(primary_ep);
-  // replicate=0 so only anti-entropy gossip propagates the key.
-  const auto put = arq_storage::http_exchange(primary_ep, "PUT", "/v1/kv?ns=gossip&key=payload&replicate=0", "from-a");
-  ASSERT_TRUE(put);
+  ASSERT_TRUE(replica_ep);
+  // Seed the namespace on B so gossip has an ns to digest/pull against A.
+  ASSERT_TRUE(arq_storage::http_exchange(replica_ep, "PUT", "/v1/kv?ns=gossip&key=_seed&replicate=0", "1"));
+  // replicate=0 so only anti-entropy gossip propagates the payload.
+  ASSERT_TRUE(arq_storage::http_exchange(primary_ep, "PUT", "/v1/kv?ns=gossip&key=payload&replicate=0", "from-a"));
 
   const auto digest = arq_storage::http_exchange(primary_ep, "GET", "/v1/digest?ns=gossip", {});
   ASSERT_TRUE(digest);

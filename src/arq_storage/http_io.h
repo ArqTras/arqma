@@ -56,7 +56,7 @@ inline std::uint64_t fnv1a64(const std::string_view raw, std::uint64_t seed) noe
   return seed;
 }
 
-/// 16 hex chars from FNV-1a64(key + '\\0' + value + expiry LE bytes).
+/// 16 hex chars from FNV-1a64(key + NUL + value + expiry LE bytes).
 inline std::string entry_digest_hex(const std::string_view key, const std::string_view value,
                                     const std::uint64_t expiry)
 {
