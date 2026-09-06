@@ -146,7 +146,7 @@ namespace daemon_args
   };
   const command_line::arg_descriptor<std::string> arg_storage_client_url = {
     "storage-client-url"
-  , "Outbound Storage Server base URL for daemon reachability probes (e.g. http://127.0.0.1:22021)"
+  , "Outbound Storage Server base URL for reachability + get_storage_status / print_storage gossip counters (e.g. http://127.0.0.1:22021)"
   , ""
   };
 

@@ -82,37 +82,20 @@
   total (no synthetic +1). Daemon `print_pulse` prints the same snapshot. Block headers
   expose `pulse_certificate` / `pulse_round` / `pulse_signature_count` / `pulse_payload_hash`
   when miner extra carries a Pulse certificate. The collector drops votes once the height is produced (and on reorg).
-- Ship Storage, router, and messenger as in-repo companion binaries (`arqma-storage`,
-  `arqma-router`, `arqma-msg`) plus an in-daemon Blink collector (`get_blink_status` /
-  `print_blink`, 7 of 10). Processes stay separate from `arqmad`; see `docs/PRODUCT.md`.
-  Blink does not replace Pulse or RandomARQ. `arqma-storage --data-dir` persists KV;
-  `--peer` fans PUTs to replica storage URLs (`replicate=0` stops loops). Inbox
-  namespaces `inbox-<pubkey>` also fan out to `/v1/snodes` members; `GET /v1/swarm`
-  reports the FNV swarm id. `PUT /v1/kv?ttl=` expires values (14-day cap; legacy
-  on-disk blobs stay immortal). `arqma-router` peels one onion hop and can
-  `POST /v1/store` into `--storage-url` (TTL query forwarded). `arqma-msg` can
-  onion-send via `--router` and `open` sealed envelopes. `utils/arqma-stack.sh`
-  (Linux/macOS) and `utils/arqma-stack.cmd` (Windows) start storage with `--data-dir`
-  and the router with `--storage-url`. Companion HTTP listens accept IPv6
-  (`[::1]:port`), cap bodies at 1 MiB, apply socket timeouts on Windows and POSIX,
-  and open identity files via `std::filesystem::path` (Unicode-safe on Windows).
-  `arqma-msg` get / inbox / open follow `/v1/snodes` members when the contacted
-  node has no local copy of an `inbox-*` key. `arqma-router` also forwards leftover
-  onion (`ARQH` + next hop URL) after peeling; `fwd` caps the path at 3 hops.
-  `arqma-msg send --router` may be repeated (outermost first). `PUT /v1/snodes`
-  merges unique HTTP member URLs (cap 32) and pushes the list to those members;
-  `arqma-msg swarm` lists or announces them (not a full gossip protocol).
-  Everyday `arqma-msg` reads `$ARQMA_STACK_DIR/env` from `utils/arqma-stack` so
-  `send` / `inbox` / `open` need no `--url` / `--router`; a down router falls back
-  to storage. `gen` saves `~/.arqma/msg/identity` so `inbox` / `open` need no
-  `--to` / `--secret` / `--key`. Everyday send is `arqma-msg send <hex> hello`
-  (`--to` / `--text` still work). `send bob=<hex> hello` remembers `bob` in
-  `~/.arqma/msg/contacts`; `gen` prints only the public key and records `me`.
-  Inbox namespaces use an opaque id. `utils/arqma-stack` writes `ARQMA_STACK_TOKEN`
-  so storage/router `/v1/*` require it without a user-facing flag. Miner templates
-  splice Pulse majority extra into coinbase padding (weight-neutral). Blink RPC
-  reports `blink-wire-not-connected` (collector only). Operator test steps live in
-  `docs/OPERATOR_UPGRADE.md` (unit suite, messenger stack, daemon probes).
+- Primary operator surface stays HF/Pulse/mesh: `get_pulse_status` / `print_pulse`,
+  `get_arqnet_status`, Blink collector (`get_blink_status` / `print_blink`, 7 of 10;
+  does not replace Pulse or RandomARQ), and Storage probe telemetry
+  (`get_storage_status` / `print_storage` + soak-monitor gossip line:
+  `gossip_interval_sec`, `peer_count`, `gossip_rounds`, `digest_ok` / `sync_ok` /
+  `membership_ok` / `gossip_fail`). Miner templates splice Pulse majority extra into
+  coinbase padding (weight-neutral).
+- Optional in-repo operator probes (`arqma-storage`, `arqma-router`, `arqma-msg`) —
+  separate PIDs from `arqmad`; not Session-class product UX (see `docs/PRODUCT.md`).
+  Storage: `--data-dir` KV, `--peer` replica fan-out, TTL, `/v1/snodes` membership
+  merge/push (cap 32), anti-entropy gossip. Router: onion peel + optional multi-hop
+  forward (max 3). `arqma-msg` remains a minimal CLI smoke over storage/router;
+  `utils/arqma-stack` is the local probe launcher. Operator steps:
+  `docs/OPERATOR_UPGRADE.md` (unit suite, daemon probes, optional messenger).
 - Expose cutover gates on `get_arqnet_status` (`native_mesh_ready`,
   `native_mesh_blocker`, `native_mesh_hf_permits`, `hard_fork_version`).
 - Scaffold native-mesh inbound `vote_ob` processing (installed only after

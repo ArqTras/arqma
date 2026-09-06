@@ -19,11 +19,14 @@ info:
     Daemon `print_pulse` dumps the same fields. Block header RPC adds
     `pulse_certificate` / `pulse_round` / `pulse_signature_count` / `pulse_payload_hash`
     when miner extra carries a Pulse certificate.
-    `get_blink_status` / `print_blink` report the in-daemon Blink collector.
-    `get_storage_status` / `print_storage` report companion storage reachability and gossip counters
-    (7 of 10); Blink does not replace Pulse or RandomARQ.
-    Companion processes `arqma-storage` and `arqma-router` live in this repo
-    (`docs/PRODUCT.md`); `arqmad` still only probes them.
+    `get_blink_status` / `print_blink` report the in-daemon Blink collector
+    (7 of 10 quorum, `wire_connected`, `mesh_blink_tx_*`). Blink does not
+    replace Pulse or RandomARQ.
+    `get_storage_status` / `print_storage` report optional storage-probe
+    reachability and gossip counters (`gossip_interval_sec`, `peer_count`,
+    `gossip_rounds`, `digest_ok` / `sync_ok` / `membership_ok` / `gossip_fail`).
+    Optional companion processes `arqma-storage` / `arqma-router` live in this
+    repo as operator probes (`docs/PRODUCT.md`); `arqmad` only probes them.
     Block production is hybrid: RandomARQ stays required
     (`pulse-pow-replacement-not-ready`; `pow_replacement_ready` stays false).
     Privileged wallet-rpc methods
@@ -190,8 +193,11 @@ components:
             - type: string
             - type: integer
         result:
-          type: object
-          additionalProperties: true
+          oneOf:
+            - $ref: '#/components/schemas/GetStorageStatusResult'
+            - $ref: '#/components/schemas/GetBlinkStatusResult'
+            - type: object
+              additionalProperties: true
         error:
           type: object
           additionalProperties: true
@@ -200,7 +206,7 @@ components:
       type: object
       description: >
         Result of `get_storage_status` (also printed by daemon `print_storage`).
-        Values come from companion `arqma-storage` `GET /status` when reachable.
+        Values come from optional probe `arqma-storage` `GET /status` when reachable.
       properties:
         client_reachable:
           type: boolean
@@ -237,6 +243,55 @@ components:
           type: integer
           format: uint64
         service:
+          type: string
+        status:
+          type: string
+    GetBlinkStatusResult:
+      type: object
+      description: >
+        Result of `get_blink_status` (also printed by daemon `print_blink`).
+        Local Blink collector plus mesh `blink_tx` soak counters. Does not
+        replace Pulse or RandomARQ.
+      properties:
+        height:
+          type: integer
+          format: uint64
+        quorum_size:
+          type: integer
+          format: uint64
+        majority_required:
+          type: integer
+          format: uint64
+        signature_count:
+          type: integer
+          format: uint64
+        majority_ok:
+          type: boolean
+        replaces_pow:
+          type: boolean
+        replaces_pulse:
+          type: boolean
+        wire_connected:
+          type: boolean
+        mesh_blink_tx_live:
+          type: integer
+          format: uint64
+        mesh_blink_tx_shadow_ok:
+          type: integer
+          format: uint64
+        mesh_blink_tx_shadow_fail:
+          type: integer
+          format: uint64
+        mesh_blink_tx_shadow_in:
+          type: integer
+          format: uint64
+        mesh_blink_tx_shadow_parse_ok:
+          type: integer
+          format: uint64
+        mesh_blink_tx_shadow_parse_fail:
+          type: integer
+          format: uint64
+        blink_blocker:
           type: string
         status:
           type: string

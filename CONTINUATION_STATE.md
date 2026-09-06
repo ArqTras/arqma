@@ -92,6 +92,8 @@ Windows/macOS/Linux arm: `make depends` / `.github/workflows/depends.yml`
 - [x] Blink `blink_tx` mesh shadow unit tests (parse ok / parse fail)
 - [x] Daemon `print_storage` + soak monitor storage gossip line + counter asserts
 - [x] Docs: demote companion/messenger UX narrative (PRODUCT / OPERATOR / BINARIES)
+- [x] Operator surface polish: OpenAPI Blink schema, soak `get_blink_status` +
+  `gossip_interval_sec`, daemon help for storage/print_*, CHANGELOG/gate tone
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 - [ ] Multi-SN stagenet soak (needs live quorum; see `docs/OPERATOR_UPGRADE.md`)

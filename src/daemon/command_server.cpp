@@ -112,19 +112,19 @@ t_command_server::t_command_server(
       "print_pulse"
     , std::bind(&t_command_parser_executor::print_pulse, &m_parser, p::_1)
     , "print_pulse"
-    , "Print hybrid Pulse round status (get_pulse_status)."
+    , "Print hybrid Pulse round status (get_pulse_status): round/leader/sigs, majority, certificate_ready, payload_hash."
     );
   m_command_lookup.set_handler(
       "print_blink"
     , std::bind(&t_command_parser_executor::print_blink, &m_parser, p::_1)
     , "print_blink"
-    , "Print Blink quorum status (get_blink_status). Blink does not replace Pulse or RandomARQ."
+    , "Print Blink quorum status (get_blink_status): wire_connected + mesh_blink_tx_*. Does not replace Pulse or RandomARQ."
     );
   m_command_lookup.set_handler(
       "print_storage"
     , std::bind(&t_command_parser_executor::print_storage, &m_parser, p::_1)
     , "print_storage"
-    , "Print Storage client status (get_storage_status): reachability + gossip/catalog counters."
+    , "Print Storage probe status (get_storage_status): reachability + gossip_interval_sec / peer_count / gossip counters."
     );
   m_command_lookup.set_handler(
       "print_sn_key"

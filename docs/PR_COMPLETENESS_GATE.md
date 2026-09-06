@@ -4,16 +4,17 @@ This PR lands the **production-grade foundation** for Arqma modernization
 (prompt phases 1–12 engineering baseline), verified on **Linux, Windows, and
 macOS**.
 
-It does **not** claim Session-class mobile clients or a full Storage swarm
-gossip protocol. Inbox fan-out **and read fallback** to `/v1/snodes` members,
-KV TTL, and membership merge/push (cap 32) are in-tree.
-Pulse SN **hybrid (HF20) / exclusive (HF21)** gates, Pulse
-`pulse_rnd` collector, wait-windows, payload-bound majority extra, and
-`get_pulse_status` are started; RandomARQ stays required. Companion binaries
-`arqma-storage`, `arqma-router`, and `arqma-msg` plus in-daemon Blink
-(`get_blink_status`) ship from this repository. Multi-hop onion forward (max 3)
-is in-tree; it is **not** a Lokinet product. See
-https://github.com/ArqTras/arqma/pull/3.
+Primary deliverable: **HF20 hybrid SN / HF21 exclusive mesh**, Pulse as a
+**hybrid producer** (RandomARQ required), plus Arq-Net mesh observability.
+
+It does **not** claim Session-class clients or a full Storage swarm protocol.
+Pulse `pulse_rnd` collector, wait-windows, payload-bound majority extra,
+`get_pulse_status` / `print_pulse`, Blink `blink_tx` wire + `get_blink_status` /
+`print_blink`, and Storage probe telemetry (`get_storage_status` /
+`print_storage`, `/status` gossip counters, soak-monitor lines) are in-tree.
+Optional probes `arqma-storage` / `arqma-router` / `arqma-msg` ship from this
+repo (separate PIDs); multi-hop onion forward (max 3) is a probe path, not a
+Lokinet product. See https://github.com/ArqTras/arqma/pull/3.
 
 ### Must-have (satisfied)
 
@@ -38,9 +39,9 @@ https://github.com/ArqTras/arqma/pull/3.
 ### Explicitly deferred (documented)
 
 - Native mesh cutover: stage 4 is on; live `vote_ob` uses SocketStack only with HF20+ `arqmq`+CURVE (SNNetwork fallback otherwise)
-- [partial] Storage anti-entropy gossip (`/v1/digest` + `/v1/sync` + `--gossip-interval`); full epidemic membership protocol still deferred
-- Session-class client UX beyond `arqma-msg`
-- Pulse/Blink/L2: Pulse **hybrid producer started**; Blink `blink_tx` wire + collector in-tree (does not replace Pulse or PoW)
+- [partial] Storage anti-entropy gossip (`/v1/digest` + `/v1/sync` + `--gossip-interval` + `/status` counters); full epidemic membership protocol still deferred
+- Session-class client UX (`arqma-msg` stays a minimal operator probe)
+- Pulse/Blink/L2: Pulse **hybrid producer** + Blink `blink_tx` soak telemetry in-tree (does not replace Pulse or PoW)
 - Restoring every legacy Monero-era unit fixture / `core_tests` in default CI
 - Native MSVC unit job on `windows-latest` (Windows covered via mingw depends)
 - Multi-SN stagenet mesh/Pulse soak (operator-run; single-VM CI cannot host a quorum)

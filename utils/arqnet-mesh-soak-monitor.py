@@ -99,6 +99,7 @@ def fmt_storage(result: dict) -> str:
         f"peers={result.get('peer_count', 0)} "
         f"snodes={result.get('snode_count', 0)} "
         f"kv={result.get('kv_entries', 0)} "
+        f"gossip_interval_sec={result.get('gossip_interval_sec', 0)} "
         f"gossip_rounds={result.get('gossip_rounds', 0)} "
         f"digest_ok={result.get('digest_ok', 0)} "
         f"sync_ok={result.get('sync_ok', 0)} "
@@ -107,12 +108,27 @@ def fmt_storage(result: dict) -> str:
     )
 
 
-def poll_node(rpc: str) -> tuple[dict, dict, dict, str | None]:
+def fmt_blink(result: dict) -> str:
+    if not result:
+        return "blink=unavailable"
+    return (
+        f"blink_wire={result.get('wire_connected')} "
+        f"sigs={result.get('signature_count', 0)}/{result.get('majority_required', 0)} "
+        f"maj={result.get('majority_ok')} "
+        f"quorum={result.get('quorum_size', 0)} "
+        f"blocker={result.get('blink_blocker') or '-'} "
+        f"live={result.get('mesh_blink_tx_live', 0)} "
+        f"parse_ok={result.get('mesh_blink_tx_shadow_parse_ok', 0)} "
+        f"parse_fail={result.get('mesh_blink_tx_shadow_parse_fail', 0)}"
+    )
+
+
+def poll_node(rpc: str) -> tuple[dict, dict, dict, dict, str | None]:
     url = f"http://{rpc}/json_rpc"
     try:
         arqnet = rpc_call(url, "get_arqnet_status")
     except (urllib.error.URLError, TimeoutError, RuntimeError, json.JSONDecodeError) as exc:
-        return {}, {}, {}, str(exc)
+        return {}, {}, {}, {}, str(exc)
     try:
         pulse = rpc_call(url, "get_pulse_status")
     except (urllib.error.URLError, TimeoutError, RuntimeError, json.JSONDecodeError):
@@ -121,16 +137,24 @@ def poll_node(rpc: str) -> tuple[dict, dict, dict, str | None]:
         storage = rpc_call(url, "get_storage_status")
     except (urllib.error.URLError, TimeoutError, RuntimeError, json.JSONDecodeError):
         storage = {}
-    return arqnet, pulse, storage, None
+    try:
+        blink = rpc_call(url, "get_blink_status")
+    except (urllib.error.URLError, TimeoutError, RuntimeError, json.JSONDecodeError):
+        blink = {}
+    return arqnet, pulse, storage, blink, None
 
 
-def aggregate(rows: list[tuple[str, dict, dict, dict, str | None]]) -> dict:
-    reachable = [(rpc, arq, pulse, storage) for rpc, arq, pulse, storage, err in rows if err is None]
+def aggregate(rows: list[tuple[str, dict, dict, dict, dict, str | None]]) -> dict:
+    reachable = [
+        (rpc, arq, pulse, storage, blink)
+        for rpc, arq, pulse, storage, blink, err in rows
+        if err is None
+    ]
     sample_ok = [rpc for rpc, arq, *_rest in reachable if arq.get("mesh_shadow_parity_sample_ok")]
     parse_fail = sum(int(arq.get("mesh_vote_ob_shadow_parse_fail", 0) or 0) for _, arq, *_ in reachable)
     pulse_parse_fail = sum(int(arq.get("mesh_pulse_rnd_shadow_parse_fail", 0) or 0) for _, arq, *_ in reachable)
     blink_parse_fail = sum(int(arq.get("mesh_blink_tx_shadow_parse_fail", 0) or 0) for _, arq, *_ in reachable)
-    gossip_fail = sum(int((storage or {}).get("gossip_fail", 0) or 0) for _, _, _, storage in reachable)
+    gossip_fail = sum(int((storage or {}).get("gossip_fail", 0) or 0) for _, _, _, storage, _ in reachable)
     return {
         "nodes": len(rows),
         "reachable": len(reachable),
@@ -189,15 +213,16 @@ def main() -> int:
     need_seconds = max(0.0, args.min_ok_minutes) * 60.0
 
     while True:
-        rows: list[tuple[str, dict, dict, dict, str | None]] = []
+        rows: list[tuple[str, dict, dict, dict, dict, str | None]] = []
         for rpc in rpcs:
-            arqnet, pulse, storage, err = poll_node(rpc)
-            rows.append((rpc, arqnet, pulse, storage, err))
+            arqnet, pulse, storage, blink, err = poll_node(rpc)
+            rows.append((rpc, arqnet, pulse, storage, blink, err))
             if err:
                 print(f"RPC error @ {rpc}: {err}", file=sys.stderr)
                 continue
             print(fmt_row(rpc, arqnet), flush=True)
             print(f"node={rpc} {fmt_pulse(pulse)}", flush=True)
+            print(f"node={rpc} {fmt_blink(blink)}", flush=True)
             print(f"node={rpc} {fmt_storage(storage)}", flush=True)
 
         summary = aggregate(rows)
