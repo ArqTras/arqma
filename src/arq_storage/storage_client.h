@@ -57,6 +57,23 @@ struct StoreRequest
   std::uint32_t ttl_seconds = 0;
 };
 
+/// Snapshot from `GET /status` on a live `arqma-storage` process.
+struct StatusSnapshot
+{
+  bool reachable = false;
+  std::string service;
+  std::uint64_t gossip_interval_sec = 0;
+  std::uint64_t peer_count = 0;
+  std::uint64_t snode_count = 0;
+  std::uint64_t kv_entries = 0;
+  std::uint64_t gossip_rounds = 0;
+  std::uint64_t digest_ok = 0;
+  std::uint64_t sync_ok = 0;
+  std::uint64_t membership_ok = 0;
+  std::uint64_t gossip_fail = 0;
+  std::string error;
+};
+
 /// Remote talks to an external Storage Server. InMemory is for tests only.
 enum class Backend
 {
@@ -84,6 +101,8 @@ public:
   Endpoint endpoint() const noexcept { return endpoint_; }
 
   std::error_code ping() const noexcept;
+  /// Probe `GET /status` and parse gossip / catalog counters when reachable.
+  StatusSnapshot fetch_status() const noexcept;
   std::error_code store(const StoreRequest& request) noexcept;
   Result<std::string> retrieve(std::string namespace_name, std::string key) const noexcept;
   Result<std::vector<std::string>> list_keys(std::string namespace_name) const noexcept;

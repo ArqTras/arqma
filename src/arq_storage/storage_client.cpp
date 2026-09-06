@@ -41,6 +41,7 @@
 #include <mutex>
 #include <set>
 #include <sstream>
+#include <string_view>
 #include <utility>
 
 #if defined(_WIN32)
@@ -152,6 +153,68 @@ std::error_code StorageClient::ping() const noexcept
     return tcp_connect_only(endpoint_) ? std::error_code{} : not_connected();
 
   return http_get_probe(endpoint_) ? std::error_code{} : not_connected();
+}
+
+namespace {
+std::uint64_t json_u64_field(const std::string_view body, const std::string_view key) noexcept
+{
+  const std::string needle = "\"" + std::string{key} + "\":";
+  const auto pos = body.find(needle);
+  if (pos == std::string_view::npos)
+    return 0;
+  const auto start = pos + needle.size();
+  char* end = nullptr;
+  const auto value = std::strtoull(body.data() + start, &end, 10);
+  if (end == body.data() + start)
+    return 0;
+  return static_cast<std::uint64_t>(value);
+}
+
+std::string json_string_field(const std::string_view body, const std::string_view key)
+{
+  const std::string needle = "\"" + std::string{key} + "\":\"";
+  const auto pos = body.find(needle);
+  if (pos == std::string_view::npos)
+    return {};
+  const auto start = pos + needle.size();
+  const auto end = body.find('"', start);
+  if (end == std::string_view::npos)
+    return {};
+  return std::string{body.substr(start, end - start)};
+}
+} // namespace
+
+StatusSnapshot StorageClient::fetch_status() const noexcept
+{
+  StatusSnapshot out;
+  if (config_.backend == Backend::InMemory) {
+    out.reachable = true;
+    out.service = "arqma-storage-inmemory";
+    return out;
+  }
+  if (!endpoint_ || endpoint_.tls) {
+    out.error = not_connected().message();
+    return out;
+  }
+  const auto result = http_exchange(endpoint_, "GET", "/status", {}, config_.connect_timeout);
+  if (!result) {
+    out.error = result.error ? result.error.message() : not_connected().message();
+    return out;
+  }
+  out.reachable = true;
+  out.service = json_string_field(result.body, "service");
+  if (out.service.empty() && result.body.find("arqma-storage") != std::string::npos)
+    out.service = "arqma-storage";
+  out.gossip_interval_sec = json_u64_field(result.body, "gossip_interval_sec");
+  out.peer_count = json_u64_field(result.body, "peer_count");
+  out.snode_count = json_u64_field(result.body, "snode_count");
+  out.kv_entries = json_u64_field(result.body, "kv_entries");
+  out.gossip_rounds = json_u64_field(result.body, "gossip_rounds");
+  out.digest_ok = json_u64_field(result.body, "digest_ok");
+  out.sync_ok = json_u64_field(result.body, "sync_ok");
+  out.membership_ok = json_u64_field(result.body, "membership_ok");
+  out.gossip_fail = json_u64_field(result.body, "gossip_fail");
+  return out;
 }
 
 std::error_code StorageClient::store(const StoreRequest& request) noexcept

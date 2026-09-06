@@ -498,11 +498,35 @@ TEST(arq_storage_server, token_protects_kv_and_status_stays_open)
   const auto status = arq_storage::http_exchange(ep, "GET", "/status", {});
   ASSERT_TRUE(status);
   EXPECT_NE(std::string::npos, status.body.find("arqma-storage"));
+  EXPECT_NE(std::string::npos, status.body.find("\"peer_count\":"));
+  EXPECT_NE(std::string::npos, status.body.find("\"gossip_interval_sec\":"));
   const auto denied = arq_storage::http_exchange(ep, "PUT", "/v1/kv?ns=n&key=k", "x");
   EXPECT_EQ(401, denied.status);
   const auto ok =
       arq_storage::http_exchange(ep, "PUT", arq_storage::with_token("/v1/kv?ns=n&key=k", "stack-secret"), "x");
   EXPECT_TRUE(ok);
+  server.stop();
+}
+
+TEST(arq_storage_server, status_reports_peers_and_kv)
+{
+  arq_storage::StorageServer server;
+  server.set_gossip_interval(std::chrono::seconds{0});
+  ASSERT_FALSE(server.listen("127.0.0.1", 0));
+  server.add_peer("http://127.0.0.1:9");
+  const auto ep = arq_storage::parse_endpoint(server.base_url());
+  ASSERT_TRUE(arq_storage::http_exchange(ep, "PUT", "/v1/kv?ns=n&key=k", "v"));
+  ASSERT_TRUE(arq_storage::http_exchange(ep, "PUT", "/v1/snodes?pubkey=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                                         "http://127.0.0.1:9\n"));
+
+  arq_storage::StorageClient client{{arq_storage::Backend::Remote, server.base_url()}};
+  const auto snap = client.fetch_status();
+  EXPECT_TRUE(snap.reachable);
+  EXPECT_EQ("arqma-storage", snap.service);
+  EXPECT_EQ(0u, snap.gossip_interval_sec);
+  EXPECT_EQ(1u, snap.peer_count);
+  EXPECT_EQ(1u, snap.snode_count);
+  EXPECT_GE(snap.kv_entries, 1u);
   server.stop();
 }
 

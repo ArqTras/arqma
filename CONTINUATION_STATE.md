@@ -88,6 +88,8 @@ Windows/macOS/Linux arm: `make depends` / `.github/workflows/depends.yml`
 - [x] Blink Arq-Net wire (`blink_tx`) + mesh shadow handlers
 - [x] Blink mesh RPC telemetry (`mesh_blink_tx_*` on `get_arqnet_status` / `get_blink_status`)
 - [x] Storage epidemic snode membership gossip (`GET /v1/snodes` catalog + peer merge)
+- [x] Storage `/status` + `get_storage_status` gossip telemetry
+- [x] Blink `blink_tx` mesh shadow unit tests (parse ok / parse fail)
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 - [ ] Multi-SN stagenet soak (needs live quorum; see `docs/OPERATOR_UPGRADE.md`)

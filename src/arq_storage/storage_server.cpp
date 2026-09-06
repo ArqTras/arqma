@@ -96,6 +96,11 @@ struct StorageServer::Impl
   std::thread gossip_thread;
   std::atomic<bool> running{false};
   std::atomic<int> gossip_interval_sec{15};
+  std::atomic<std::uint64_t> gossip_rounds{0};
+  std::atomic<std::uint64_t> digest_ok{0};
+  std::atomic<std::uint64_t> sync_ok{0};
+  std::atomic<std::uint64_t> membership_ok{0};
+  std::atomic<std::uint64_t> gossip_fail{0};
   std::atomic<std::uint16_t> port{0};
   std::string host{"127.0.0.1"};
   std::string data_dir;
@@ -257,6 +262,35 @@ struct StorageServer::Impl
   }
 
   /// Pull/merge swarm membership lists with a peer (epidemic; replicate=0).
+  std::string status_body()
+  {
+    std::size_t peer_n = 0;
+    std::size_t snode_n = 0;
+    std::size_t kv_n = 0;
+    {
+      std::lock_guard<std::mutex> lock{mu};
+      peer_n = peers.size();
+      snode_n = snodes.size();
+      for (const auto& kv : values) {
+        if (!expired(kv.second))
+          ++kv_n;
+      }
+    }
+    std::ostringstream out;
+    out << "{\"service\":\"arqma-storage\""
+        << ",\"gossip_interval_sec\":" << gossip_interval_sec.load()
+        << ",\"peer_count\":" << peer_n
+        << ",\"snode_count\":" << snode_n
+        << ",\"kv_entries\":" << kv_n
+        << ",\"gossip_rounds\":" << gossip_rounds.load()
+        << ",\"digest_ok\":" << digest_ok.load()
+        << ",\"sync_ok\":" << sync_ok.load()
+        << ",\"membership_ok\":" << membership_ok.load()
+        << ",\"gossip_fail\":" << gossip_fail.load()
+        << "}";
+    return out.str();
+  }
+
   void gossip_membership_with_peer(const std::string& peer_url)
   {
     const auto ep = parse_endpoint(peer_url);
@@ -265,8 +299,12 @@ struct StorageServer::Impl
     const auto catalog_res =
         http_exchange(ep, "GET", with_token("/v1/snodes", token), {}, std::chrono::milliseconds{2000});
     std::vector<std::string> remote_pubs;
-    if (catalog_res)
+    if (catalog_res) {
       remote_pubs = parse_pubkey_lines(catalog_res.body);
+      membership_ok.fetch_add(1, std::memory_order_relaxed);
+    } else {
+      gossip_fail.fetch_add(1, std::memory_order_relaxed);
+    }
 
     std::map<std::string, std::string> local_copy;
     {
@@ -326,8 +364,11 @@ struct StorageServer::Impl
       return;
     const auto digest_path = with_token("/v1/digest?ns=" + url_encode(ns), token);
     const auto digest_res = http_exchange(ep, "GET", digest_path, {}, std::chrono::milliseconds{2000});
-    if (!digest_res)
+    if (!digest_res) {
+      gossip_fail.fetch_add(1, std::memory_order_relaxed);
       return;
+    }
+    digest_ok.fetch_add(1, std::memory_order_relaxed);
     const auto remote = parse_digest_body(digest_res.body);
 
     std::map<std::string, std::string> local;
@@ -356,6 +397,7 @@ struct StorageServer::Impl
       const auto sync_path = with_token("/v1/sync?ns=" + url_encode(ns), token);
       const auto sync_res = http_exchange(ep, "POST", sync_path, want, std::chrono::milliseconds{2000});
       if (sync_res) {
+        sync_ok.fetch_add(1, std::memory_order_relaxed);
         std::size_t pos = 0;
         while (pos < sync_res.body.size()) {
           std::string key;
@@ -423,6 +465,7 @@ struct StorageServer::Impl
         gossip_with_peer(url, ns);
       }
     }
+    gossip_rounds.fetch_add(1, std::memory_order_relaxed);
   }
 
   void gossip_run()
@@ -492,9 +535,11 @@ struct StorageServer::Impl
   std::string handle(const std::string& method, const std::string& path, const std::string& body)
   {
     const auto path_only = path.substr(0, path.find('?'));
-    if (method == "GET" && (path_only == "/" || path_only == "/status"))
-      return "HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\nConnection: "
-             "close\r\n\r\narqma-storage";
+    if (method == "GET" && (path_only == "/" || path_only == "/status")) {
+      const auto body = status_body();
+      return "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " +
+             std::to_string(body.size()) + "\r\nConnection: close\r\n\r\n" + body;
+    }
     if (!request_token_ok(path, token))
       return "HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
     {

@@ -65,7 +65,7 @@ at 1 MiB; listen addresses accept IPv6 (`[::1]:22021`). `PUT /v1/snodes` merges
 unique HTTP member URLs (cap 32) and pushes the list to those members. This is
 plus anti-entropy `GET /v1/digest` / `POST /v1/sync` and optional `--gossip-interval` peer repair (still not a full Oxen-style swarm).
 
-`get_storage_status` / `storage_server_ping` talk to `arqma-storage`.
+`get_storage_status` / `storage_server_ping` talk to `arqma-storage` (`GET /status` JSON: peers, snodes, KV count, gossip counters).
 `get_blink_status` / `print_blink` report the in-daemon Blink collector.
 
 How to test: [`docs/OPERATOR_UPGRADE.md`](OPERATOR_UPGRADE.md) (unit suite, messenger stack, daemon probes).

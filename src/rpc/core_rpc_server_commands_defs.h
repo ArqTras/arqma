@@ -3113,11 +3113,31 @@ struct COMMAND_RPC_GET_BLOCKS_RANGE
       bool client_reachable = false;
       uint64_t last_storage_server_ping = 0;
       std::string client_error;
+      uint64_t gossip_interval_sec = 0;
+      uint64_t peer_count = 0;
+      uint64_t snode_count = 0;
+      uint64_t kv_entries = 0;
+      uint64_t gossip_rounds = 0;
+      uint64_t digest_ok = 0;
+      uint64_t sync_ok = 0;
+      uint64_t membership_ok = 0;
+      uint64_t gossip_fail = 0;
+      std::string service;
       std::string status;
       BEGIN_KV_SERIALIZE_MAP()
         KV_SERIALIZE(client_reachable)
         KV_SERIALIZE(last_storage_server_ping)
         KV_SERIALIZE(client_error)
+        KV_SERIALIZE(gossip_interval_sec)
+        KV_SERIALIZE(peer_count)
+        KV_SERIALIZE(snode_count)
+        KV_SERIALIZE(kv_entries)
+        KV_SERIALIZE(gossip_rounds)
+        KV_SERIALIZE(digest_ok)
+        KV_SERIALIZE(sync_ok)
+        KV_SERIALIZE(membership_ok)
+        KV_SERIALIZE(gossip_fail)
+        KV_SERIALIZE(service)
         KV_SERIALIZE(status)
       END_KV_SERIALIZE_MAP()
     };

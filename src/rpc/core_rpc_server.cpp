@@ -3265,10 +3265,20 @@ bool core_rpc_server::on_get_storage_status(const COMMAND_RPC_GET_STORAGE_STATUS
   if (deny_restricted_rpc("get_storage_status", m_restricted, ctx, error_resp))
     return false;
   arq_storage::StorageClient client = arq_storage::daemon_client();
-  const auto ping_ec = client.ping();
-  res.client_reachable = !ping_ec;
-  res.client_error = ping_ec ? ping_ec.message() : std::string{};
+  const auto snap = client.fetch_status();
+  res.client_reachable = snap.reachable;
+  res.client_error = snap.error;
   res.last_storage_server_ping = static_cast<uint64_t>(m_core.m_last_storage_server_ping);
+  res.gossip_interval_sec = snap.gossip_interval_sec;
+  res.peer_count = snap.peer_count;
+  res.snode_count = snap.snode_count;
+  res.kv_entries = snap.kv_entries;
+  res.gossip_rounds = snap.gossip_rounds;
+  res.digest_ok = snap.digest_ok;
+  res.sync_ok = snap.sync_ok;
+  res.membership_ok = snap.membership_ok;
+  res.gossip_fail = snap.gossip_fail;
+  res.service = snap.service;
   res.status = CORE_RPC_STATUS_OK;
   return true;
 }

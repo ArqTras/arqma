@@ -34,6 +34,7 @@
 #include "arqmq/peer_table.hpp"
 #include "arqmq/socket_stack.hpp"
 #include "arqnet/bt_serialize.h"
+#include "arq_blink/blink.h"
 #include "cryptonote_core/pulse.h"
 
 #include <array>
@@ -858,6 +859,140 @@ TEST(arqmq_curve_zap, soak_local_pulse_rnd_roundtrip)
   EXPECT_EQ(vote.leader_index, decoded.leader_index);
   EXPECT_EQ(vote.validator_index, decoded.validator_index);
   EXPECT_GE(arqmq::native_mesh_shadow_stats().pulse_rnd_shadow_ok, 1u);
+
+  arqmq::set_native_mesh_shadow_relay_enabled(false);
+  EXPECT_FALSE(arqmq::shutdown());
+  server.stop();
+}
+
+
+TEST(arqmq_curve_zap, blink_tx_wire_payload_rejects_garbage)
+{
+  arqmq::set_blink_tx_payload_validator(nullptr);
+  EXPECT_FALSE(arqmq::blink_tx_wire_payload_ok(""));
+  EXPECT_FALSE(arqmq::blink_tx_wire_payload_ok("not-a-blink-vote"));
+  std::string bad(arq_blink::k_relay_vote_bytes, '\0');
+  EXPECT_FALSE(arqmq::blink_tx_wire_payload_ok(bad));
+  std::string v1(arq_blink::k_relay_vote_bytes, '\0');
+  v1[0] = static_cast<char>(arq_blink::k_relay_vote_version);
+  EXPECT_TRUE(arqmq::blink_tx_wire_payload_ok(v1));
+  arq_blink::RelayVote vote{};
+  vote.height = 77;
+  vote.validator_index = 3;
+  vote.txid.data[0] = 9;
+  std::string blob;
+  ASSERT_TRUE(arq_blink::encode_relay_vote(vote, blob));
+  EXPECT_TRUE(arqmq::blink_tx_wire_payload_ok(blob));
+}
+
+TEST(arqmq_curve_zap, soak_inbound_parses_blink_tx)
+{
+  arqmq::set_blink_tx_payload_validator(nullptr);
+
+  arq_blink::RelayVote vote{};
+  vote.height = 88;
+  vote.validator_index = 2;
+  vote.txid.data[0] = 7;
+  std::string payload;
+  ASSERT_TRUE(arq_blink::encode_relay_vote(vote, payload));
+  ASSERT_TRUE(arqmq::blink_tx_wire_payload_ok(payload));
+
+  std::string server_pub;
+  std::string server_sec;
+  std::string client_pub;
+  std::string client_sec;
+  ASSERT_TRUE(make_curve_keypair(server_pub, server_sec));
+  ASSERT_TRUE(make_curve_keypair(client_pub, client_sec));
+
+  arqmq::SocketStack server;
+  ASSERT_FALSE(server.start());
+  arqmq::configure_mesh_shadow(server, server_pub, server_sec, [&](const std::string&, const std::string& pk) {
+    return pk == client_pub ? arqmq::CurvePeerAllow::ServiceNode : arqmq::CurvePeerAllow::Denied;
+  });
+
+  EXPECT_FALSE(arqmq::shutdown());
+  EXPECT_FALSE(arqmq::init(arqmq::Config{arqmq::Backend::ArqMq, arqmq::CategoryAcl::ServiceNode}));
+  auto* client = arqmq::active_socket_stack();
+  ASSERT_NE(nullptr, client);
+  arqmq::configure_mesh_shadow(*client, client_pub, client_sec,
+                               [](const std::string&, const std::string&) { return arqmq::CurvePeerAllow::Denied; });
+  arqmq::set_native_mesh_shadow_relay_enabled(true);
+
+  std::string live_ep;
+  ASSERT_TRUE(start_shadow_listener(server, live_ep, 46400));
+
+  arqmq::note_live_mesh_relay("blink_tx");
+  arqmq::shadow_send_to_peer(server_pub, "blink_tx", payload, live_ep);
+
+  bool parsed = false;
+  for (int i = 0; i < 80; ++i)
+  {
+    if (arqmq::native_mesh_shadow_stats().blink_tx_shadow_parse_ok >= 1)
+    {
+      parsed = true;
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+  ASSERT_TRUE(parsed);
+
+  const auto stats = arqmq::native_mesh_shadow_stats();
+  EXPECT_GE(stats.blink_tx_shadow_ok, 1u);
+  EXPECT_GE(stats.blink_tx_shadow_in, 1u);
+  EXPECT_GE(stats.blink_tx_shadow_parse_ok, 1u);
+  EXPECT_EQ(0u, stats.blink_tx_shadow_parse_fail);
+  EXPECT_GE(stats.blink_tx_live, 1u);
+
+  arqmq::set_native_mesh_shadow_relay_enabled(false);
+  EXPECT_FALSE(arqmq::shutdown());
+  server.stop();
+}
+
+TEST(arqmq_curve_zap, soak_inbound_counts_unparseable_blink_tx)
+{
+  arqmq::set_blink_tx_payload_validator(nullptr);
+
+  std::string server_pub;
+  std::string server_sec;
+  std::string client_pub;
+  std::string client_sec;
+  ASSERT_TRUE(make_curve_keypair(server_pub, server_sec));
+  ASSERT_TRUE(make_curve_keypair(client_pub, client_sec));
+
+  arqmq::SocketStack server;
+  ASSERT_FALSE(server.start());
+  arqmq::configure_mesh_shadow(server, server_pub, server_sec, [&](const std::string&, const std::string& pk) {
+    return pk == client_pub ? arqmq::CurvePeerAllow::ServiceNode : arqmq::CurvePeerAllow::Denied;
+  });
+
+  EXPECT_FALSE(arqmq::shutdown());
+  EXPECT_FALSE(arqmq::init(arqmq::Config{arqmq::Backend::ArqMq, arqmq::CategoryAcl::ServiceNode}));
+  auto* client = arqmq::active_socket_stack();
+  ASSERT_NE(nullptr, client);
+  arqmq::configure_mesh_shadow(*client, client_pub, client_sec,
+                               [](const std::string&, const std::string&) { return arqmq::CurvePeerAllow::Denied; });
+  arqmq::set_native_mesh_shadow_relay_enabled(true);
+
+  std::string live_ep;
+  ASSERT_TRUE(start_shadow_listener(server, live_ep, 46500));
+  arqmq::note_live_mesh_relay("blink_tx");
+  arqmq::shadow_send_to_peer(server_pub, "blink_tx", "not-a-blink-vote", live_ep);
+
+  bool rejected = false;
+  for (int i = 0; i < 80; ++i)
+  {
+    if (arqmq::native_mesh_shadow_stats().blink_tx_shadow_parse_fail >= 1)
+    {
+      rejected = true;
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+  ASSERT_TRUE(rejected);
+
+  const auto stats = arqmq::native_mesh_shadow_stats();
+  EXPECT_GE(stats.blink_tx_shadow_parse_fail, 1u);
+  EXPECT_EQ(0u, stats.blink_tx_shadow_parse_ok);
 
   arqmq::set_native_mesh_shadow_relay_enabled(false);
   EXPECT_FALSE(arqmq::shutdown());
