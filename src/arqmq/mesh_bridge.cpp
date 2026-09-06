@@ -58,6 +58,13 @@ std::atomic<uint64_t> g_pulse_rnd_shadow_in{0};
 std::atomic<uint64_t> g_pulse_rnd_shadow_parse_ok{0};
 std::atomic<uint64_t> g_pulse_rnd_shadow_parse_fail{0};
 std::atomic<PulseRndPayloadValidator> g_pulse_rnd_validator{nullptr};
+std::atomic<uint64_t> g_blink_tx_live{0};
+std::atomic<uint64_t> g_blink_tx_shadow_ok{0};
+std::atomic<uint64_t> g_blink_tx_shadow_fail{0};
+std::atomic<uint64_t> g_blink_tx_shadow_in{0};
+std::atomic<uint64_t> g_blink_tx_shadow_parse_ok{0};
+std::atomic<uint64_t> g_blink_tx_shadow_parse_fail{0};
+std::atomic<BlinkTxPayloadValidator> g_blink_tx_validator{nullptr};
 std::atomic<int> g_shadow_port_offset{0};
 std::mutex g_shadow_endpoint_mu;
 std::string g_shadow_endpoint;
@@ -80,6 +87,12 @@ void reset_shadow_stats() noexcept
   g_pulse_rnd_shadow_in.store(0, std::memory_order_relaxed);
   g_pulse_rnd_shadow_parse_ok.store(0, std::memory_order_relaxed);
   g_pulse_rnd_shadow_parse_fail.store(0, std::memory_order_relaxed);
+  g_blink_tx_live.store(0, std::memory_order_relaxed);
+  g_blink_tx_shadow_ok.store(0, std::memory_order_relaxed);
+  g_blink_tx_shadow_fail.store(0, std::memory_order_relaxed);
+  g_blink_tx_shadow_in.store(0, std::memory_order_relaxed);
+  g_blink_tx_shadow_parse_ok.store(0, std::memory_order_relaxed);
+  g_blink_tx_shadow_parse_fail.store(0, std::memory_order_relaxed);
 }
 
 bool vote_ob_wire_shape_ok(const std::string_view payload) noexcept
@@ -106,6 +119,11 @@ bool is_pulse_rnd(const std::string_view command) noexcept
   return command == "pulse_rnd";
 }
 
+bool is_blink_tx(const std::string_view command) noexcept
+{
+  return command == "blink_tx";
+}
+
 /// Packed Pulse vote v2: version(1) || height(8) || round(1) || leader(4) || index(4) ||
 /// prev(32) || payload_hash(32) || sig(64). Must match pulse::k_relay_vote_bytes.
 bool pulse_rnd_wire_shape_ok(const std::string_view payload) noexcept
@@ -113,6 +131,15 @@ bool pulse_rnd_wire_shape_ok(const std::string_view payload) noexcept
   constexpr size_t k_pulse_rnd_wire_bytes = 146;
   constexpr uint8_t k_pulse_rnd_wire_version = 2;
   return payload.size() == k_pulse_rnd_wire_bytes && static_cast<uint8_t>(payload[0]) == k_pulse_rnd_wire_version;
+}
+
+/// Packed Blink vote v1: version(1) || height(8) || txid(32) || index(4) || pub(32) || sig(64).
+/// Must match arq_blink::k_relay_vote_bytes.
+bool blink_tx_wire_shape_ok(const std::string_view payload) noexcept
+{
+  constexpr size_t k_blink_tx_wire_bytes = 141;
+  constexpr uint8_t k_blink_tx_wire_version = 1;
+  return payload.size() == k_blink_tx_wire_bytes && static_cast<uint8_t>(payload[0]) == k_blink_tx_wire_version;
 }
 
 void record_shadow_inbound(const std::string_view command, const std::string_view payload) noexcept
@@ -133,6 +160,13 @@ void record_shadow_inbound(const std::string_view command, const std::string_vie
     else
       g_pulse_rnd_shadow_parse_fail.fetch_add(1, std::memory_order_relaxed);
     g_pulse_rnd_shadow_in.fetch_add(1, std::memory_order_release);
+  }
+  if (is_blink_tx(command)) {
+    if (blink_tx_wire_payload_ok(payload))
+      g_blink_tx_shadow_parse_ok.fetch_add(1, std::memory_order_relaxed);
+    else
+      g_blink_tx_shadow_parse_fail.fetch_add(1, std::memory_order_relaxed);
+    g_blink_tx_shadow_in.fetch_add(1, std::memory_order_release);
   }
 }
 
@@ -225,6 +259,8 @@ void attach_compatible_mesh_mirrors(SocketStack& stack)
                          [](const InboundRequest&) { return std::string{k_transport_snnetwork}; });
   stack.register_handler("pulse_rnd", CategoryAcl::ServiceNode,
                          [](const InboundRequest&) { return std::string{k_transport_snnetwork}; });
+  stack.register_handler("blink_tx", CategoryAcl::ServiceNode,
+                         [](const InboundRequest&) { return std::string{k_transport_snnetwork}; });
   stack.register_handler("ping", CategoryAcl::Basic, [](const InboundRequest&) { return std::string{"pong"}; });
   stack.register_handler("pong", CategoryAcl::Basic, [](const InboundRequest&) { return std::string{}; });
   stack.register_handler("arqnet_status", CategoryAcl::Basic, [](const InboundRequest&) {
@@ -276,13 +312,17 @@ std::error_code start_mesh_shadow_listener(SocketStack& stack, const std::string
   if (!stack.curve_zap_configured())
     return std::make_error_code(std::errc::invalid_argument);
 
-  // Count + parse inbound shadow vote_ob / pulse_rnd (observability only; does not affect consensus).
+  // Count + parse inbound shadow vote_ob / pulse_rnd / blink_tx (observability only; does not affect consensus).
   stack.register_handler("vote_ob", CategoryAcl::ServiceNode, [](const InboundRequest& req) {
     record_shadow_inbound("vote_ob", req.payload);
     return std::string{k_transport_snnetwork};
   });
   stack.register_handler("pulse_rnd", CategoryAcl::ServiceNode, [](const InboundRequest& req) {
     record_shadow_inbound("pulse_rnd", req.payload);
+    return std::string{k_transport_snnetwork};
+  });
+  stack.register_handler("blink_tx", CategoryAcl::ServiceNode, [](const InboundRequest& req) {
+    record_shadow_inbound("blink_tx", req.payload);
     return std::string{k_transport_snnetwork};
   });
 
@@ -325,6 +365,7 @@ MeshShadowStats native_mesh_shadow_stats() noexcept
   // Acquire on inbound counters pairs with release in record_shadow_inbound.
   const uint64_t vote_in = g_vote_ob_shadow_in.load(std::memory_order_acquire);
   const uint64_t pulse_in = g_pulse_rnd_shadow_in.load(std::memory_order_acquire);
+  const uint64_t blink_in = g_blink_tx_shadow_in.load(std::memory_order_acquire);
   return MeshShadowStats{g_shadow_attempts.load(std::memory_order_relaxed),
                          g_shadow_ok.load(std::memory_order_relaxed),
                          g_shadow_fail.load(std::memory_order_relaxed),
@@ -340,7 +381,13 @@ MeshShadowStats native_mesh_shadow_stats() noexcept
                          g_pulse_rnd_shadow_fail.load(std::memory_order_relaxed),
                          pulse_in,
                          g_pulse_rnd_shadow_parse_ok.load(std::memory_order_relaxed),
-                         g_pulse_rnd_shadow_parse_fail.load(std::memory_order_relaxed)};
+                         g_pulse_rnd_shadow_parse_fail.load(std::memory_order_relaxed),
+                         g_blink_tx_live.load(std::memory_order_relaxed),
+                         g_blink_tx_shadow_ok.load(std::memory_order_relaxed),
+                         g_blink_tx_shadow_fail.load(std::memory_order_relaxed),
+                         blink_in,
+                         g_blink_tx_shadow_parse_ok.load(std::memory_order_relaxed),
+                         g_blink_tx_shadow_parse_fail.load(std::memory_order_relaxed)};
 }
 
 void note_live_mesh_relay(const std::string_view command) noexcept
@@ -352,6 +399,8 @@ void note_live_mesh_relay(const std::string_view command) noexcept
     g_vote_ob_live.fetch_add(1, std::memory_order_relaxed);
   if (is_pulse_rnd(command))
     g_pulse_rnd_live.fetch_add(1, std::memory_order_relaxed);
+  if (is_blink_tx(command))
+    g_blink_tx_live.fetch_add(1, std::memory_order_relaxed);
 }
 
 void note_inbound_mesh_shadow(const std::string_view command, const std::string_view payload) noexcept
@@ -430,6 +479,24 @@ bool pulse_rnd_wire_payload_ok(const std::string_view payload) noexcept
   return pulse_rnd_wire_shape_ok(payload);
 }
 
+void set_blink_tx_payload_validator(const BlinkTxPayloadValidator validator) noexcept
+{
+  g_blink_tx_validator.store(validator, std::memory_order_relaxed);
+}
+
+bool blink_tx_wire_payload_ok(const std::string_view payload) noexcept
+{
+  const auto validator = g_blink_tx_validator.load(std::memory_order_relaxed);
+  if (validator) {
+    try {
+      return validator(payload);
+    } catch (...) {
+      return false;
+    }
+  }
+  return blink_tx_wire_shape_ok(payload);
+}
+
 void shadow_send_to_peer(const std::string_view pubkey, const std::string_view command, const std::string_view payload,
                          const std::string_view hint)
 {
@@ -438,6 +505,7 @@ void shadow_send_to_peer(const std::string_view pubkey, const std::string_view c
   auto* stack = active_socket_stack();
   const bool vote = is_vote_ob(command);
   const bool pulse = is_pulse_rnd(command);
+  const bool blink = is_blink_tx(command);
   if (!stack || !stack->curve_zap_configured() || pubkey.size() != 32 || command.empty()) {
     g_shadow_attempts.fetch_add(1, std::memory_order_relaxed);
     g_shadow_fail.fetch_add(1, std::memory_order_relaxed);
@@ -445,6 +513,8 @@ void shadow_send_to_peer(const std::string_view pubkey, const std::string_view c
       g_vote_ob_shadow_fail.fetch_add(1, std::memory_order_relaxed);
     if (pulse)
       g_pulse_rnd_shadow_fail.fetch_add(1, std::memory_order_relaxed);
+    if (blink)
+      g_blink_tx_shadow_fail.fetch_add(1, std::memory_order_relaxed);
     return;
   }
 
@@ -465,12 +535,16 @@ void shadow_send_to_peer(const std::string_view pubkey, const std::string_view c
       g_vote_ob_shadow_fail.fetch_add(1, std::memory_order_relaxed);
     if (pulse)
       g_pulse_rnd_shadow_fail.fetch_add(1, std::memory_order_relaxed);
+    if (blink)
+      g_blink_tx_shadow_fail.fetch_add(1, std::memory_order_relaxed);
   } else {
     g_shadow_ok.fetch_add(1, std::memory_order_relaxed);
     if (vote)
       g_vote_ob_shadow_ok.fetch_add(1, std::memory_order_relaxed);
     if (pulse)
       g_pulse_rnd_shadow_ok.fetch_add(1, std::memory_order_relaxed);
+    if (blink)
+      g_blink_tx_shadow_ok.fetch_add(1, std::memory_order_relaxed);
   }
 }
 

@@ -4,6 +4,9 @@
 
 #include "gtest/gtest.h"
 
+#include <cstring>
+#include <string>
+
 #include "arq_blink/blink.h"
 
 TEST(arq_blink, majority_is_seven_of_ten)
@@ -18,6 +21,48 @@ TEST(arq_blink, quorum_rotates_from_leader)
   ASSERT_EQ(arq_blink::k_quorum_size, q.size());
   EXPECT_EQ(arq_blink::leader_index(100, 20), q.front());
   EXPECT_EQ(std::string("blink-wire-not-connected"), arq_blink::blocker());
+  arq_blink::set_wire_connected(true);
+  EXPECT_EQ(std::string("none"), arq_blink::blocker());
+  arq_blink::set_wire_connected(false);
+  EXPECT_EQ(std::string("blink-wire-not-connected"), arq_blink::blocker());
+}
+
+TEST(arq_blink, relay_vote_encode_decode_roundtrip)
+{
+  EXPECT_EQ(141u, arq_blink::k_relay_vote_bytes);
+  EXPECT_EQ(1u, arq_blink::k_relay_vote_version);
+
+  crypto::public_key pub{};
+  crypto::secret_key sec{};
+  crypto::generate_keys(pub, sec);
+  crypto::hash txid{};
+  txid.data[0] = 9;
+  const auto hashed = arq_blink::tx_round_hash(77, txid);
+  const auto sig = arq_blink::sign_tx(hashed, pub, sec);
+
+  arq_blink::RelayVote vote{};
+  vote.height = 77;
+  vote.txid = txid;
+  vote.validator_index = 3;
+  vote.pub = pub;
+  vote.signature = sig;
+
+  std::string blob;
+  ASSERT_TRUE(arq_blink::encode_relay_vote(vote, blob));
+  EXPECT_EQ(arq_blink::k_relay_vote_bytes, blob.size());
+  EXPECT_EQ(arq_blink::k_relay_vote_version, static_cast<std::uint8_t>(blob[0]));
+
+  arq_blink::RelayVote decoded{};
+  ASSERT_TRUE(arq_blink::decode_relay_vote(blob, decoded));
+  EXPECT_EQ(vote.height, decoded.height);
+  EXPECT_EQ(vote.txid, decoded.txid);
+  EXPECT_EQ(vote.validator_index, decoded.validator_index);
+  EXPECT_EQ(0, std::memcmp(&vote.pub, &decoded.pub, sizeof(vote.pub)));
+  EXPECT_EQ(0, std::memcmp(&vote.signature, &decoded.signature, sizeof(vote.signature)));
+
+  EXPECT_FALSE(arq_blink::decode_relay_vote(std::string_view{blob}.substr(1), decoded));
+  blob[0] = 2;
+  EXPECT_FALSE(arq_blink::decode_relay_vote(blob, decoded));
 }
 
 TEST(arq_blink, sign_verify_and_collector_majority)
