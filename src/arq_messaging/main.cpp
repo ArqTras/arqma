@@ -143,7 +143,7 @@ int main(int argc, char** argv)
                  "  arqma-msg name alice <hex>\n"
                  "  arqma-msg status\n"
                  "  arqma-msg unread\n"
-                 "\nGUI look (ArqTras/arqma-gui palette; Arqma-GUI-MM is not a public repo):\n"
+                 "\nGUI look (Arqma-GUI-MM / electron sky-blue on near-black):\n"
                  "  utils/arqma-msg-ui.py   # http://127.0.0.1:8787/\n"
                  "\nOperator knobs: --url, --to, --secret, --key, --router, name=hex contacts, swarm --snode.\n";
     return vm.count("help") ? 0 : 1;

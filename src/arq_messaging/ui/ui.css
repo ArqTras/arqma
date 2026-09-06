@@ -1,31 +1,31 @@
-/* Arqma Messenger UI — palette aligned with ArqTras/arqma-gui components/Style.qml
-   (Qt “Monero-model” wallet). Repo name Arqma-GUI-MM is not public; this is that look. */
+/* Arqma Messenger UI — colors from the modern Arqma wallet line
+   (Arqma-GUI-MM / arqma-electron-wallet Quasar theme):
+   sky-blue primary on near-black surfaces. */
 
 :root {
-  --hero-blue: #080085;
-  --hero-blue-hover: #00006e;
-  --hero-hover: #00006e;
-  --light-blue: #1e6bac;
-  --dark-turquoise: #00207c;
-  --dark-navy: #00143a;
-  --bg: #1a1a1a;
-  --bg-elevated: #121212;
-  --panel: #101522;
-  --text: #ffffff;
-  --dim: #bbbbbb;
-  --grey: #404040;
-  --rail-width: 280px;
-  --danger: #ff0000;
-  --input-border: rgba(255, 255, 255, 0.32);
-  --input-border-active: rgba(255, 255, 255, 0.38);
+  --arqma-blue: #42a5f5;
+  --arqma-blue-deep: #1ba7fd;
+  --arqma-blue-soft: #90caf9;
+  --arqma-blue-grad: linear-gradient(180deg, #42a5f5 0%, #1ba7fd 100%);
+  --black-90: #0a0a0a;
+  --black-80: #252525;
+  --black-60: #313131;
+  --black-50: #7e7e7e;
+  --text: #cecece;
+  --text-strong: #ffffff;
+  --line: #333333;
+  --line-soft: #484848;
+  --danger: #db2828;
+  --rail-width: 260px;
   --font: "Roboto", "Segoe UI", sans-serif;
 }
 
 * { box-sizing: border-box; }
+
 html, body {
   margin: 0;
   min-height: 100%;
-  background: var(--bg);
+  background: var(--black-90);
   color: var(--text);
   font-family: var(--font);
   font-weight: 400;
@@ -38,53 +38,68 @@ html, body {
 }
 
 .rail {
-  background:
-    linear-gradient(165deg, rgba(8, 0, 133, 0.55), rgba(0, 20, 58, 0.92) 42%, #0b0f18 100%),
-    radial-gradient(120% 80% at 0% 0%, rgba(30, 107, 172, 0.35), transparent 55%),
-    var(--dark-navy);
-  border-right: 1px solid rgba(8, 0, 133, 0.85);
+  background: var(--black-90);
+  border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  padding: 28px 18px 20px;
+  padding: 24px 14px 18px;
 }
 
 .brand {
   display: flex;
-  gap: 14px;
+  gap: 12px;
   align-items: center;
-  margin-bottom: 36px;
-  padding: 0 8px;
+  margin-bottom: 28px;
+  padding: 6px 10px 18px;
+  border-bottom: 1px solid var(--line);
 }
 
 .logo {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   border-radius: 8px;
   background:
-    linear-gradient(135deg, var(--light-blue), var(--hero-blue) 55%, var(--dark-turquoise));
+    var(--arqma-blue-grad),
+    radial-gradient(circle at 30% 30%, #90caf9, transparent 55%);
+  background-blend-mode: screen, normal;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  position: relative;
+  overflow: hidden;
+}
+
+.logo::after {
+  content: "A";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 500;
+  font-size: 18px;
+  letter-spacing: 0.02em;
 }
 
 .brand-name {
-  font-size: 28px;
-  font-weight: 300;
-  letter-spacing: 0.02em;
-  line-height: 1;
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--text-strong);
+  letter-spacing: 0.01em;
+  line-height: 1.1;
 }
 
 .brand-sub {
-  margin-top: 4px;
-  color: var(--dim);
-  font-size: 13px;
-  font-weight: 400;
+  margin-top: 3px;
+  color: var(--arqma-blue-soft);
+  font-size: 12px;
+  font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
 }
 
 .nav {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   flex: 1;
 }
 
@@ -93,57 +108,61 @@ html, body {
   border: 0;
   text-align: left;
   background: transparent;
-  color: var(--dim);
+  color: var(--text);
   font: inherit;
   font-weight: 500;
-  font-size: 15px;
-  padding: 14px 16px;
+  font-size: 14px;
+  padding: 12px 14px;
   cursor: pointer;
+  border-radius: 6px;
   border-left: 3px solid transparent;
 }
 
 .nav-item:hover {
-  color: var(--text);
-  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-strong);
+  background: rgba(66, 165, 245, 0.08);
 }
 
 .nav-item.active {
-  color: var(--text);
-  background: rgba(8, 0, 133, 0.35);
-  border-left-color: var(--hero-blue);
+  color: var(--text-strong);
+  background: rgba(66, 165, 245, 0.16);
+  border-left-color: var(--arqma-blue);
 }
 
 .rail-foot {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
 }
 
 .stage {
-  padding: 36px 42px 48px;
+  padding: 32px 40px 48px;
   background:
-    linear-gradient(180deg, #1f1f1f 0%, var(--bg) 140px);
+    linear-gradient(180deg, #121212 0%, var(--black-90) 160px);
 }
 
 .top h1 {
   margin: 0;
-  font-weight: 300;
-  font-size: 34px;
+  font-weight: 400;
+  font-size: 30px;
+  color: var(--text-strong);
 }
 
 .lede {
-  margin: 8px 0 28px;
-  color: var(--dim);
-  max-width: 52ch;
+  margin: 8px 0 26px;
+  color: var(--black-50);
+  max-width: 54ch;
+  font-size: 14px;
 }
 
 .panel {
-  background: var(--panel);
-  border: 1px solid rgba(8, 0, 133, 0.45);
-  border-top: 2px solid var(--hero-blue);
-  padding: 22px;
+  background: var(--black-80);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--arqma-blue);
+  border-radius: 4px;
+  padding: 20px;
 }
 
 .hidden { display: none !important; }
@@ -161,10 +180,10 @@ html, body {
   flex-direction: column;
   gap: 8px;
   margin-bottom: 14px;
-  color: var(--dim);
-  font-size: 13px;
+  color: var(--black-50);
+  font-size: 12px;
   font-weight: 500;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -172,42 +191,65 @@ html, body {
 
 input, textarea {
   width: 100%;
-  background: #000;
-  color: var(--text);
-  border: 1px solid var(--input-border);
-  border-radius: 0;
+  background: var(--black-90);
+  color: var(--text-strong);
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
   padding: 12px 14px;
   font: inherit;
   font-size: 15px;
   font-weight: 400;
   outline: none;
+  transition: border-color 0.15s ease;
 }
 
+input::placeholder, textarea::placeholder { color: #7c7c7c; }
+
 input:focus, textarea:focus {
-  border-color: var(--input-border-active);
+  border-color: var(--arqma-blue);
+  box-shadow: 0 0 0 1px rgba(66, 165, 245, 0.25);
 }
 
 .btn {
   appearance: none;
   border: 0;
-  background: var(--hero-blue);
+  background: var(--arqma-blue-grad);
   color: #fff;
   font: inherit;
   font-weight: 500;
   font-size: 14px;
-  letter-spacing: 0.03em;
-  padding: 12px 18px;
+  letter-spacing: 0.02em;
+  padding: 11px 18px;
   cursor: pointer;
+  border-radius: 4px;
 }
 
-.btn:hover { background: var(--hero-hover); }
-.btn.secondary { background: var(--light-blue); }
-.btn.secondary:hover { background: #1e50aa; }
+.btn:hover {
+  filter: brightness(1.08);
+}
+
+.btn.secondary {
+  background: var(--black-60);
+  border: 1px solid var(--line-soft);
+}
+
+.btn.secondary:hover {
+  border-color: var(--arqma-blue-soft);
+  color: var(--text-strong);
+  filter: none;
+}
+
 .btn.ghost {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.28);
+  border: 1px solid var(--line-soft);
+  color: var(--text);
 }
-.btn.ghost:hover { border-color: #fff; }
+
+.btn.ghost:hover {
+  border-color: var(--arqma-blue);
+  color: var(--arqma-blue-soft);
+  filter: none;
+}
 
 .list {
   list-style: none;
@@ -219,14 +261,18 @@ input:focus, textarea:focus {
   display: flex;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 0;
-  border-bottom: 1px solid rgba(64, 64, 64, 0.9);
+  padding: 13px 4px;
+  border-bottom: 1px solid var(--line);
   color: var(--text);
   font-size: 14px;
 }
 
+.list li:hover {
+  background: rgba(66, 165, 245, 0.05);
+}
+
 .list li span {
-  color: var(--dim);
+  color: var(--black-50);
   font-family: ui-monospace, "Roboto Mono", monospace;
   font-size: 12px;
   word-break: break-all;
@@ -235,9 +281,10 @@ input:focus, textarea:focus {
 .log {
   margin: 18px 0 0;
   padding: 14px;
-  background: var(--bg-elevated);
-  border: 1px solid var(--grey);
-  color: var(--dim);
+  background: var(--black-90);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--black-50);
   white-space: pre-wrap;
   min-height: 4.5rem;
   font-size: 13px;
@@ -251,18 +298,19 @@ input:focus, textarea:focus {
 }
 
 .card {
-  background: #0c101c;
-  border: 1px solid rgba(30, 107, 172, 0.35);
+  background: var(--black-90);
+  border: 1px solid var(--line);
+  border-radius: 4px;
   padding: 16px;
 }
 
 .card h2 {
   margin: 0 0 10px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--light-blue);
+  color: var(--arqma-blue-soft);
 }
 
 .card pre {
@@ -273,16 +321,18 @@ input:focus, textarea:focus {
   font-size: 13px;
 }
 
-.muted { color: var(--dim); font-size: 12px; word-break: break-all; }
+.muted {
+  color: var(--black-50);
+  font-size: 12px;
+  word-break: break-all;
+}
 
 @media (max-width: 860px) {
   .app { grid-template-columns: 1fr; }
   .rail {
     border-right: 0;
-    border-bottom: 1px solid rgba(8, 0, 133, 0.85);
+    border-bottom: 1px solid var(--line);
   }
   .nav { flex-direction: row; flex-wrap: wrap; }
   .stage { padding: 24px 18px 36px; }
 }
-
-.view {}

@@ -18,8 +18,9 @@ by the stack — they are not steps the messenger user has to assemble.
 | `arqma-router` | Privacy-router (`POST /v1/peel`, multi-hop `POST /v1/store`) |
 | `arqma-msg` | CLI messenger: `gen` / `send` / `inbox` / `open` / `contacts` / `name` / `status` / `unread` |
 
-Local messenger UI (dark rail + heroBlue, aligned with `ArqTras/arqma-gui`
-`Style.qml`; the public name **Arqma-GUI-MM** was not found on GitHub):
+Local messenger UI (near-black + sky-blue, aligned with **Arqma-GUI-MM** /
+`arqma-electron-wallet` Quasar theme; GUI-MM repo is private, palette taken from
+the public electron wallet variables):
 
 ```text
 utils/arqma-msg-ui.py    # http://127.0.0.1:8787/
@@ -71,7 +72,7 @@ plus anti-entropy `GET /v1/digest` / `POST /v1/sync` and optional `--gossip-inte
 How to test: [`docs/OPERATOR_UPGRADE.md`](OPERATOR_UPGRADE.md) (unit suite, messenger stack, daemon probes).
 
 
-Local GUI look (ArqTras/arqma-gui Style.qml palette; public **Arqma-GUI-MM** repo was not found):
+Local GUI look (Arqma-GUI-MM / electron sky-blue on near-black):
 `utils/arqma-msg-ui.py` → http://127.0.0.1:8787/
 
 ## Locks that stay

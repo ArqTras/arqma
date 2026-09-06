@@ -144,7 +144,7 @@ HTTP: `POST /v1/peel`, `POST /v1/store`.
 
 ### `arqma-msg`
 
-Local GUI look (ArqTras/arqma-gui Style.qml palette; public **Arqma-GUI-MM** repo was not found):
+Local GUI look (Arqma-GUI-MM / electron sky-blue on near-black):
 `utils/arqma-msg-ui.py` → http://127.0.0.1:8787/
  — everyday messenger CLI
 

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # Copyright (c) 2018 - 2026, The Arqma Network
 #
-# Local Session-class messenger UI styled like ArqTras/arqma-gui (Style.qml).
-# GitHub has no public “Arqma-GUI-MM”; the Qt wallet dark rail + heroBlue palette
-# is the visual reference.
+# Local Session-class messenger UI using the modern Arqma wallet palette
+# (Arqma-GUI-MM / arqma-electron-wallet: sky-blue #42A5F5 on near-black).
+# Arqma-GUI-MM itself is private; colors match the public electron theme.
 #
 # Usage:
 #   utils/arqma-stack.sh
