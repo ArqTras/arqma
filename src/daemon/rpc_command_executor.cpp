@@ -213,7 +213,7 @@ t_rpc_command_executor::t_rpc_command_executor(
   , bool is_rpc
   , cryptonote::core_rpc_server* rpc_server
   )
-  : m_rpc_client(NULL), m_rpc_server(rpc_server)
+  : m_rpc_client(nullptr), m_rpc_server(rpc_server)
 {
   if (is_rpc)
   {
@@ -224,7 +224,7 @@ t_rpc_command_executor::t_rpc_command_executor(
   }
   else
   {
-    if (rpc_server == NULL)
+    if (rpc_server == nullptr)
     {
       throw std::runtime_error("If not calling commands via RPC, rpc_server pointer must be non-null");
     }
@@ -235,7 +235,7 @@ t_rpc_command_executor::t_rpc_command_executor(
 
 t_rpc_command_executor::~t_rpc_command_executor()
 {
-  if (m_rpc_client != NULL)
+  if (m_rpc_client != nullptr)
   {
     delete m_rpc_client;
   }
@@ -805,7 +805,7 @@ bool t_rpc_command_executor::print_net_stats()
     }
   }
 
-  uint64_t seconds = (uint64_t)time(NULL) - net_stats_res.start_time;
+  uint64_t seconds = (uint64_t)time(nullptr) - net_stats_res.start_time;
   uint64_t average = seconds > 0 ? net_stats_res.total_bytes_in / seconds : 0;
   uint64_t limit = limit_res.limit_down * 1024;   // convert to bytes, as limits are always kB/s
   double percent = (double)average / (double)limit * 100.0;
@@ -1274,7 +1274,7 @@ static void print_pool(const std::vector<cryptonote::tx_info> &transactions, boo
     return;
   }
 
-  const time_t now = time(NULL);
+  const time_t now = time(nullptr);
   tools::msg_writer() << "Transactions:";
   for (auto &tx_info : transactions)
   {
@@ -1423,7 +1423,7 @@ bool t_rpc_command_executor::print_transaction_pool_stats() {
   }
 
   size_t n_transactions = res.pool_stats.txs_total;
-  const uint64_t now = time(NULL);
+  const uint64_t now = time(nullptr);
   size_t avg_bytes = n_transactions ? res.pool_stats.bytes_total / n_transactions : 0;
 
   std::string backlog_message;
@@ -2097,7 +2097,7 @@ bool t_rpc_command_executor::alt_chain_info(const std::string &tip, size_t above
   }
   else
   {
-    const uint64_t now = time(NULL);
+    const uint64_t now = time(nullptr);
     const auto i = std::find_if(res.chains.begin(), res.chains.end(), [&tip](cryptonote::COMMAND_RPC_GET_ALTERNATE_CHAINS::chain_info &info){ return info.block_hash == tip; });
     if (i != res.chains.end())
     {
@@ -2572,7 +2572,7 @@ static void append_printable_service_node_list_entry(cryptonote::network_type ne
   // Print operator information
   if (detailed_view)
   {
-    stream << indent2 << "Operator Cut (\% Of Reward): " << to_string_rounded((entry.portions_for_operator / (double)STAKING_SHARE_PARTS) * 100.0, 2) << "%\n";
+    stream << indent2 << "Operator Cut (\% Of Reward): " << to_string_rounded(service_nodes::staking_portions_to_percent(entry.portions_for_operator), 2) << "%\n";
     stream << indent2 << "Operator Address: " << entry.operator_address << "\n";
   }
 
@@ -3288,7 +3288,7 @@ bool t_rpc_command_executor::prepare_registration(bool force_registration)
           continue;
         }
 
-        long additional_contributors = strtol(input.c_str(), NULL, 10 /*base 10*/);
+        long additional_contributors = strtol(input.c_str(), nullptr, 10 /*base 10*/);
         if(additional_contributors < 1 || additional_contributors > (MAX_NUMBER_OF_CONTRIBUTORS - 1))
         {
           std::cout << "Invalid value. Should be between [1-" << (MAX_NUMBER_OF_CONTRIBUTORS - 1) << "]" << std::endl;
@@ -3486,7 +3486,7 @@ bool t_rpc_command_executor::prepare_registration(bool force_registration)
         const uint64_t amount_left = staking_requirement - state.total_reserved_contributions;
 
         std::cout << "Summary:" << std::endl;
-        std::cout << "Operating costs as % of reward: " << (state.operator_fee_portions * 100.0 / STAKING_SHARE_PARTS) << "%" << std::endl;
+        std::cout << "Operating costs as % of reward: " << service_nodes::staking_portions_to_percent(state.operator_fee_portions) << "%" << std::endl;
         printf("%-16s%-9s%-19s%-s\n", "Contributor", "Address", "Contribution", "Contribution(%)");
         printf("%-16s%-9s%-19s%-s\n", "___________", "_______", "____________", "_______________");
 
@@ -3496,7 +3496,7 @@ bool t_rpc_command_executor::prepare_registration(bool force_registration)
           uint64_t amount = get_actual_amount(staking_requirement, state.contributions[i]);
           if(amount_left <= DUST && i == 0)
           amount += amount_left; // add dust to the operator.
-          printf("%-16s%-9s%-19s%-.9f\n", participant_name.c_str(), state.addresses[i].substr(0,6).c_str(), cryptonote::print_money(amount).c_str(), (double)state.contributions[i] * 100 / STAKING_SHARE_PARTS);
+          printf("%-16s%-9s%-19s%-.9f\n", participant_name.c_str(), state.addresses[i].substr(0,6).c_str(), cryptonote::print_money(amount).c_str(), service_nodes::staking_portions_to_percent(state.contributions[i]));
         }
 
         if(amount_left > DUST)
