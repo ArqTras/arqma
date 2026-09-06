@@ -36,7 +36,8 @@ Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
 
 Config: `/workspace/build/upgrade-release` · Release · gcc/g++ · `BUILD_TESTS=ON`
 
-Binaries in `build/upgrade-release/bin/` (do **not** commit):
+Binaries in `build/upgrade-release/bin/` (do **not** commit).
+Launch examples for every binary: [`docs/BINARIES.md`](docs/BINARIES.md).
 
 | Binary | Role |
 |--------|------|

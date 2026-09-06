@@ -152,6 +152,9 @@ Same names on depends artifacts (`.exe` on Windows):
 | `arqma-blockchain-stats`, `arqma-blockchain-usage`, `arqma-blockchain-depth`, `arqma-blockchain-ancestry`, `arqma-blockchain-mark-spent-outputs` | Ops utilities |
 | `arqma-generate-ssl-certificate` | Optional TLS helper |
 
+**How to run each binary** (flags, examples, local topology):
+[`docs/BINARIES.md`](BINARIES.md).
+
 `gen_multisig` is intentionally not built (`src/CMakeLists.txt`).
 
 **Debian/Ubuntu build packages (same as `ci.yml`):** `build-essential` `cmake`

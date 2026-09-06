@@ -151,6 +151,7 @@ See `docs/UPGRADE_ROADMAP.md` and `docs/OPERATOR_UPGRADE.md` for mainnet locks.
 | `docs/UPGRADE_ROADMAP.md` | Phase / milestone map |
 | `docs/PR_COMPLETENESS_GATE.md` | What this PR claims vs defers |
 | `docs/OPERATOR_UPGRADE.md` | Operator knobs and upgrade steps |
+| `docs/BINARIES.md` | Launch commands / flags for every shipped binary |
 | `docs/MIGRATION.md` | Developer and SN migration notes |
 | `docs/ARCHITECTURE.md` | Module layout |
 | `docs/PROCESS_BOUNDARIES.md` | Where MQ / storage / router live |
