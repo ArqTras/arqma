@@ -10,8 +10,8 @@
   (`ctest -R 'unit_tests|hash-target'`); macOS + ASan covered in CI.
 - Cross-compile release binaries for **Windows x64**, **macOS x64/arm64**, and
   **Linux x64/arm** via `contrib/depends` / `.github/workflows/depends.yml`.
-- In-repo companions: `arqma-storage`, `arqma-router`, `arqma-msg`; Pulse hybrid
-  producer; Blink collector (local only).
+- Primary: Pulse hybrid producer + Arq-Net mesh telemetry; optional probes
+  `arqma-storage` / `arqma-router` / `arqma-msg`; Blink collector (local only).
 - RPC validation, DoS soft-caps, unified restricted-RPC catalog, OpenAPI stub.
 - Companion HTTP servers shut down cleanly (accept/join wakeup on `stop()`).
 

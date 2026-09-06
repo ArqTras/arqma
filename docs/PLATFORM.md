@@ -137,7 +137,7 @@ Working end-to-end on the platforms above:
   `snnetwork`. Experimental `arqmq` is refused on mainnet without
   `--arqnet-allow-experimental`.
 - Storage client TCP/HTTP GET probe; messaging envelope / onion / swarm helpers
-- In-repo companions: `arqma-storage`, `arqma-router`, `arqma-msg` (IPv6 listen,
+- Optional operator probes: `arqma-storage`, `arqma-router`, `arqma-msg` (IPv6 listen,
   1 MiB HTTP body cap, socket timeouts on Windows and POSIX; router multi-hop
   onion forward, max 3; storage swarm membership merge/push, cap 32)
 - Experimental `arq_router` lifecycle (scaffold; not a Lokinet product)
