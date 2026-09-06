@@ -2,7 +2,7 @@
 # Copyright (c) 2018 - 2026, The Arqma Network
 #
 # Local Session-class messenger UI using the modern Arqma wallet palette
-# (Arqma-GUI-MM / arqma-electron-wallet: gold #D4AF37 on near-black).
+# (Arqma-GUI-MM / arqma-electron-wallet: GUI-MM muted champagne/bronze gold on pure black).
 # Arqma-GUI-MM itself is private; gold accents (goldenrod/gold as in the electron wallet).
 #
 # Usage:

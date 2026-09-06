@@ -18,8 +18,8 @@ by the stack — they are not steps the messenger user has to assemble.
 | `arqma-router` | Privacy-router (`POST /v1/peel`, multi-hop `POST /v1/store`) |
 | `arqma-msg` | CLI messenger: `gen` / `send` / `inbox` / `open` / `contacts` / `name` / `status` / `unread` |
 
-Local messenger UI (near-black + **gold** accents (`#D4AF37` / `#F2C037`), matching the requested
-Arqma-GUI-MM look (gold on dark)):
+Local messenger UI (pure black + muted champagne/bronze gold (`#D8D09C` fill, `#C5A059` lines),
+matched to an Arqma-GUI-MM screenshot):
 
 ```text
 utils/arqma-msg-ui.py    # http://127.0.0.1:8787/
@@ -71,7 +71,7 @@ plus anti-entropy `GET /v1/digest` / `POST /v1/sync` and optional `--gossip-inte
 How to test: [`docs/OPERATOR_UPGRADE.md`](OPERATOR_UPGRADE.md) (unit suite, messenger stack, daemon probes).
 
 
-Local GUI look (Arqma-GUI-MM gold on near-black):
+Local GUI look (Arqma-GUI-MM black + muted gold):
 `utils/arqma-msg-ui.py` → http://127.0.0.1:8787/
 
 ## Locks that stay
