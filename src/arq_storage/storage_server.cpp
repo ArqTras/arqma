@@ -277,17 +277,11 @@ struct StorageServer::Impl
       }
     }
     std::ostringstream out;
-    out << "{\"service\":\"arqma-storage\""
-        << ",\"gossip_interval_sec\":" << gossip_interval_sec.load()
-        << ",\"peer_count\":" << peer_n
-        << ",\"snode_count\":" << snode_n
-        << ",\"kv_entries\":" << kv_n
-        << ",\"gossip_rounds\":" << gossip_rounds.load()
-        << ",\"digest_ok\":" << digest_ok.load()
-        << ",\"sync_ok\":" << sync_ok.load()
-        << ",\"membership_ok\":" << membership_ok.load()
-        << ",\"gossip_fail\":" << gossip_fail.load()
-        << "}";
+    out << "{\"service\":\"arqma-storage\"" << ",\"gossip_interval_sec\":" << gossip_interval_sec.load()
+        << ",\"peer_count\":" << peer_n << ",\"snode_count\":" << snode_n << ",\"kv_entries\":" << kv_n
+        << ",\"gossip_rounds\":" << gossip_rounds.load() << ",\"digest_ok\":" << digest_ok.load()
+        << ",\"sync_ok\":" << sync_ok.load() << ",\"membership_ok\":" << membership_ok.load()
+        << ",\"gossip_fail\":" << gossip_fail.load() << "}";
     return out.str();
   }
 
@@ -537,8 +531,8 @@ struct StorageServer::Impl
     const auto path_only = path.substr(0, path.find('?'));
     if (method == "GET" && (path_only == "/" || path_only == "/status")) {
       const auto body = status_body();
-      return "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " +
-             std::to_string(body.size()) + "\r\nConnection: close\r\n\r\n" + body;
+      return "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: " + std::to_string(body.size()) +
+             "\r\nConnection: close\r\n\r\n" + body;
     }
     if (!request_token_ok(path, token))
       return "HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
