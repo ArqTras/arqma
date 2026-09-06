@@ -16,7 +16,14 @@ by the stack — they are not steps the messenger user has to assemble.
 | `arqma-wallet-rpc` / `arqma-wallet-cli` | Wallet processes |
 | `arqma-storage` | HTTP Storage Server (KV + TTL + `--data-dir` + `--peer` / swarm replicas) |
 | `arqma-router` | Privacy-router (`POST /v1/peel`, multi-hop `POST /v1/store`) |
-| `arqma-msg` | CLI messenger: `gen` / `send` / `inbox` / `open` |
+| `arqma-msg` | CLI messenger: `gen` / `send` / `inbox` / `open` / `contacts` / `name` / `status` / `unread` |
+
+Local messenger UI (dark rail + heroBlue, aligned with `ArqTras/arqma-gui`
+`Style.qml`; the public name **Arqma-GUI-MM** was not found on GitHub):
+
+```text
+utils/arqma-msg-ui.py    # http://127.0.0.1:8787/
+```
 
 Blink lives **in-process** as `src/arq_blink` (quorum sign/verify + collector).
 `get_blink_status` reports that collector. There is **no** Arq-Net Blink wire yet,
@@ -62,6 +69,10 @@ not a full epidemic gossip protocol.
 `get_blink_status` / `print_blink` report the in-daemon Blink collector.
 
 How to test: [`docs/OPERATOR_UPGRADE.md`](OPERATOR_UPGRADE.md) (unit suite, messenger stack, daemon probes).
+
+
+Local GUI look (ArqTras/arqma-gui Style.qml palette; public **Arqma-GUI-MM** repo was not found):
+`utils/arqma-msg-ui.py` → http://127.0.0.1:8787/
 
 ## Locks that stay
 

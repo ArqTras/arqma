@@ -8,6 +8,7 @@
 #include "arq_messaging/onion_layer.hpp"
 #include "arq_messaging/onion_request.hpp"
 #include "arq_messaging/sealed_sender.hpp"
+#include "arq_messaging/seen.hpp"
 #include "arq_messaging/stack_env.hpp"
 #include "arq_storage/http_io.h"
 #include "arq_storage/storage_client.h"
@@ -131,15 +132,54 @@ int main(int argc, char** argv)
     text += word;
   }
   if (vm.count("help") || cmd.empty()) {
-    std::cout << "Usage: arqma-msg gen|send|inbox|open [options]\n"
+    std::cout << "Usage: arqma-msg gen|send|inbox|open|contacts|name|status|unread [options]\n"
               << desc
               << "\nEveryday (start utils/arqma-stack.sh first):\n"
                  "  arqma-msg gen\n"
                  "  arqma-msg send <hex> hello\n"
                  "  arqma-msg inbox\n"
                  "  arqma-msg open\n"
+                 "  arqma-msg contacts\n"
+                 "  arqma-msg name alice <hex>\n"
+                 "  arqma-msg status\n"
+                 "  arqma-msg unread\n"
+                 "\nGUI look (ArqTras/arqma-gui palette; Arqma-GUI-MM is not a public repo):\n"
+                 "  utils/arqma-msg-ui.py   # http://127.0.0.1:8787/\n"
                  "\nOperator knobs: --url, --to, --secret, --key, --router, name=hex contacts, swarm --snode.\n";
     return vm.count("help") ? 0 : 1;
+  }
+
+  if (cmd == "contacts") {
+    const auto contacts = arq_messaging::load_contacts(arq_messaging::default_contacts_path());
+    for (const auto& kv : contacts)
+      std::cout << kv.first << ' ' << kv.second << "\n";
+    return 0;
+  }
+
+  if (cmd == "name") {
+    if (to.empty() || text_parts.empty()) {
+      std::cerr << "usage: arqma-msg name <nick> <64-hex>\n";
+      return 1;
+    }
+    if (const auto ec = arq_messaging::upsert_contact(arq_messaging::default_contacts_path(), to, text_parts.front())) {
+      std::cerr << "name failed: " << ec.message() << "\n";
+      return 1;
+    }
+    return 0;
+  }
+
+  if (cmd == "status") {
+    arq_messaging::Identity id{};
+    const bool have_id = !load_or_create_local_identity(id, false);
+    std::cout << "storage=" << url << "\n";
+    std::cout << "router=" << (routers.empty() ? std::string{"-"} : routers.front()) << "\n";
+    std::cout << "token=" << (stack.token.empty() ? "missing" : "set") << "\n";
+    if (have_id)
+      std::cout << "identity=" << to_hex(id.public_key.data.data(), 32) << "\n";
+    else
+      std::cout << "identity=-\n";
+    std::cout << "contacts=" << arq_messaging::load_contacts(arq_messaging::default_contacts_path()).size() << "\n";
+    return 0;
   }
 
   if (cmd == "gen") {
@@ -311,6 +351,26 @@ int main(int argc, char** argv)
       if (key.empty())
         std::cout << item << "\n";
       std::cout << std::string(plain.begin(), plain.end()) << "\n";
+      (void)arq_messaging::mark_seen(arq_messaging::default_seen_path(), item);
+    }
+    return 0;
+  }
+
+  if (cmd == "unread") {
+    std::string inbox_to;
+    if (!inbox_to_hex(to, inbox_to)) {
+      std::cerr << "run arqma-msg gen first\n";
+      return 1;
+    }
+    const auto keys = client.list_keys(arq_storage::inbox_namespace(inbox_to));
+    if (!keys) {
+      std::cerr << "list failed: " << keys.error.message() << "\n";
+      return 1;
+    }
+    const auto seen = arq_messaging::load_seen(arq_messaging::default_seen_path());
+    for (const auto& k : keys.value) {
+      if (!seen.count(k))
+        std::cout << k << "\n";
     }
     return 0;
   }

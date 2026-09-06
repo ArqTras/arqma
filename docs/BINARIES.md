@@ -142,7 +142,11 @@ arqma-router --listen 127.0.0.1:1090 --data-dir ~/.arqma/arq-router \
 
 HTTP: `POST /v1/peel`, `POST /v1/store`.
 
-### `arqma-msg` — everyday messenger CLI
+### `arqma-msg`
+
+Local GUI look (ArqTras/arqma-gui Style.qml palette; public **Arqma-GUI-MM** repo was not found):
+`utils/arqma-msg-ui.py` → http://127.0.0.1:8787/
+ — everyday messenger CLI
 
 ```bash
 # After utils/arqma-stack.sh (uses stack env automatically)

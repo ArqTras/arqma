@@ -199,6 +199,10 @@ ASan (Linux CI equivalent): configure with `-DSANITIZE=ON` (address sanitizer on
 
 ### 2. Everyday messenger (no extra flags)
 
+Optional GUI shell (Arqma Qt wallet colours):
+`utils/arqma-msg-ui.py` → http://127.0.0.1:8787/
+
+
 ```bash
 export ARQMA_BIN_DIR="$(pwd)/build/upgrade-release/bin"
 utils/arqma-stack.sh          # writes $ARQMA_STACK_DIR/env including ARQMA_STACK_TOKEN
@@ -230,23 +234,30 @@ Keep `--arqnet-backend=legacy-arqnet` on mainnet SNs.
 
 ### 4. Network soak (multi-SN quorum — not available in a single VM)
 
-A single Cloud Agent / laptop **cannot** exercise a real service-node quorum.
 Operators with ≥2 stagenet SNs should run the soak before relying on `arqmq` mesh:
 
 ```text
 # On each soak SN (≥2 nodes; open ANET and ANET+10000):
 arqmad --stagenet --arqnet-backend=arqmq --arqnet-mesh-shadow
 
-# On a workstation with unrestricted RPC to one SN (default stagenet RPC 39994):
+# Poll one SN:
 utils/arqnet-mesh-soak-monitor.py <sn-ip>:39994
-utils/arqnet-mesh-soak-monitor.py <sn-ip>:39994 --once   # exit 0 when sample_ok
+utils/arqnet-mesh-soak-monitor.py <sn-ip>:39994 --once
+
+# Poll the whole soak set (required for Milestone C multi-SN gate):
+utils/arqnet-multi-sn-soak.sh <sn1-ip>:39994 <sn2-ip>:39994
+utils/arqnet-multi-sn-soak.sh --once <sn1-ip>:39994 <sn2-ip>:39994
+MIN_OK_MINUTES=120 utils/arqnet-multi-sn-soak.sh <sn1-ip>:39994 <sn2-ip>:39994
+# Equivalent:
+utils/arqnet-mesh-soak-monitor.py --require-all --min-ok-minutes 120 \
+  <sn1-ip>:39994 <sn2-ip>:39994
 ```
 
 Pass criteria (multi-hour window):
 
-1. `mesh_shadow_parity_sample_ok == true` on participating nodes.
-2. `mesh_vote_ob_shadow_parse_fail` / `mesh_pulse_rnd_shadow_parse_fail` near 0.
-3. After stagenet HF20 (height 240): `get_pulse_status` → `hybrid`,
+1. `mesh_shadow_parity_sample_ok == true` on **every** participating soak SN.
+2. Aggregate `vote_ob` / `pulse_rnd` shadow `parse_fail` near 0 on each node.
+3. After stagenet HF20 (height 240): `get_pulse_status` → hybrid mode,
    `pow_replacement_ready=false`; `print_pulse` shows rising `signature_count`.
 4. No consensus / uptime regressions vs SNNetwork-only control peers.
 
