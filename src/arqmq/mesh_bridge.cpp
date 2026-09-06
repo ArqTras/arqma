@@ -117,19 +117,22 @@ bool pulse_rnd_wire_shape_ok(const std::string_view payload) noexcept
 
 void record_shadow_inbound(const std::string_view command, const std::string_view payload) noexcept
 {
+  // Publish parse outcome before bumping `*_in` with release so readers that
+  // observe inbound with acquire cannot see in>0 while both parse counters are
+  // still 0 (flaky under ASan / weak memory).
   if (is_vote_ob(command)) {
-    g_vote_ob_shadow_in.fetch_add(1, std::memory_order_relaxed);
     if (vote_ob_wire_payload_ok(payload))
       g_vote_ob_shadow_parse_ok.fetch_add(1, std::memory_order_relaxed);
     else
       g_vote_ob_shadow_parse_fail.fetch_add(1, std::memory_order_relaxed);
+    g_vote_ob_shadow_in.fetch_add(1, std::memory_order_release);
   }
   if (is_pulse_rnd(command)) {
-    g_pulse_rnd_shadow_in.fetch_add(1, std::memory_order_relaxed);
     if (pulse_rnd_wire_payload_ok(payload))
       g_pulse_rnd_shadow_parse_ok.fetch_add(1, std::memory_order_relaxed);
     else
       g_pulse_rnd_shadow_parse_fail.fetch_add(1, std::memory_order_relaxed);
+    g_pulse_rnd_shadow_in.fetch_add(1, std::memory_order_release);
   }
 }
 
@@ -319,6 +322,9 @@ std::string native_mesh_shadow_endpoint()
 
 MeshShadowStats native_mesh_shadow_stats() noexcept
 {
+  // Acquire on inbound counters pairs with release in record_shadow_inbound.
+  const uint64_t vote_in = g_vote_ob_shadow_in.load(std::memory_order_acquire);
+  const uint64_t pulse_in = g_pulse_rnd_shadow_in.load(std::memory_order_acquire);
   return MeshShadowStats{g_shadow_attempts.load(std::memory_order_relaxed),
                          g_shadow_ok.load(std::memory_order_relaxed),
                          g_shadow_fail.load(std::memory_order_relaxed),
@@ -326,13 +332,13 @@ MeshShadowStats native_mesh_shadow_stats() noexcept
                          g_vote_ob_live.load(std::memory_order_relaxed),
                          g_vote_ob_shadow_ok.load(std::memory_order_relaxed),
                          g_vote_ob_shadow_fail.load(std::memory_order_relaxed),
-                         g_vote_ob_shadow_in.load(std::memory_order_relaxed),
+                         vote_in,
                          g_vote_ob_shadow_parse_ok.load(std::memory_order_relaxed),
                          g_vote_ob_shadow_parse_fail.load(std::memory_order_relaxed),
                          g_pulse_rnd_live.load(std::memory_order_relaxed),
                          g_pulse_rnd_shadow_ok.load(std::memory_order_relaxed),
                          g_pulse_rnd_shadow_fail.load(std::memory_order_relaxed),
-                         g_pulse_rnd_shadow_in.load(std::memory_order_relaxed),
+                         pulse_in,
                          g_pulse_rnd_shadow_parse_ok.load(std::memory_order_relaxed),
                          g_pulse_rnd_shadow_parse_fail.load(std::memory_order_relaxed)};
 }
@@ -376,7 +382,7 @@ bool native_mesh_shadow_parity_sample_ok(const uint64_t min_vote_ob_live, const 
   if (rate < min_ok_rate_bps)
     return false;
 
-  const uint64_t vin = g_vote_ob_shadow_in.load(std::memory_order_relaxed);
+  const uint64_t vin = g_vote_ob_shadow_in.load(std::memory_order_acquire);
   if (vin < min_vote_ob_live)
     return false;
   const uint64_t parse_ok = g_vote_ob_shadow_parse_ok.load(std::memory_order_relaxed);

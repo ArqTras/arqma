@@ -561,17 +561,19 @@ TEST(arqmq_curve_zap, soak_inbound_parses_bt_vote_ob)
   arqmq::note_live_mesh_relay("vote_ob");
   arqmq::shadow_send_to_peer(server_pub, "vote_ob", payload, "tcp://127.0.0.1:46000");
 
-  bool inbound = false;
+  bool parsed = false;
   for (int i = 0; i < 80; ++i)
   {
-    if (arqmq::native_mesh_shadow_stats().vote_ob_shadow_in >= 1)
+    // Wait on parse_ok (not merely inbound) so ASan/weak memory cannot observe
+    // vote_ob_shadow_in before the matching parse counter is published.
+    if (arqmq::native_mesh_shadow_stats().vote_ob_shadow_parse_ok >= 1)
     {
-      inbound = true;
+      parsed = true;
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
-  ASSERT_TRUE(inbound);
+  ASSERT_TRUE(parsed);
 
   const auto stats = arqmq::native_mesh_shadow_stats();
   EXPECT_GE(stats.vote_ob_shadow_ok, 1u);
@@ -614,17 +616,17 @@ TEST(arqmq_curve_zap, soak_inbound_counts_unparseable_vote_ob)
   arqmq::note_live_mesh_relay("vote_ob");
   arqmq::shadow_send_to_peer(server_pub, "vote_ob", "not-a-vote", "tcp://127.0.0.1:46100");
 
-  bool inbound = false;
+  bool rejected = false;
   for (int i = 0; i < 80; ++i)
   {
-    if (arqmq::native_mesh_shadow_stats().vote_ob_shadow_in >= 1)
+    if (arqmq::native_mesh_shadow_stats().vote_ob_shadow_parse_fail >= 1)
     {
-      inbound = true;
+      rejected = true;
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
-  ASSERT_TRUE(inbound);
+  ASSERT_TRUE(rejected);
 
   const auto stats = arqmq::native_mesh_shadow_stats();
   EXPECT_GE(stats.vote_ob_shadow_parse_fail, 1u);
@@ -693,17 +695,17 @@ TEST(arqmq_curve_zap, soak_inbound_parses_pulse_rnd)
   arqmq::note_live_mesh_relay("pulse_rnd");
   arqmq::shadow_send_to_peer(server_pub, "pulse_rnd", payload, "tcp://127.0.0.1:46200");
 
-  bool inbound = false;
+  bool parsed = false;
   for (int i = 0; i < 80; ++i)
   {
-    if (arqmq::native_mesh_shadow_stats().pulse_rnd_shadow_in >= 1)
+    if (arqmq::native_mesh_shadow_stats().pulse_rnd_shadow_parse_ok >= 1)
     {
-      inbound = true;
+      parsed = true;
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
-  ASSERT_TRUE(inbound);
+  ASSERT_TRUE(parsed);
 
   const auto stats = arqmq::native_mesh_shadow_stats();
   EXPECT_GE(stats.pulse_rnd_shadow_ok, 1u);
@@ -746,17 +748,17 @@ TEST(arqmq_curve_zap, soak_inbound_counts_unparseable_pulse_rnd)
   arqmq::note_live_mesh_relay("pulse_rnd");
   arqmq::shadow_send_to_peer(server_pub, "pulse_rnd", "not-a-pulse-vote", "tcp://127.0.0.1:46300");
 
-  bool inbound = false;
+  bool rejected = false;
   for (int i = 0; i < 80; ++i)
   {
-    if (arqmq::native_mesh_shadow_stats().pulse_rnd_shadow_in >= 1)
+    if (arqmq::native_mesh_shadow_stats().pulse_rnd_shadow_parse_fail >= 1)
     {
-      inbound = true;
+      rejected = true;
       break;
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
-  ASSERT_TRUE(inbound);
+  ASSERT_TRUE(rejected);
 
   const auto stats = arqmq::native_mesh_shadow_stats();
   EXPECT_GE(stats.pulse_rnd_shadow_parse_fail, 1u);
