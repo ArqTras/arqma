@@ -83,7 +83,7 @@ Windows/macOS/Linux arm: `make depends` / `.github/workflows/depends.yml`
 - [x] Local Release verify: 628 unit + hash-target; binary inventory + packaging docs
 - [x] Document 3-OS local env (Linux apt / macOS brew / Windows mingw) aligned with CI
 - [x] Binary launch guide (`docs/BINARIES.md`) for every shipped binary
-- [x] Messenger UI styled like Arqma-GUI-MM / electron sky-blue (`utils/arqma-msg-ui.py`)
+- [x] Messenger UI styled like Arqma-GUI-MM gold on near-black (`utils/arqma-msg-ui.py`)
 - [x] Storage anti-entropy gossip (`/v1/digest`, `/v1/sync`, `--gossip-interval`)
 - [x] Blink Arq-Net wire (`blink_tx`) + mesh shadow handlers
 - [x] Blink mesh RPC telemetry (`mesh_blink_tx_*` on `get_arqnet_status` / `get_blink_status`)

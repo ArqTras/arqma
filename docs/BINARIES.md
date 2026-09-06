@@ -144,7 +144,7 @@ HTTP: `POST /v1/peel`, `POST /v1/store`.
 
 ### `arqma-msg`
 
-Local GUI look (Arqma-GUI-MM / electron sky-blue on near-black):
+Local GUI look (Arqma-GUI-MM gold on near-black):
 `utils/arqma-msg-ui.py` → http://127.0.0.1:8787/
  — everyday messenger CLI
 

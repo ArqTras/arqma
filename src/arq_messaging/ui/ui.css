@@ -1,12 +1,11 @@
-/* Arqma Messenger UI — colors from the modern Arqma wallet line
-   (Arqma-GUI-MM / arqma-electron-wallet Quasar theme):
-   sky-blue primary on near-black surfaces. */
+/* Arqma Messenger UI — gold accent on near-black
+   (user-directed palette; gold/goldenrod also used in arqma-electron-wallet). */
 
 :root {
-  --arqma-blue: #42a5f5;
-  --arqma-blue-deep: #1ba7fd;
-  --arqma-blue-soft: #90caf9;
-  --arqma-blue-grad: linear-gradient(180deg, #42a5f5 0%, #1ba7fd 100%);
+  --arqma-gold: #d4af37;
+  --arqma-gold-deep: #b8860b;
+  --arqma-gold-soft: #f2c037;
+  --arqma-gold-grad: linear-gradient(180deg, #f2c037 0%, #d4af37 45%, #b8860b 100%);
   --black-90: #0a0a0a;
   --black-80: #252525;
   --black-60: #313131;
@@ -59,8 +58,8 @@ html, body {
   height: 40px;
   border-radius: 8px;
   background:
-    var(--arqma-blue-grad),
-    radial-gradient(circle at 30% 30%, #90caf9, transparent 55%);
+    var(--arqma-gold-grad),
+    radial-gradient(circle at 30% 30%, #ffe08a, transparent 55%);
   background-blend-mode: screen, normal;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
   position: relative;
@@ -73,8 +72,8 @@ html, body {
   inset: 0;
   display: grid;
   place-items: center;
-  color: #fff;
-  font-weight: 500;
+  color: #1a1400;
+  font-weight: 700;
   font-size: 18px;
   letter-spacing: 0.02em;
 }
@@ -89,7 +88,7 @@ html, body {
 
 .brand-sub {
   margin-top: 3px;
-  color: var(--arqma-blue-soft);
+  color: var(--arqma-gold-soft);
   font-size: 12px;
   font-weight: 500;
   text-transform: uppercase;
@@ -120,13 +119,13 @@ html, body {
 
 .nav-item:hover {
   color: var(--text-strong);
-  background: rgba(66, 165, 245, 0.08);
+  background: rgba(212, 175, 55, 0.08);
 }
 
 .nav-item.active {
   color: var(--text-strong);
-  background: rgba(66, 165, 245, 0.16);
-  border-left-color: var(--arqma-blue);
+  background: rgba(212, 175, 55, 0.16);
+  border-left-color: var(--arqma-gold);
 }
 
 .rail-foot {
@@ -160,7 +159,7 @@ html, body {
 .panel {
   background: var(--black-80);
   border: 1px solid var(--line);
-  border-top: 2px solid var(--arqma-blue);
+  border-top: 2px solid var(--arqma-gold);
   border-radius: 4px;
   padding: 20px;
 }
@@ -206,17 +205,17 @@ input, textarea {
 input::placeholder, textarea::placeholder { color: #7c7c7c; }
 
 input:focus, textarea:focus {
-  border-color: var(--arqma-blue);
-  box-shadow: 0 0 0 1px rgba(66, 165, 245, 0.25);
+  border-color: var(--arqma-gold);
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.28);
 }
 
 .btn {
   appearance: none;
   border: 0;
-  background: var(--arqma-blue-grad);
-  color: #fff;
+  background: var(--arqma-gold-grad);
+  color: #1a1400;
   font: inherit;
-  font-weight: 500;
+  font-weight: 600;
   font-size: 14px;
   letter-spacing: 0.02em;
   padding: 11px 18px;
@@ -231,10 +230,12 @@ input:focus, textarea:focus {
 .btn.secondary {
   background: var(--black-60);
   border: 1px solid var(--line-soft);
+  color: var(--text);
+  font-weight: 500;
 }
 
 .btn.secondary:hover {
-  border-color: var(--arqma-blue-soft);
+  border-color: var(--arqma-gold-soft);
   color: var(--text-strong);
   filter: none;
 }
@@ -243,11 +244,12 @@ input:focus, textarea:focus {
   background: transparent;
   border: 1px solid var(--line-soft);
   color: var(--text);
+  font-weight: 500;
 }
 
 .btn.ghost:hover {
-  border-color: var(--arqma-blue);
-  color: var(--arqma-blue-soft);
+  border-color: var(--arqma-gold);
+  color: var(--arqma-gold-soft);
   filter: none;
 }
 
@@ -268,7 +270,7 @@ input:focus, textarea:focus {
 }
 
 .list li:hover {
-  background: rgba(66, 165, 245, 0.05);
+  background: rgba(212, 175, 55, 0.06);
 }
 
 .list li span {
@@ -310,7 +312,7 @@ input:focus, textarea:focus {
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--arqma-blue-soft);
+  color: var(--arqma-gold-soft);
 }
 
 .card pre {
