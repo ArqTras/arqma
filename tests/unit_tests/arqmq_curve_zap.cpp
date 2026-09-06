@@ -79,6 +79,18 @@ struct FrameScratch
 
   std::vector<std::string_view> views() const { return {version, req_id, domain, address, identity, mechanism, creds}; }
 };
+
+/// Bind shadow CURVE listener, retrying nearby ports on EADDRINUSE (CI Debug flakes).
+bool start_shadow_listener(arqmq::SocketStack& stack, std::string& live_ep, const int preferred_port)
+{
+  for (int delta = 0; delta <= 40; delta += 2)
+  {
+    live_ep = "tcp://127.0.0.1:" + std::to_string(preferred_port + delta);
+    if (!arqmq::start_mesh_shadow_listener(stack, live_ep))
+      return true;
+  }
+  return false;
+}
 } // namespace
 
 TEST(arqmq_curve_zap, accepts_service_node_and_denies_unknown)
@@ -551,7 +563,8 @@ TEST(arqmq_curve_zap, soak_inbound_parses_bt_vote_ob)
                                [](const std::string&, const std::string&) { return arqmq::CurvePeerAllow::Denied; });
   arqmq::set_native_mesh_shadow_relay_enabled(true);
 
-  ASSERT_FALSE(arqmq::start_mesh_shadow_listener(server, "tcp://127.0.0.1:46000"));
+  std::string live_ep;
+  ASSERT_TRUE(start_shadow_listener(server, live_ep, 46000));
   const std::string shadow_ep = arqmq::native_mesh_shadow_endpoint();
   ASSERT_FALSE(shadow_ep.empty());
 
@@ -559,7 +572,7 @@ TEST(arqmq_curve_zap, soak_inbound_parses_bt_vote_ob)
   ASSERT_TRUE(arqmq::vote_ob_wire_payload_ok(payload));
 
   arqmq::note_live_mesh_relay("vote_ob");
-  arqmq::shadow_send_to_peer(server_pub, "vote_ob", payload, "tcp://127.0.0.1:46000");
+  arqmq::shadow_send_to_peer(server_pub, "vote_ob", payload, live_ep);
 
   bool parsed = false;
   for (int i = 0; i < 80; ++i)
@@ -612,9 +625,10 @@ TEST(arqmq_curve_zap, soak_inbound_counts_unparseable_vote_ob)
                                [](const std::string&, const std::string&) { return arqmq::CurvePeerAllow::Denied; });
   arqmq::set_native_mesh_shadow_relay_enabled(true);
 
-  ASSERT_FALSE(arqmq::start_mesh_shadow_listener(server, "tcp://127.0.0.1:46100"));
+  std::string live_ep;
+  ASSERT_TRUE(start_shadow_listener(server, live_ep, 46100));
   arqmq::note_live_mesh_relay("vote_ob");
-  arqmq::shadow_send_to_peer(server_pub, "vote_ob", "not-a-vote", "tcp://127.0.0.1:46100");
+  arqmq::shadow_send_to_peer(server_pub, "vote_ob", "not-a-vote", live_ep);
 
   bool rejected = false;
   for (int i = 0; i < 80; ++i)
@@ -690,10 +704,11 @@ TEST(arqmq_curve_zap, soak_inbound_parses_pulse_rnd)
                                [](const std::string&, const std::string&) { return arqmq::CurvePeerAllow::Denied; });
   arqmq::set_native_mesh_shadow_relay_enabled(true);
 
-  ASSERT_FALSE(arqmq::start_mesh_shadow_listener(server, "tcp://127.0.0.1:46200"));
+  std::string live_ep;
+  ASSERT_TRUE(start_shadow_listener(server, live_ep, 46200));
 
   arqmq::note_live_mesh_relay("pulse_rnd");
-  arqmq::shadow_send_to_peer(server_pub, "pulse_rnd", payload, "tcp://127.0.0.1:46200");
+  arqmq::shadow_send_to_peer(server_pub, "pulse_rnd", payload, live_ep);
 
   bool parsed = false;
   for (int i = 0; i < 80; ++i)
@@ -744,9 +759,10 @@ TEST(arqmq_curve_zap, soak_inbound_counts_unparseable_pulse_rnd)
                                [](const std::string&, const std::string&) { return arqmq::CurvePeerAllow::Denied; });
   arqmq::set_native_mesh_shadow_relay_enabled(true);
 
-  ASSERT_FALSE(arqmq::start_mesh_shadow_listener(server, "tcp://127.0.0.1:46300"));
+  std::string live_ep;
+  ASSERT_TRUE(start_shadow_listener(server, live_ep, 46300));
   arqmq::note_live_mesh_relay("pulse_rnd");
-  arqmq::shadow_send_to_peer(server_pub, "pulse_rnd", "not-a-pulse-vote", "tcp://127.0.0.1:46300");
+  arqmq::shadow_send_to_peer(server_pub, "pulse_rnd", "not-a-pulse-vote", live_ep);
 
   bool rejected = false;
   for (int i = 0; i < 80; ++i)

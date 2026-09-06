@@ -194,9 +194,9 @@ std::error_code SocketStack::bind_curve(const std::string& endpoint)
   if (!running_.load() || endpoint.empty() || !curve_zap_configured())
     return std::make_error_code(std::errc::invalid_argument);
 
-  const size_t before = [&] {
+  const auto before = [&] {
     std::lock_guard<std::mutex> lock{bind_mu_};
-    return curve_bind_endpoints_.size();
+    return std::make_pair(curve_bind_endpoints_.size(), curve_bind_attempts_);
   }();
 
   try {
@@ -213,8 +213,11 @@ std::error_code SocketStack::bind_curve(const std::string& endpoint)
   for (int i = 0; i < 500; ++i) {
     {
       std::lock_guard<std::mutex> lock{bind_mu_};
-      if (curve_bind_endpoints_.size() > before)
-        return {};
+      if (curve_bind_attempts_ > before.second) {
+        if (curve_bind_endpoints_.size() > before.first)
+          return {};
+        return std::make_error_code(std::errc::address_in_use);
+      }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
@@ -619,11 +622,17 @@ void SocketStack::worker_main()
           }
           listeners.push_back(std::move(sock));
           std::lock_guard<std::mutex> lock{bind_mu_};
-          if (curve)
+          if (curve) {
             curve_bind_endpoints_.push_back(std::move(recorded));
-          else
+            ++curve_bind_attempts_;
+          } else {
             bind_endpoints_.push_back(std::move(recorded));
+          }
         } catch (...) {
+          if (curve) {
+            std::lock_guard<std::mutex> lock{bind_mu_};
+            ++curve_bind_attempts_;
+          }
         }
       }
     }

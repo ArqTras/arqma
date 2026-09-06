@@ -168,6 +168,9 @@ private:
   mutable std::mutex bind_mu_;
   std::vector<std::string> bind_endpoints_;
   std::vector<std::string> curve_bind_endpoints_;
+  /// Incremented for every CURVE bind attempt (success or failure) so waiters
+  /// do not spin a full timeout when `bind()` throws (e.g. EADDRINUSE).
+  size_t curve_bind_attempts_ = 0;
 
   mutable std::mutex curve_mu_;
   std::string curve_public_key_;
