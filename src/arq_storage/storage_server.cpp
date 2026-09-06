@@ -293,8 +293,7 @@ struct StorageServer::Impl
         return;
       const auto get_path = with_token(snodes_path(pub), token);
       const auto remote_res = http_exchange(ep, "GET", get_path, {}, std::chrono::milliseconds{2000});
-      const auto remote_urls =
-          remote_res ? parse_url_lines(remote_res.body) : std::vector<std::string>{};
+      const auto remote_urls = remote_res ? parse_url_lines(remote_res.body) : std::vector<std::string>{};
 
       std::string merged;
       std::vector<std::string> member_urls;
@@ -592,8 +591,7 @@ struct StorageServer::Impl
             }
           }
           std::ostringstream oss;
-          oss << "HTTP/1.1 200 OK\r\nContent-Length: " << payload.size() << "\r\nConnection: close\r\n\r\n"
-              << payload;
+          oss << "HTTP/1.1 200 OK\r\nContent-Length: " << payload.size() << "\r\nConnection: close\r\n\r\n" << payload;
           return oss.str();
         }
         return "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";

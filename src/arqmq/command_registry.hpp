@@ -44,8 +44,8 @@ struct CommandAcl
 };
 
 inline constexpr CommandAcl k_builtin_commands[] = {
-    {"ping", CategoryAcl::Basic},          {"pong", CategoryAcl::Basic},
-    {"vote_ob", CategoryAcl::ServiceNode}, {"pulse_rnd", CategoryAcl::ServiceNode},
+    {"ping", CategoryAcl::Basic},           {"pong", CategoryAcl::Basic},
+    {"vote_ob", CategoryAcl::ServiceNode},  {"pulse_rnd", CategoryAcl::ServiceNode},
     {"blink_tx", CategoryAcl::ServiceNode}, {"arqnet_status", CategoryAcl::Basic},
     {"admin_shutdown", CategoryAcl::Admin},
 };

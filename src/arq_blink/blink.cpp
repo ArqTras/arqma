@@ -108,8 +108,7 @@ bool decode_relay_vote(const std::string_view blob, RelayVote& out)
   std::memcpy(vote.pub.data, blob.data() + off, sizeof(vote.pub));
   off += sizeof(vote.pub);
   std::memcpy(&vote.signature, blob.data() + off, sizeof(vote.signature));
-  if constexpr (boost::endian::order::native != boost::endian::order::little)
-  {
+  if constexpr (boost::endian::order::native != boost::endian::order::little) {
     boost::endian::little_to_native_inplace(vote.height);
     boost::endian::little_to_native_inplace(vote.validator_index);
   }

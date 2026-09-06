@@ -40,9 +40,9 @@ struct RelayVote
 };
 
 inline constexpr std::uint8_t k_relay_vote_version = 1;
-inline constexpr std::size_t k_relay_vote_bytes =
-    1 + sizeof(std::uint64_t) + crypto::HASH_SIZE + sizeof(std::uint32_t) + sizeof(crypto::public_key) +
-    sizeof(crypto::signature);
+inline constexpr std::size_t k_relay_vote_bytes = 1 + sizeof(std::uint64_t) + crypto::HASH_SIZE +
+                                                  sizeof(std::uint32_t) + sizeof(crypto::public_key) +
+                                                  sizeof(crypto::signature);
 
 bool encode_relay_vote(const RelayVote& vote, std::string& out);
 bool decode_relay_vote(std::string_view blob, RelayVote& out);
