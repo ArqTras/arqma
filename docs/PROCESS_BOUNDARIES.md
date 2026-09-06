@@ -20,7 +20,7 @@ repository** ([`docs/PRODUCT.md`](PRODUCT.md)); they are still separate PIDs.
 |-----------|--------|-----|
 | Storage Server | `arqma-storage` | Replication/IO isolation; HTTP KV + TTL + swarm membership merge/push |
 | Privacy router | `arqma-router` | Onion peel + optional multi-hop forward; separate from consensus |
-| Messenger CLI | `arqma-msg` | UX surface over storage + envelopes |
+| Messenger CLI probe | `arqma-msg` | Minimal smoke over storage + envelopes (not Session UX) |
 
 `utils/arqma-stack.sh` (Linux/macOS) or `utils/arqma-stack.cmd` (Windows) starts
 storage (`--data-dir`) + router (`--storage-url`).

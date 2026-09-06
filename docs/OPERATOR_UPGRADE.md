@@ -148,7 +148,7 @@ Same names on depends artifacts (`.exe` on Windows):
 |--------|----------------|
 | `arqmad` | Service node / full node |
 | `arqma-wallet-cli`, `arqma-wallet-rpc` | CLSAG wallets (upgrade before HF20) |
-| `arqma-storage`, `arqma-router`, `arqma-msg` | Companion stack (`utils/arqma-stack`) |
+| `arqma-storage`, `arqma-router`, `arqma-msg` | Optional operator probes (`utils/arqma-stack`) |
 | `arqma-blockchain-export`, `arqma-blockchain-import` | Datadir migration / backup |
 | `arqma-blockchain-stats`, `arqma-blockchain-usage`, `arqma-blockchain-depth`, `arqma-blockchain-ancestry`, `arqma-blockchain-mark-spent-outputs` | Ops utilities |
 | `arqma-generate-ssl-certificate` | Optional TLS helper |
@@ -198,11 +198,22 @@ Optional: `ctest --test-dir build/upgrade-release -R 'unit_tests|hash-target' --
 
 ASan (Linux CI equivalent): configure with `-DSANITIZE=ON` (address sanitizer only).
 
-### 2. Everyday messenger (no extra flags)
+### 2. Daemon probes (core upgrade path)
 
-Optional GUI shell (Arqma Qt wallet colours):
-`utils/arqma-msg-ui.py` → http://127.0.0.1:8787/
+```bash
+build/upgrade-release/bin/arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
+# unrestricted RPC / console:
+# get_pulse_status / print_pulse  — hybrid, pow_replacement_ready=false
+# get_blink_status / print_blink  — wire_connected + mesh_blink_tx_*
+# get_storage_status / print_storage — gossip counters when storage is up
+# get_arqnet_status — mesh=snnetwork on default backend
+```
 
+Keep `--arqnet-backend=legacy-arqnet` on mainnet SNs.
+
+### 3. Optional messenger probe (not product UX focus)
+
+Secondary smoke path for companions. Session-class UX is out of scope.
 
 ```bash
 export ARQMA_BIN_DIR="$(pwd)/build/upgrade-release/bin"
@@ -213,25 +224,13 @@ PUB=$($ARQMA_BIN_DIR/arqma-msg gen | awk '{print $1}')
 $ARQMA_BIN_DIR/arqma-msg send "$PUB" hello
 $ARQMA_BIN_DIR/arqma-msg inbox
 $ARQMA_BIN_DIR/arqma-msg open
+# optional local UI shell: utils/arqma-msg-ui.py → http://127.0.0.1:8787/
 ```
 
 Checks: `gen` prints **one** hex (pubkey). `inbox`/`open` work without `--to`/`--secret`.
 `GET /status` on storage stays open without a token; `PUT /v1/kv` without token is 401.
 
 Windows: `utils/arqma-stack.cmd` then `arqma-msg.exe gen` / `send <hex> hello` / `inbox` / `open`.
-
-### 3. Daemon probes (separate PID)
-
-```bash
-build/upgrade-release/bin/arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
-# unrestricted RPC:
-# get_pulse_status  — hybrid, pow_replacement_ready=false
-# get_blink_status  — blink_blocker=blink-wire-not-connected
-# get_arqnet_status — mesh=snnetwork on default backend
-# print_pulse / print_blink
-```
-
-Keep `--arqnet-backend=legacy-arqnet` on mainnet SNs.
 
 ### 4. Network soak (multi-SN quorum — not available in a single VM)
 
@@ -283,26 +282,20 @@ and an explicit operator decision (still needs `--arqnet-allow-experimental` for
 | `get_storage_status` / `print_storage` | Storage client reachability + `GET /status` telemetry (`gossip_interval_sec`, `peer_count`, `snode_count`, `kv_entries`, `gossip_rounds`, `digest_ok` / `sync_ok` / `membership_ok` / `gossip_fail`) |
 | `get_service_nodes` `offset`/`limit` | Optional pagination |
 
-Companion processes (same repo, separate PIDs — [`docs/PRODUCT.md`](PRODUCT.md)):
+Optional companion probes (same repo, separate PIDs — [`docs/PRODUCT.md`](PRODUCT.md)).
+Not the primary upgrade deliverable; use for storage/router smoke tests:
 
 ```text
 utils/arqma-stack.sh
 utils/arqma-stack.cmd
-arqma-msg gen
-arqma-msg send <hex> hello
-arqma-msg inbox
-arqma-msg open
+arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
+arqma-msg gen | send <hex> hello | inbox | open
 ```
 
 The stack writes `$ARQMA_STACK_DIR/env` so `arqma-msg` needs no `--url` / `--router`.
 `gen` saves `~/.arqma/msg/identity`; `inbox` and `open` use it.
 `send bob=<hex> hello` remembers the name in `~/.arqma/msg/contacts`.
-`gen` prints the public key only. The stack token is in `$ARQMA_STACK_DIR/env`.
-Daemon probe (separate process):
-
-```text
-arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
-```
+The stack token is in `$ARQMA_STACK_DIR/env`.
 
 Operator binaries if you are not using the stack:
 

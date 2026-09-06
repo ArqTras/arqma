@@ -94,9 +94,9 @@ arqma-wallet-rpc \
 
 ---
 
-## Companion stack (messaging / storage)
+## Optional operator probes (storage / router / msg)
 
-Prefer the helper (writes env + starts both servers):
+Secondary to `arqmad` + wallets. Prefer the helper (writes env + starts both servers):
 
 ```bash
 export ARQMA_BIN_DIR="$(pwd)/build/upgrade-release/bin"   # stack default is build/upgrade-test/bin
@@ -142,11 +142,7 @@ arqma-router --listen 127.0.0.1:1090 --data-dir ~/.arqma/arq-router \
 
 HTTP: `POST /v1/peel`, `POST /v1/store`.
 
-### `arqma-msg`
-
-Local GUI look (Arqma-GUI-MM black + muted gold):
-`utils/arqma-msg-ui.py` → http://127.0.0.1:8787/
- — everyday messenger CLI
+### `arqma-msg` — minimal CLI probe (not Session-class UX)
 
 ```bash
 # After utils/arqma-stack.sh (uses stack env automatically)
@@ -159,6 +155,8 @@ arqma-msg open
 # Explicit endpoints
 arqma-msg --url http://127.0.0.1:22021 --router http://127.0.0.1:1090 gen
 arqma-msg --url http://127.0.0.1:22021 send <hex> "hello"
+
+# Optional local UI shell (probe only): utils/arqma-msg-ui.py → http://127.0.0.1:8787/
 ```
 
 | Subcommand | Purpose |
@@ -262,10 +260,10 @@ Expect **628** unit tests + `hash-target` pass.
 ## Typical local topology
 
 ```text
-arqma-storage  :22021  ←── arqma-msg
-arqma-router   :1090   ←── arqma-msg --router (optional onion)
-arqmad         :19994  ←── arqma-wallet-cli / arqma-wallet-rpc
-               └── --storage-client-url → storage
+arqmad         :19994  ←── arqma-wallet-cli / arqma-wallet-rpc  (primary)
+               └── --storage-client-url → storage (optional probe)
+arqma-storage  :22021  ←── get_storage_status / print_storage / arqma-msg
+arqma-router   :1090   ←── arqma-msg --router (optional onion probe)
 ```
 
 See also: [`OPERATOR_UPGRADE.md`](OPERATOR_UPGRADE.md), [`PLATFORM.md`](PLATFORM.md),

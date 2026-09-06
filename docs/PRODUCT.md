@@ -1,12 +1,13 @@
-# Arqma product (one repository)
+# Arqma product
 
-This tree is the **unified Arqma product**. Consensus, storage, privacy routing,
-and messenger helpers ship together. They stay **separate processes** (see
-[`PROCESS_BOUNDARIES.md`](PROCESS_BOUNDARIES.md)); they are no longer split
-across other repositories.
+This repository ships the **consensus daemon and SN stack** (RandomARQ + hybrid
+Pulse, Arq-Net mesh, RPC). Companion processes for storage and privacy routing
+live in the same tree for operator probes; they stay **out of `arqmad`** (see
+[`PROCESS_BOUNDARIES.md`](PROCESS_BOUNDARIES.md)).
 
-End users get **one simple path**. Storage, router, hops, and swarm are started
-by the stack — they are not steps the messenger user has to assemble.
+Primary deliverable of the upgrade branch: **HF20 hybrid SN / HF21 exclusive
+mesh**, with Pulse as a **hybrid producer** (PoW stays required). Messenger CLI
+and local UI are **secondary probes**, not a Session-class client.
 
 ## Binaries
 
@@ -14,65 +15,39 @@ by the stack — they are not steps the messenger user has to assemble.
 |--------|------|
 | `arqmad` | Consensus daemon (RandomARQ + hybrid Pulse, Arq-Net, RPC) |
 | `arqma-wallet-rpc` / `arqma-wallet-cli` | Wallet processes |
-| `arqma-storage` | HTTP Storage Server (KV + TTL + `--data-dir` + `--peer` / swarm replicas) |
-| `arqma-router` | Privacy-router (`POST /v1/peel`, multi-hop `POST /v1/store`) |
-| `arqma-msg` | CLI messenger: `gen` / `send` / `inbox` / `open` / `contacts` / `name` / `status` / `unread` |
+| `arqma-storage` | Optional HTTP KV + TTL + anti-entropy (operator probe) |
+| `arqma-router` | Optional privacy-router peel/store (operator probe) |
+| `arqma-msg` | Minimal CLI probe over storage/router (`gen` / `send` / `inbox` / `open`) |
 
-Local messenger UI (pure black + muted champagne/bronze gold (`#D8D09C` fill, `#C5A059` lines),
-matched to an Arqma-GUI-MM screenshot):
+Blink lives **in-process** as `src/arq_blink` (quorum sign/verify + collector).
+`get_blink_status` / `print_blink` report that collector plus `wire_connected`
+and `mesh_blink_tx_*` soak counters. `blink_tx` mesh wire is connected for
+observability; it does **not** replace Pulse or RandomARQ.
+
+## Operator probes (secondary)
+
+```text
+utils/arqma-stack.sh                 # Linux / macOS — starts storage + router
+utils/arqma-stack.cmd                # Windows
+arqmad --storage-client-url=http://127.0.0.1:22021
+# get_storage_status / print_storage
+# get_pulse_status / print_pulse
+# get_blink_status / print_blink
+# get_arqnet_status
+```
+
+`get_storage_status` / `print_storage` talk to `arqma-storage` (`GET /status`
+JSON: peers, snodes, KV count, gossip counters).
+
+Optional local messenger probe (not product UX focus):
 
 ```text
 utils/arqma-msg-ui.py    # http://127.0.0.1:8787/
+arqma-msg gen | send | inbox | open
 ```
 
-Blink lives **in-process** as `src/arq_blink` (quorum sign/verify + collector).
-`get_blink_status` reports that collector plus `wire_connected` and `mesh_blink_tx_*` soak counters. `blink_tx` Arq-Net wire is connected (collector + mesh relay); it still does **not**
-pre-confirm transactions as a Pulse/RandomARQ replacement. It does **not** replace
-Pulse or RandomARQ.
-
-## Local stack
-
-```text
-utils/arqma-stack.sh                 # Linux / macOS
-utils/arqma-stack.cmd                # Windows
-arqma-msg gen
-arqma-msg send <hex> hello
-arqma-msg inbox
-arqma-msg open
-```
-
-The stack starts storage + router and writes `ARQMA_STORAGE_URL` /
-`ARQMA_ROUTER_URL` into `$ARQMA_STACK_DIR/env` (default `/tmp/arqma-stack/env`,
-Windows `%TEMP%\arqma-stack\env`). `arqma-msg` reads that file, so send/inbox/open
-need no `--url` / `--router`. `gen` writes `~/.arqma/msg/identity` so `inbox` and
-`open` need no `--to` / `--secret` / `--key`. `send bob=<hex> hello` remembers
-`bob` in `~/.arqma/msg/contacts`; later `send bob hello`. `gen` prints only the
-public key. Inbox URLs use an opaque id, not the raw pubkey. The stack writes
-`ARQMA_STACK_TOKEN`; `arqma-msg` sends it without a new flag. If the router is down,
-send stores directly.
-
-Operators still have `--url`, `--router` (repeat, max 3), `swarm --snode`,
-`--peer`, and `--storage-url`. Those stay out of the everyday path.
-
-`arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router` is the daemon
-probe; consensus stays a separate process.
-
-`PUT /v1/kv?ttl=` expires values (cap 14 days; `0` means keep). Inbox namespaces
-`inbox-<pubkey>` also fan out to URLs in `PUT /v1/snodes`. `GET /v1/swarm?pubkey=`
-returns the FNV swarm id plus those member URLs. `arqma-msg` get / inbox / open
-read from those members when the local node has no copy. HTTP bodies are capped
-at 1 MiB; listen addresses accept IPv6 (`[::1]:22021`). `PUT /v1/snodes` merges
-unique HTTP member URLs (cap 32) and pushes the list to those members. This is
-plus anti-entropy `GET /v1/digest` / `POST /v1/sync` and optional `--gossip-interval` peer repair (still not a full Oxen-style swarm).
-
-`get_storage_status` / `print_storage` / `storage_server_ping` talk to `arqma-storage` (`GET /status` JSON: peers, snodes, KV count, gossip counters).
-`get_blink_status` / `print_blink` report the in-daemon Blink collector.
-
-How to test: [`docs/OPERATOR_UPGRADE.md`](OPERATOR_UPGRADE.md) (unit suite, messenger stack, daemon probes).
-
-
-Local GUI look (Arqma-GUI-MM black + muted gold):
-`utils/arqma-msg-ui.py` → http://127.0.0.1:8787/
+How to test core upgrade path: [`docs/OPERATOR_UPGRADE.md`](OPERATOR_UPGRADE.md)
+(unit suite, daemon probes; messenger stack is optional).
 
 ## Locks that stay
 
@@ -80,4 +55,4 @@ Local GUI look (Arqma-GUI-MM black + muted gold):
 2. Default `--arqnet-backend=legacy-arqnet`.
 3. Storage and router stay out of the `arqmad` process.
 4. No Oxen / Session / Lokinet branding or tokenomics copied in.
-5. End-user messenger path stays simple (`gen` / `send` / `inbox` / `open`).
+5. Session-class messenger UX remains out of scope for this upgrade.

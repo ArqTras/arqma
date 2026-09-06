@@ -43,7 +43,7 @@ Launch examples for every binary: [`docs/BINARIES.md`](docs/BINARIES.md).
 |--------|------|
 | `arqmad` | Daemon |
 | `arqma-wallet-cli` / `arqma-wallet-rpc` | Wallets |
-| `arqma-storage` / `arqma-router` / `arqma-msg` | Companions |
+| `arqma-storage` / `arqma-router` / `arqma-msg` | Optional operator probes |
 | `arqma-blockchain-*` | Import/export/stats/usage/depth/ancestry/mark-spent |
 | `arqma-generate-ssl-certificate` | TLS helper |
 
