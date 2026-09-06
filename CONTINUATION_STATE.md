@@ -91,6 +91,7 @@ Windows/macOS/Linux arm: `make depends` / `.github/workflows/depends.yml`
 - [x] Storage `/status` + `get_storage_status` gossip telemetry
 - [x] Blink `blink_tx` mesh shadow unit tests (parse ok / parse fail)
 - [x] Daemon `print_storage` + soak monitor storage gossip line + counter asserts
+- [x] Docs: demote companion/messenger UX narrative (PRODUCT / OPERATOR / BINARIES)
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 - [ ] Multi-SN stagenet soak (needs live quorum; see `docs/OPERATOR_UPGRADE.md`)
@@ -98,5 +99,6 @@ Windows/macOS/Linux arm: `make depends` / `.github/workflows/depends.yml`
 ## Quality
 
 - Local `unit_tests` → **628** passed; `ctest -R 'unit_tests|hash-target'` green
-- Test steps: `docs/OPERATOR_UPGRADE.md` (unit / messenger / daemon probes / network soak)
+- Test steps: `docs/OPERATOR_UPGRADE.md` (unit / daemon probes / optional messenger / network soak)
+- Primary upgrade story: HF20/HF21 + Pulse hybrid + Arq-Net mesh; companions are probes
 - Release readiness: code + unit gate ready; network soak deferred to operators with SN quorum
