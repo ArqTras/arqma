@@ -94,10 +94,7 @@ Windows/macOS/Linux arm: `make depends` / `.github/workflows/depends.yml`
 - [x] Docs: demote companion/messenger UX narrative (PRODUCT / OPERATOR / BINARIES)
 - [x] Operator surface polish: OpenAPI Blink schema, soak `get_blink_status` +
   `gossip_interval_sec`, daemon help for storage/print_*, CHANGELOG/gate tone
-<<<<<<< HEAD
 - [x] README: upgrade-branch overview, locks, docs index, clone/build verify path
-=======
->>>>>>> origin/master
 - [ ] Keep Pulse hybrid (do **not** flip `k_pulse_pow_stage` to 3 / PoW-off)
 - [ ] Default `--arqnet-backend` flip (later; not required at HF20)
 - [ ] Multi-SN stagenet soak (needs live quorum; see `docs/OPERATOR_UPGRADE.md`)
