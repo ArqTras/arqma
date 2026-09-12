@@ -139,6 +139,11 @@ before HF21 so exclusive mesh has a CURVE stack.
 - **macOS product / cross:** native Homebrew unit build, or
   `make depends target=arm64-apple-darwin` / `x86_64-apple-darwin`.
 - Do **not** commit `build/` or binaries.
+- **NETWORK_ID:** every build derives P2P network UUID bytes from the git
+  commit. A clean tree gets a valid commit-scoped ID; uncommitted/untracked
+  changes produce a distinct dirty ID (daemon logs `NETWORK_ID seed=` at P2P
+  init). Ship operator binaries only from a clean commit if they must peer with
+  other nodes on that same tip.
 
 ### Package inventory (ship from `bin/`)
 

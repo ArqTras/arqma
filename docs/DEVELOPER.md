@@ -22,6 +22,21 @@ Makefile helpers:
 - Format: `.clang-format`
 - Static analysis baseline: `.clang-tidy`
 
+## NETWORK_ID (build-time)
+
+P2P `NETWORK_ID` for mainnet / testnet / stagenet is generated every build
+(`cmake/GenNetworkId.cmake` → `${CMAKE_BINARY_DIR}/network_id_generated.h`),
+using the same dirty-tree idea as hyle-team/zano `version.cmake`:
+
+- Clean tree → seed is full `git rev-parse HEAD` (valid commit-scoped ID).
+- Dirty tree (diff and/or untracked) → seed is
+  `<commit>-dirty-<sha256(diff+untracked)>` so the node cannot join peers built
+  from the clean commit.
+- Per-net bytes: `SHA256("arqma-network-id|<net>|<seed>")[0..15]`.
+
+Daemon logs the seed at P2P init. Commit before sharing binaries meant to peer
+with other clean builds.
+
 ## Branch workflow
 
 1. Work on feature branches from `upgrade` (or `master` once merged).
