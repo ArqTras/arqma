@@ -760,6 +760,10 @@ namespace nodetool
       memcpy(&m_network_id, &::config::NETWORK_ID, 16);
     }
 
+    MINFO("P2P NETWORK_ID seed=" << ARQMA_NET_ID_SEED
+          << (ARQMA_NET_ID_DIRTY ? " (dirty: uncommitted changes isolate this build)" : " (clean commit)"));
+    MINFO("P2P NETWORK_ID=" << m_network_id);
+
     m_config_folder = command_line::get_arg(vm, cryptonote::arg_data_dir);
     network_zone& public_zone = m_network_zones.at(epee::net_utils::zone::public_);
 

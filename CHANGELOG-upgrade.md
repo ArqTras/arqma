@@ -45,6 +45,9 @@
 
 ### Features
 
+- Generate P2P `NETWORK_ID` at build time from git commit (clean = valid;
+  dirty tree = commit + content hash), Zano-style dirty detection via
+  `cmake/GenNetworkId.cmake`; daemon logs the seed at P2P init.
 - Add `--arqnet-mesh-shadow` opt-in SocketStack dual-write (stagenet/testnet soak;
   mainnet needs `--arqnet-allow-experimental`) and expose `mesh_shadow*` counters
   on `get_arqnet_status`. Live peer mesh remains SNNetwork.

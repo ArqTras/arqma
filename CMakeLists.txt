@@ -400,6 +400,8 @@ endif()
 #   set(BSDI TRUE)
 
 include_directories(external/rapidjson/include external/easylogging++ src contrib/epee/include external/cppzmq external)
+# Commit-scoped NETWORK_ID header (cmake/GenNetworkId.cmake -> network_id_generated.h).
+include_directories("${CMAKE_BINARY_DIR}")
 
 if(POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW)

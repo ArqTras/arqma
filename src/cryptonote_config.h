@@ -36,6 +36,7 @@
 #include <boost/uuid/uuid.hpp>
 #include <stdexcept>
 #include <chrono>
+#include "network_id_generated.h"
 
 using namespace std::literals;
 
@@ -285,9 +286,9 @@ namespace config
   const uint16_t RPC_DEFAULT_PORT = 19994;
   const uint16_t ZMQ_DEFAULT_PORT = 19995;
   const uint16_t ANET_DEFAULT_PORT = 19996;
-  boost::uuids::uuid const NETWORK_ID = { {
-      0x11, 0x11, 0x11, 0x11, 0xFF, 0xFF, 0xFF, 0x11, 0x11, 0x11, 0xFF, 0xFF, 0xFF, 0x11, 0x11, 0x1A
-    } }; // Bender's nightmare
+  // NETWORK_ID is generated at build time from git commit (valid) or
+  // commit+dirty content hash (uncommitted changes). See cmake/GenNetworkId.cmake.
+  boost::uuids::uuid const NETWORK_ID = { { ARQMA_NET_ID_MAINNET_BYTES } };
   std::string const GENESIS_TX = "011201ff00011e026bc5c7db8a664f652d78adb587ac4d759c6757258b64ef9cba3c0354e64fb2e42101abca6a39c561d0897be183eb0143990eba201aa7d2c652ab0555d28bb4b70728";
   uint32_t const GENESIS_NONCE = 19993;
   std::string const GOV_WALLET_ADDRESS = "ar2dJ21SCuNiJndoQBf5ojhbdA7K8B3sREpnWSg4pHedXcwMbvUkYREAapZJMn3cVRj6VqDqDkj9bFoXLJViCmFs2qWkdufHt";
@@ -303,9 +304,7 @@ namespace config
     const uint16_t RPC_DEFAULT_PORT = 29994;
     const uint16_t ZMQ_DEFAULT_PORT = 29995;
     const uint16_t ANET_DEFAULT_PORT = 29996;
-    boost::uuids::uuid const NETWORK_ID = { {
-        0x11, 0x11, 0x11, 0x11, 0xFF, 0xFF, 0xFF, 0x11, 0x11, 0x11, 0xFF, 0xFF, 0xFF, 0x11, 0x11, 0x1B
-      } }; // Bender's daydream
+    boost::uuids::uuid const NETWORK_ID = { { ARQMA_NET_ID_TESTNET_BYTES } };
     std::string const GOV_WALLET_ADDRESS = "atywxUgKyRajPKSRHWDtjyPTaE9thXgyrTpk9RsdkYzCdPYSxtTkW8Jj6xgrNHXLEd22yb7Gdk39DoJpgrLKTe85NP22nsWGY";
     std::string const DEV_WALLET_ADDRESS = "atywfJChhS1XLjfY2pDGUHNo5BcWMM5ZJeFs4pWGs9p7gCbxSguxoyBWLDYasHuY7yHppCWYRbPPMHNVf2EXuzpq2xMZLhQZMW";
     std::string const NET_WALLET_ADDRESS = "";
@@ -320,9 +319,7 @@ namespace config
     const uint16_t RPC_DEFAULT_PORT = 39994;
     const uint16_t ZMQ_DEFAULT_PORT = 39995;
     const uint16_t ANET_DEFAULT_PORT = 39996;
-    boost::uuids::uuid const NETWORK_ID = { {
-        0x11, 0x11, 0x11, 0x11, 0xFF, 0xFF, 0xFF, 0x11, 0x11, 0x11, 0xFF, 0xFF, 0xFF, 0x11, 0x11, 0x1C
-      } }; // Bender's daydream
+    boost::uuids::uuid const NETWORK_ID = { { ARQMA_NET_ID_STAGENET_BYTES } };
     std::string const GOV_WALLET_ADDRESS = "as3DH2He8go7QzsiWc2PK4by2XdQZmUTF8Bv2bKY3egmRH9zPAF3iwWFteTPYaob4m5GuCNTLHFgtVdA6nbuP3Gp1x4Fvjv5G";
     std::string const DEV_WALLET_ADDRESS = "as1gAmaQQZMDy8SQzeqQSxGJJJpinLxSpgALxxZEDyNL6QB6hREvXzoVDi9LrFGJVu1x33toQVe9hWeXdhsjnkg7199GtodQy";
     std::string const NET_WALLET_ADDRESS = "as1u1cXxqXRgkRTiYp6ymQ6AymVM4qcogP5R3MVogLabGMfqWvcKB2GQMqjcBaLbjMaCMmeWGbJ8hQEzi7S97xa51NUz3NwNs";
