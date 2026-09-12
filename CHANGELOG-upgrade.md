@@ -4,6 +4,10 @@
 
 ### Fixes
 
+- Stabilize storage anti-entropy unit tests: wait for `gossip_rounds` (and
+  digest/sync/membership counters) in the same poll loop as payload
+  convergence; run the first gossip round immediately instead of after a full
+  interval sleep.
 - Unblock `arqma-storage` / `arqma-router` shutdown: `StorageServer::stop` and
   `RouterServer::stop` self-connect to wake a synchronous `accept()` before
   `join()` (close alone could hang unit tests and process teardown). Apply a
