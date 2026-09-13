@@ -286,8 +286,9 @@ namespace config
   const uint16_t RPC_DEFAULT_PORT = 19994;
   const uint16_t ZMQ_DEFAULT_PORT = 19995;
   const uint16_t ANET_DEFAULT_PORT = 19996;
-  // NETWORK_ID is generated at build time from git commit (valid) or
-  // commit+dirty content hash (uncommitted changes). See cmake/GenNetworkId.cmake.
+  // Mainnet NETWORK_ID is the historical fixed UUID (live P2P continuity).
+  // Testnet/stagenet IDs are commit-scoped (dirty tree isolates). See
+  // cmake/GenNetworkId.cmake.
   boost::uuids::uuid const NETWORK_ID = { { ARQMA_NET_ID_MAINNET_BYTES } };
   std::string const GENESIS_TX = "011201ff00011e026bc5c7db8a664f652d78adb587ac4d759c6757258b64ef9cba3c0354e64fb2e42101abca6a39c561d0897be183eb0143990eba201aa7d2c652ab0555d28bb4b70728";
   uint32_t const GENESIS_NONCE = 19993;
