@@ -13,7 +13,7 @@
 // Canonical seed: <commit> or <commit>-dirty-<sha256>.
 #define ARQMA_NET_ID_SEED "@ARQMA_NET_ID_SEED@"
 
-// 16-byte UUID payloads: SHA256("arqma-network-id|<net>|<seed>")[0..15]
+// Mainnet: historical fixed UUID. Testnet/stagenet: SHA256("arqma-network-id|<net>|<seed>")[0..15]
 #define ARQMA_NET_ID_MAINNET_BYTES @ARQMA_NET_ID_MAINNET_BYTES@
 #define ARQMA_NET_ID_TESTNET_BYTES @ARQMA_NET_ID_TESTNET_BYTES@
 #define ARQMA_NET_ID_STAGENET_BYTES @ARQMA_NET_ID_STAGENET_BYTES@

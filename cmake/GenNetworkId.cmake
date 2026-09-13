@@ -1,9 +1,10 @@
 # Copyright (c) 2018 - 2026, The Arqma Network
 #
 # Build-time NETWORK_ID (dirty detection patterned on hyle-team/zano version.cmake):
-#   - clean tree -> ID derived only from `git rev-parse HEAD` (valid)
-#   - dirty tree -> ID derived from commit + "-dirty-" + content hash of
-#                   uncommitted changes (any local edit isolates the node)
+#   - mainnet   -> ALWAYS the historical fixed UUID (live P2P continuity)
+#   - testnet / stagenet:
+#       clean tree -> ID derived only from `git rev-parse HEAD` (valid)
+#       dirty tree -> commit + "-dirty-" + content hash (local edit isolates)
 #
 # Expected -D vars: GIT, TO (output header path), SRC_DIR (repo root)
 
@@ -112,7 +113,8 @@ else()
   endif()
 endif()
 
-arqma_uuid_bytes_for_net("${ARQMA_NET_ID_SEED}" "mainnet" ARQMA_NET_ID_MAINNET_BYTES)
+# Historical mainnet UUID from master — never tip/tarball scoped.
+set(ARQMA_NET_ID_MAINNET_BYTES "0x11, 0x11, 0x11, 0x11, 0xFF, 0xFF, 0xFF, 0x11, 0x11, 0x11, 0xFF, 0xFF, 0xFF, 0x11, 0x11, 0x1A")
 arqma_uuid_bytes_for_net("${ARQMA_NET_ID_SEED}" "testnet" ARQMA_NET_ID_TESTNET_BYTES)
 arqma_uuid_bytes_for_net("${ARQMA_NET_ID_SEED}" "stagenet" ARQMA_NET_ID_STAGENET_BYTES)
 
@@ -123,9 +125,10 @@ endif()
 
 configure_file("${_template}" "${TO}" @ONLY)
 
-message(STATUS "NETWORK_ID seed: ${ARQMA_NET_ID_SEED}")
+message(STATUS "NETWORK_ID seed (testnet/stagenet): ${ARQMA_NET_ID_SEED}")
+message(STATUS "NETWORK_ID mainnet: fixed historical UUID")
 if(ARQMA_NET_ID_DIRTY)
-  message(STATUS "NETWORK_ID dirty: yes (uncommitted changes isolate this build)")
+  message(STATUS "NETWORK_ID dirty: yes (isolates testnet/stagenet builds only)")
 else()
-  message(STATUS "NETWORK_ID dirty: no (valid commit-scoped ID)")
+  message(STATUS "NETWORK_ID dirty: no (commit-scoped testnet/stagenet ID)")
 endif()

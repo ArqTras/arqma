@@ -24,18 +24,19 @@ Makefile helpers:
 
 ## NETWORK_ID (build-time)
 
-P2P `NETWORK_ID` for mainnet / testnet / stagenet is generated every build
-(`cmake/GenNetworkId.cmake` → `${CMAKE_BINARY_DIR}/network_id_generated.h`),
-using the same dirty-tree idea as hyle-team/zano `version.cmake`:
+P2P `NETWORK_ID` is produced every build
+(`cmake/GenNetworkId.cmake` → `${CMAKE_BINARY_DIR}/network_id_generated.h`):
 
-- Clean tree → seed is full `git rev-parse HEAD` (valid commit-scoped ID).
-- Dirty tree (diff and/or untracked) → seed is
-  `<commit>-dirty-<sha256(diff+untracked)>` so the node cannot join peers built
-  from the clean commit.
-- Per-net bytes: `SHA256("arqma-network-id|<net>|<seed>")[0..15]`.
+- **Mainnet** → historical fixed UUID (same as `master`). Tip/dirty state must
+  never split live peers.
+- **Testnet / stagenet** → commit-scoped seed (Zano-style dirty detection):
+  - Clean tree → `git rev-parse HEAD`
+  - Dirty (diff and/or untracked) →
+    `<commit>-dirty-<sha256(diff+untracked)>`
+  - Bytes: `SHA256("arqma-network-id|<net>|<seed>")[0..15]`
 
-Daemon logs the seed at P2P init. Commit before sharing binaries meant to peer
-with other clean builds.
+Daemon logs the seed at P2P init. Commit before sharing testnet/stagenet
+binaries meant to peer with other clean tip builds.
 
 ## Branch workflow
 

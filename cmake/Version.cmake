@@ -37,7 +37,9 @@ function (write_static_network_id_header seed dirty)
   set(ARQMA_NET_ID_DIRTY ${dirty})
   set(ARQMA_NET_ID_DIRTY_HASH "")
   set(ARQMA_NET_ID_SEED "${seed}")
-  foreach(_net IN ITEMS mainnet testnet stagenet)
+  # Mainnet stays on the historical fixed UUID (live P2P continuity).
+  set(ARQMA_NET_ID_MAINNET_BYTES "0x11, 0x11, 0x11, 0x11, 0xFF, 0xFF, 0xFF, 0x11, 0x11, 0x11, 0xFF, 0xFF, 0xFF, 0x11, 0x11, 0x1A")
+  foreach(_net IN ITEMS testnet stagenet)
     string(SHA256 _hex "arqma-network-id|${_net}|${seed}")
     string(TOLOWER "${_hex}" _hex)
     set(_bytes "")
@@ -82,7 +84,7 @@ elseif (GIT_FOUND OR Git_FOUND)
             "-D" "TO=${CMAKE_BINARY_DIR}/network_id_generated.h"
             "-P" "${CMAKE_SOURCE_DIR}/cmake/GenNetworkId.cmake"
     WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
-    COMMENT "Generating commit-scoped NETWORK_ID"
+    COMMENT "Generating NETWORK_ID header (fixed mainnet; commit-scoped test/stage)"
     SOURCES "${CMAKE_SOURCE_DIR}/src/network_id_generated.h.in"
             "${CMAKE_SOURCE_DIR}/cmake/GenNetworkId.cmake")
   # Configure-time seed so the first compilation finds the header.
