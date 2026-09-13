@@ -139,6 +139,9 @@ before HF21 so exclusive mesh has a CURVE stack.
 - **macOS product / cross:** native Homebrew unit build, or
   `make depends target=arm64-apple-darwin` / `x86_64-apple-darwin`.
 - Do **not** commit `build/` or binaries.
+- **NETWORK_ID:** mainnet keeps the historical fixed P2P UUID (upgrade nodes
+  still peer with live mainnet). Testnet/stagenet IDs are commit-scoped; a dirty
+  tree gets a distinct ID (daemon logs `NETWORK_ID seed=` at P2P init).
 
 ### Package inventory (ship from `bin/`)
 

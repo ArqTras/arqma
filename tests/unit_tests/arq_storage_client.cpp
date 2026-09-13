@@ -416,26 +416,26 @@ TEST(arq_storage_server, gossips_kv_via_anti_entropy)
   const auto expected = arq_storage::entry_digest_hex("payload", "from-a", 0);
   EXPECT_NE(std::string::npos, digest.body.find(expected));
 
+  // Payload can land mid-gossip_once before gossip_rounds++ — wait for both.
   bool converged = false;
-  for (int i = 0; i < 40; ++i) {
+  arq_storage::StatusSnapshot snap{};
+  for (int i = 0; i < 60; ++i) {
     std::this_thread::sleep_for(std::chrono::milliseconds{250});
     arq_storage::Config cfg{arq_storage::Backend::Remote, replica.base_url(), std::chrono::milliseconds{2000}};
     arq_storage::StorageClient reader{cfg};
     const auto got = reader.retrieve("gossip", "payload");
-    if (!got.error && got.value == "from-a") {
+    snap = reader.fetch_status();
+    if (!got.error && got.value == "from-a" && snap.reachable && snap.gossip_rounds >= 1u && snap.digest_ok >= 1u &&
+        snap.sync_ok >= 1u) {
       converged = true;
       break;
     }
   }
   EXPECT_TRUE(converged);
-  {
-    arq_storage::StorageClient replica_status{{arq_storage::Backend::Remote, replica.base_url()}};
-    const auto snap = replica_status.fetch_status();
-    EXPECT_TRUE(snap.reachable);
-    EXPECT_GE(snap.gossip_rounds, 1u);
-    EXPECT_GE(snap.digest_ok, 1u);
-    EXPECT_GE(snap.sync_ok, 1u);
-  }
+  EXPECT_TRUE(snap.reachable);
+  EXPECT_GE(snap.gossip_rounds, 1u);
+  EXPECT_GE(snap.digest_ok, 1u);
+  EXPECT_GE(snap.sync_ok, 1u);
   primary.stop();
   replica.stop();
 }
@@ -461,26 +461,26 @@ TEST(arq_storage_server, gossips_snode_membership_via_anti_entropy)
   ASSERT_TRUE(catalog);
   EXPECT_NE(std::string::npos, catalog.body.find("pk"));
 
+  // Membership can land mid-gossip_once before gossip_rounds++ — wait for both.
   bool converged = false;
-  for (int i = 0; i < 40; ++i) {
+  arq_storage::StatusSnapshot snap{};
+  for (int i = 0; i < 60; ++i) {
     std::this_thread::sleep_for(std::chrono::milliseconds{250});
     arq_storage::Config cfg{arq_storage::Backend::Remote, replica.base_url(), std::chrono::milliseconds{2000}};
     arq_storage::StorageClient reader{cfg};
     const auto got = reader.get_snodes_for_pubkey("pk");
+    snap = reader.fetch_status();
     if (!got.error && got.value.size() == 2u && got.value[0] == replica.base_url() &&
-        got.value[1] == "http://127.0.0.1:9") {
+        got.value[1] == "http://127.0.0.1:9" && snap.reachable && snap.gossip_rounds >= 1u &&
+        snap.membership_ok >= 1u) {
       converged = true;
       break;
     }
   }
   EXPECT_TRUE(converged);
-  {
-    arq_storage::StorageClient replica_status{{arq_storage::Backend::Remote, replica.base_url()}};
-    const auto snap = replica_status.fetch_status();
-    EXPECT_TRUE(snap.reachable);
-    EXPECT_GE(snap.gossip_rounds, 1u);
-    EXPECT_GE(snap.membership_ok, 1u);
-  }
+  EXPECT_TRUE(snap.reachable);
+  EXPECT_GE(snap.gossip_rounds, 1u);
+  EXPECT_GE(snap.membership_ok, 1u);
   primary.stop();
   replica.stop();
 }
