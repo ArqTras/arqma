@@ -38,7 +38,7 @@ then **HF21 exclusive native mesh** (mainnet height **5 000 000**), with Pulse a
 **Docs for this branch:**
 
 - [docs/PRODUCT.md](docs/PRODUCT.md) — what ships vs probe-only
-- [docs/ETN_A_C.md](docs/ETN_A_C.md) — ETN custody + wrap sketch (branch `cursor/etf-f2c7`)
+- [docs/ETN_A_C.md](docs/ETN_A_C.md) — ETN custody + wrap sketch (branch `ETF`)
 - [docs/OPERATOR_UPGRADE.md](docs/OPERATOR_UPGRADE.md) — operator knobs, HF checklist, how to test
 - [docs/BINARIES.md](docs/BINARIES.md) — launch flags for every binary
 - [docs/UPGRADE_ROADMAP.md](docs/UPGRADE_ROADMAP.md) — milestone map

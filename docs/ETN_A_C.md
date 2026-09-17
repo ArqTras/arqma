@@ -1,6 +1,6 @@
 # Arqma ETN path — models A + C (sketch)
 
-Status: **design sketch** on branch `cursor/etf-f2c7`. Not consensus.
+Status: **design sketch** on branch `ETF`. Not consensus.
 Does **not** flip Pulse stage 3, default `--arqnet-backend`, HF heights, or
 mainnet `NETWORK_ID`.
 
