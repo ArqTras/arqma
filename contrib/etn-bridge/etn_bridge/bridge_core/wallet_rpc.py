@@ -32,10 +32,14 @@ def wallet_rpc(method: str, params: dict[str, Any] | None = None) -> dict[str, A
     return data.get("result") or {}
 
 
-def find_incoming_tx(min_amount: int, payment_id_hint: str = "") -> dict[str, Any] | None:
-    """Best-effort: scan recent incoming transfers for amount match.
+def find_incoming_tx(
+    min_amount: int,
+    payment_id_hint: str = "",
+    address: str = "",
+) -> dict[str, Any] | None:
+    """Best-effort: scan recent incoming transfers for amount / address match.
 
-    Production issuers should use dedicated subaddresses per swap (Loki pattern).
+    Prefer dedicated subaddresses per swap (create_deposit_subaddress).
     """
     result = wallet_rpc("get_transfers", {"in": True, "pending": True})
     incoming = list(result.get("in") or []) + list(result.get("pending") or [])
@@ -44,9 +48,24 @@ def find_incoming_tx(min_amount: int, payment_id_hint: str = "") -> dict[str, An
         if amount < min_amount:
             continue
         txid = tx.get("txid") or tx.get("tx_hash") or ""
-        if payment_id_hint and payment_id_hint not in str(tx.get("payment_id", "")) and payment_id_hint not in txid:
-            # soft filter — still allow amount-only match when hint empty
-            if payment_id_hint:
+        tx_addr = str(tx.get("address") or "")
+        if address and tx_addr and address != tx_addr:
+            continue
+        if payment_id_hint and not address:
+            if payment_id_hint not in str(tx.get("payment_id", "")) and payment_id_hint not in txid:
                 continue
-        return {"txid": txid, "amount": amount, "height": tx.get("height") or 0}
+        return {"txid": txid, "amount": amount, "height": tx.get("height") or 0, "address": tx_addr}
     return None
+
+
+def create_deposit_subaddress(label: str) -> dict[str, Any]:
+    """Allocate a fresh subaddress for one mint deposit (Loki-style)."""
+    result = wallet_rpc("create_address", {"account_index": 0, "label": label})
+    address = result.get("address") or ""
+    if not address:
+        raise RuntimeError("create_address returned no address")
+    return {
+        "address": address,
+        "address_index": result.get("address_index"),
+        "label": label,
+    }

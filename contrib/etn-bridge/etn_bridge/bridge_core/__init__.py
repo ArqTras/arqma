@@ -19,12 +19,19 @@ DEMO = os.environ.get("ETN_DEMO", "1") not in ("0", "false", "False")
 BRIDGE_TOKEN = os.environ.get("ETN_BRIDGE_TOKEN", os.environ.get("ARQMA_STACK_TOKEN", ""))
 # Loki-style daily volume cap (atomic units). 0 disables.
 DAILY_LIMIT_ATOMIC = int(os.environ.get("ETN_DAILY_LIMIT_ATOMIC", "0"))
+BRIDGE_PAUSED = os.environ.get("ETN_BRIDGE_PAUSED", "0") in ("1", "true", "True")
 
 
 def token_ok(provided: str | None) -> bool:
     if not BRIDGE_TOKEN:
         return True
     return (provided or "") == BRIDGE_TOKEN
+
+
+def pause_reason() -> str | None:
+    if BRIDGE_PAUSED:
+        return "bridge paused (ETN_BRIDGE_PAUSED)"
+    return None
 
 
 def daily_volume_atomic(direction: str) -> int:
@@ -100,7 +107,18 @@ def create_swap(direction: str, amount_atomic: str, dest_address: str) -> Swap:
     now = time.time()
     swap_id = str(uuid.uuid4())
     if direction == "mint":
-        deposit_hint = f"demo-arq-deposit:{swap_id}" if DEMO else f"issuer-arq-subaddress-for:{swap_id}"
+        deposit_hint = f"demo-arq-deposit:{swap_id}"
+        if not DEMO:
+            try:
+                from etn_bridge.bridge_core.wallet_rpc import WALLET_RPC_URL, create_deposit_subaddress
+
+                if WALLET_RPC_URL:
+                    sub = create_deposit_subaddress(f"etn-mint-{swap_id[:8]}")
+                    deposit_hint = sub["address"]
+                else:
+                    deposit_hint = f"issuer-arq-subaddress-for:{swap_id}"
+            except Exception as exc:  # noqa: BLE001
+                deposit_hint = f"issuer-arq-subaddress-error:{exc}"
     else:
         deposit_hint = f"demo-eth-deposit:{swap_id}" if DEMO else f"warq-bridge-contract:{swap_id}"
     swap = Swap(

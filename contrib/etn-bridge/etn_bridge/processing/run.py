@@ -6,13 +6,13 @@ import argparse
 import os
 import time
 
-from etn_bridge.bridge_core import DEMO, get_swap, list_swaps, publish_attestation, update_swap
+from etn_bridge.bridge_core import DEMO, list_swaps, pause_reason, publish_attestation, update_swap
 from etn_bridge.bridge_core.wallet_rpc import WALLET_RPC_URL, find_incoming_tx
 
 
 def sweep_deposits() -> int:
     """Attach ARQ deposit txids to awaiting mint swaps when wallet-rpc is configured."""
-    if DEMO or not WALLET_RPC_URL:
+    if DEMO or not WALLET_RPC_URL or pause_reason():
         return 0
     n = 0
     for swap in list_swaps(200):
@@ -21,7 +21,13 @@ def sweep_deposits() -> int:
         if swap.arq_txid:
             continue
         try:
-            hit = find_incoming_tx(int(swap.amount_atomic), payment_id_hint=swap.id[:8])
+            # Prefer exact subaddress match when create_address populated deposit_hint.
+            addr = swap.deposit_hint if len(swap.deposit_hint) >= 90 else ""
+            hit = find_incoming_tx(
+                int(swap.amount_atomic),
+                payment_id_hint=swap.id[:8],
+                address=addr,
+            )
         except Exception as exc:  # noqa: BLE001
             print("sweep error", swap.id, exc)
             continue
@@ -35,6 +41,8 @@ def sweep_deposits() -> int:
 
 
 def process_once() -> int:
+    if pause_reason():
+        return 0
     swept = sweep_deposits()
     done = 0
     for swap in list_swaps(200):

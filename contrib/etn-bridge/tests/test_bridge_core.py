@@ -22,6 +22,7 @@ class BridgeCoreTests(unittest.TestCase):
         os.environ["ETN_DEMO"] = "1"
         os.environ.pop("ETN_BRIDGE_TOKEN", None)
         os.environ["ETN_DAILY_LIMIT_ATOMIC"] = "0"
+        os.environ["ETN_BRIDGE_PAUSED"] = "0"
         # Reload module so env is picked up.
         import importlib
 
@@ -59,6 +60,16 @@ class BridgeCoreTests(unittest.TestCase):
         self.assertIsNotNone(err)
         self.assertIn("daily limit exceeded", err)
         self.assertIsNone(self.core.check_daily_limit("mint", "600"))
+
+    def test_pause_flag(self) -> None:
+        os.environ["ETN_BRIDGE_PAUSED"] = "1"
+        import importlib
+
+        importlib.reload(self.core)
+        self.assertIsNotNone(self.core.pause_reason())
+        os.environ["ETN_BRIDGE_PAUSED"] = "0"
+        importlib.reload(self.core)
+        self.assertIsNone(self.core.pause_reason())
 
 
 if __name__ == "__main__":

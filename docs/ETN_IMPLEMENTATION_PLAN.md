@@ -19,6 +19,8 @@ Branch: `ETF`. Language: English. Authorship: ArqTras (no Cursor co-author).
 | Wire to live `wallet-rpc` `get_reserve_proof` + height/balance | Done (`etn_wallet_rpc`) |
 | Unit test: HTTP status + demo reserve refresh | Done |
 | Issuer liability publish + reconcile endpoint | Done |
+| Auditor PoR package (`/v1/etn/por-package`) | Done |
+| Public read-only auditor GETs | Done |
 | Production TLS / multi-issuer registry | TODO |
 
 **Exit criteria:** issuer can refresh a PoR blob, store it, and serve `/v1/etn/reserve` to an auditor.
@@ -32,6 +34,8 @@ Branch: `ETF`. Language: English. Authorship: ArqTras (no Cursor co-author).
 | `ETN_BRIDGE_TOKEN` + Bearer / `X-ETN-Token` auth | Done |
 | Daily volume limit (`ETN_DAILY_LIMIT_ATOMIC`) | Done |
 | Deposit sweep via wallet-rpc `get_transfers` | Done (processing worker) |
+| Per-swap deposit subaddress (`create_address`) | Done (when `ETN_DEMO=0` + wallet-rpc) |
+| Bridge pause (`ETN_BRIDGE_PAUSED`) | Done |
 | Burn detection via daemon/wallet RPC | Hook + sweep |
 | Attestation publish into `arqma-etn-audit` | Hook + demo |
 | Mainnet ETH deploy + audits | TODO |
@@ -40,15 +44,16 @@ Branch: `ETF`. Language: English. Authorship: ArqTras (no Cursor co-author).
 
 ## Phase 3 — Hardening
 
-- Manual balance reconcile endpoint shipped (`/v1/etn/reconcile`); ops UI still thin
-- Multisig mint / pause / upgrade keys
+- Manual balance reconcile + PoR package for auditors shipped
+- Bridge pause + daily limits env-gated
+- Multisig mint / pause / upgrade keys (on-chain)
 - Monitoring + soak against stagenet
 - Optional true atomic swap research (`arq_swap`) — **separate product gate**
 
 ## Phase 4 — Product launch
 
 - Legal prospectus / KID
-- Auditor runbook using PoR packages
+- Auditor runbook: [`ETN_AUDITOR.md`](ETN_AUDITOR.md)
 - Public frontend behind issuer domain (not default Arqma UX)
 
 ## Engineering order (recommended)

@@ -213,6 +213,37 @@ struct EtNServer::Impl
     return o.str();
   }
 
+  std::string por_package_json() const
+  {
+    const auto r = store->latest_reserve();
+    if (!r)
+      return {};
+    const auto recon = reconcile_json();
+    const auto ids = store->list_attestation_ids();
+    std::ostringstream o;
+    o << "{\"schema\":\"arqma-etn-por-package-v1\""
+      << ",\"issuer_id\":\"" << store->issuer_id() << "\""
+      << ",\"reserve\":" << reserve_to_json(*r)
+      << ",\"reconcile\":" << (recon.empty() ? "null" : recon)
+      << ",\"attestation_count\":" << ids.size()
+      << ",\"attestation_ids\":[";
+    const std::size_t limit = ids.size() < 64 ? ids.size() : 64;
+    for (std::size_t i = 0; i < limit; ++i) {
+      if (i)
+        o << ',';
+      o << '"' << ids[i] << '"';
+    }
+    o << "]}";
+    return o.str();
+  }
+
+  static bool public_get_path(const std::string& p)
+  {
+    // Read-only auditor surface (no token). Mutations still require --token when set.
+    return p == "/" || p == "/status" || p == "/v1/etn/status" || p == "/v1/etn/reserve" ||
+           p == "/v1/etn/reconcile" || p == "/v1/etn/por-package";
+  }
+
   std::string handle_json_rpc(const std::string& body)
   {
     const auto method = extract_json_string(body, "method");
@@ -239,6 +270,12 @@ struct EtNServer::Impl
     }
     if (method == "etn_reconcile") {
       const auto out = reconcile_json();
+      if (out.empty())
+        return json_rpc_error(id, -32001, "no reserve");
+      return json_rpc_result(id, out);
+    }
+    if (method == "etn_get_por_package") {
+      const auto out = por_package_json();
       if (out.empty())
         return json_rpc_error(id, -32001, "no reserve");
       return json_rpc_result(id, out);
@@ -284,8 +321,10 @@ struct EtNServer::Impl
     const auto p = path_only(path);
     if (method == "GET" && (p == "/" || p == "/status"))
       return http_ok("{\"service\":\"arqma-etn-audit\",\"ok\":true}");
-    if (!token_ok(path) && p != "/status" && p != "/")
-      return http_err(401, "unauthorized");
+    if (method != "GET" || !public_get_path(p)) {
+      if (!token_ok(path))
+        return http_err(401, "unauthorized");
+    }
     if (method == "GET" && p == "/v1/etn/status")
       return http_ok(status_json());
     if (method == "GET" && p == "/v1/etn/reserve") {
@@ -304,6 +343,12 @@ struct EtNServer::Impl
     }
     if (method == "GET" && p == "/v1/etn/reconcile") {
       const auto out = reconcile_json();
+      if (out.empty())
+        return http_err(404, "no reserve");
+      return http_ok(out);
+    }
+    if (method == "GET" && p == "/v1/etn/por-package") {
+      const auto out = por_package_json();
       if (out.empty())
         return http_err(404, "no reserve");
       return http_ok(out);

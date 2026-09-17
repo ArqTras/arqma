@@ -47,6 +47,14 @@ curl -s http://127.0.0.1:22050/v1/etn/reserve | jq .
 PoR JSON keeps `liability_atomic` as issuer-published liabilities and fills
 `wallet_balance_atomic` + `reserve_proof` from wallet-rpc when configured.
 
+Auditor package (no token on GET):
+
+```bash
+curl -s http://127.0.0.1:22050/v1/etn/por-package | jq .
+```
+
+See [`ETN_AUDITOR.md`](ETN_AUDITOR.md).
+
 Cold spend stays on a separate offline / multisig wallet. Do not put spend keys on the audit host.
 
 ## Model C — wrap (demo)
@@ -87,8 +95,9 @@ cd contrib/etn-bridge && python -m unittest discover -s tests -v
 - [ ] TLS termination in front of audit + bridge API
 - [ ] `ETN_BRIDGE_TOKEN` / stack token enabled
 - [ ] `ETN_DAILY_LIMIT_ATOMIC` set and monitored
-- [ ] Wallet-rpc bound to localhost only
+- [ ] `ETN_BRIDGE_PAUSED` runbook tested
+- [ ] Wallet-rpc bound to localhost only; mint uses per-swap subaddresses
 - [ ] Mint keys in HSM / multisig — not on API box
-- [ ] Manual balance reconcile (Loki-style)
+- [ ] Manual balance reconcile + auditor PoR package review
 - [ ] Contract audit before mainnet wARQ
 - [ ] Legal sign-off (see implementation plan phase 0)

@@ -72,6 +72,18 @@ paths:
                 $ref: "#/components/schemas/ReconcileReport"
         "404":
           description: No reserve yet
+  /v1/etn/por-package:
+    get:
+      summary: Auditor PoR package (reserve + reconcile + attestation ids)
+      responses:
+        "200":
+          description: PorPackage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PorPackage"
+        "404":
+          description: No reserve yet
   /v1/etn/attestations:
     get:
       summary: List attestation ids
@@ -109,7 +121,7 @@ paths:
           description: Not found
   /json_rpc:
     post:
-      summary: JSON-RPC (etn_get_status, etn_get_reserve, etn_refresh_reserve, etn_set_liability, etn_reconcile, etn_list_attestations, etn_get_attestation, etn_publish_attestation)
+      summary: JSON-RPC (etn_get_status, etn_get_reserve, etn_refresh_reserve, etn_set_liability, etn_reconcile, etn_get_por_package, etn_list_attestations, etn_get_attestation, etn_publish_attestation)
       requestBody:
         required: true
         content:
@@ -159,6 +171,24 @@ components:
           format: int64
         has_reserve_proof:
           type: boolean
+    PorPackage:
+      type: object
+      properties:
+        schema:
+          type: string
+          example: arqma-etn-por-package-v1
+        issuer_id:
+          type: string
+        reserve:
+          $ref: "#/components/schemas/ReserveSummary"
+        reconcile:
+          $ref: "#/components/schemas/ReconcileReport"
+        attestation_count:
+          type: integer
+        attestation_ids:
+          type: array
+          items:
+            type: string
     BurnMintAttestation:
       type: object
       required: [direction, arq_txid, arq_amount_atomic, eth_txid, warq_amount_atomic, eth_chain_id, issuer_pubkey, signature]

@@ -40,5 +40,6 @@ python -m unittest discover -s tests -v
 | `ETN_DEMO` | `1` simulate mint/redeem (default) |
 | `ETN_BRIDGE_TOKEN` | Bearer / `X-ETN-Token` auth |
 | `ETN_DAILY_LIMIT_ATOMIC` | Soft daily volume cap (0 off) |
-| `ETN_WALLET_RPC_URL` | Deposit sweep for mint (`ETN_DEMO=0`) |
+| `ETN_BRIDGE_PAUSED` | `1` refuse new swaps / finalize |
+| `ETN_WALLET_RPC_URL` | Deposit sweep + subaddress mint (`ETN_DEMO=0`) |
 | `ETN_AUDIT_URL` | `arqma-etn-audit` base URL |

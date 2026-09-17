@@ -52,7 +52,8 @@ Arqma A+C follows the **custodial wrap + issuer audit** family, not in-consensus
 |------|----------|
 | `docs/ETN_A_C.md` | This architecture overview |
 | `docs/ETN_IMPLEMENTATION_PLAN.md` | Phased rollout |
-| `docs/ETN_OPERATOR.md` | Runbooks |
+| `docs/ETN_OPERATOR.md` | Operator runbooks |
+| `docs/ETN_AUDITOR.md` | Auditor PoR package checklist |
 | `docs/ETN_RPC.md` | HTTP + JSON-RPC reference |
 | `docs/openapi/arq-etn.openapi.yaml` | OpenAPI 3 for `arqma-etn-audit` |
 | `src/arq_etn/` | C++ library + `arqma-etn-audit` binary |

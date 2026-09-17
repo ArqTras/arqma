@@ -14,11 +14,13 @@ OpenAPI: [`openapi/arq-etn.openapi.yaml`](openapi/arq-etn.openapi.yaml).
 | POST | `/v1/etn/reserve/refresh` | Rebuild from wallet-rpc or demo stub |
 | POST | `/v1/etn/reserve/liability` | Set issuer-published `liability_atomic` |
 | GET | `/v1/etn/reconcile` | Compare wallet balance vs liabilities |
+| GET | `/v1/etn/por-package` | Auditor bundle (reserve + reconcile + attestation ids) |
 | GET | `/v1/etn/attestations` | List attestation ids |
 | GET | `/v1/etn/attestations/{id}` | Fetch one attestation |
 | POST | `/v1/etn/attestations` | Publish attestation (issuer) |
 
-Optional query `token=` when `--token` is set (except `/status`).
+Optional query `token=` when `--token` is set for **mutations** and attestation list/get/publish.
+Public GETs (no token): `/status`, `/v1/etn/status`, `/v1/etn/reserve`, `/v1/etn/reconcile`, `/v1/etn/por-package`.
 
 ## arqma-etn-audit — JSON-RPC (`POST /json_rpc`)
 
@@ -31,6 +33,7 @@ Compatible envelope: `{"jsonrpc":"2.0","id":"0","method":"...","params":{...}}`.
 | `etn_refresh_reserve` | `{}` | refreshed summary |
 | `etn_set_liability` | `{ "liability_atomic": "..." }` | updated reserve |
 | `etn_reconcile` | `{}` | covered / surplus vs PoR package |
+| `etn_get_por_package` | `{}` | auditor package |
 | `etn_list_attestations` | `{}` | `{ "ids": [...] }` |
 | `etn_get_attestation` | `{ "id": "..." }` | attestation object |
 | `etn_publish_attestation` | attestation fields | `{ "id": "..." }` |
@@ -63,3 +66,4 @@ Do **not** reinvent these — call `arqma-wallet-rpc` (see `src/arq_etn/etn_wall
 
 Auth (when `ETN_BRIDGE_TOKEN` is set): `Authorization: Bearer <token>` or `X-ETN-Token: <token>`
 on mutate / list endpoints. Daily cap: `ETN_DAILY_LIMIT_ATOMIC` (0 = disabled).
+Pause: `ETN_BRIDGE_PAUSED=1` returns HTTP 503 on create/finalize.

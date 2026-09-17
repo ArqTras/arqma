@@ -156,5 +156,23 @@ TEST(arq_etn, http_server_status_and_refresh)
     EXPECT_NE(std::string::npos, raw.find("\"covered\""));
     EXPECT_NE(std::string::npos, raw.find("\"liability_atomic\":\"500\""));
   }
+  {
+    boost::asio::io_context io;
+    boost::asio::ip::tcp::socket sock{io};
+    const auto colon = base.rfind(':');
+    const auto host = base.substr(std::strlen("http://"), colon - std::strlen("http://"));
+    const auto port = base.substr(colon + 1);
+    boost::asio::connect(sock, boost::asio::ip::tcp::resolver{io}.resolve(host, port));
+    const std::string req = "GET /v1/etn/por-package HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n";
+    boost::asio::write(sock, boost::asio::buffer(req));
+    boost::asio::streambuf buf;
+    boost::system::error_code ec;
+    boost::asio::read(sock, buf, boost::asio::transfer_all(), ec);
+    std::istream is{&buf};
+    std::string raw((std::istreambuf_iterator<char>(is)), {});
+    EXPECT_NE(std::string::npos, raw.find("arqma-etn-por-package-v1"));
+    EXPECT_NE(std::string::npos, raw.find("\"reserve\""));
+    EXPECT_NE(std::string::npos, raw.find("\"reconcile\""));
+  }
   server.stop();
 }

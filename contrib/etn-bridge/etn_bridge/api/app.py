@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from etn_bridge.bridge_core import (
+    BRIDGE_PAUSED,
     BRIDGE_TOKEN,
     DAILY_LIMIT_ATOMIC,
     DEMO,
@@ -18,6 +19,7 @@ from etn_bridge.bridge_core import (
     create_swap,
     get_swap,
     list_swaps,
+    pause_reason,
     publish_attestation,
     swap_to_dict,
     token_ok,
@@ -58,6 +60,7 @@ def status():
         "service": "arqma-etn-bridge",
         "ok": True,
         "demo": DEMO,
+        "paused": BRIDGE_PAUSED,
         "auth_required": bool(BRIDGE_TOKEN),
         "daily_limit_atomic": DAILY_LIMIT_ATOMIC,
         "audit_url": os.environ.get("ETN_AUDIT_URL", "http://127.0.0.1:22050"),
@@ -71,6 +74,8 @@ def swap_create(
     x_etn_token: str | None = Header(default=None),
 ):
     _require_token(authorization, x_etn_token)
+    if reason := pause_reason():
+        raise HTTPException(503, reason)
     if body.direction == "mint":
         dest = body.dest_eth_address or ""
         if not dest:
@@ -113,6 +118,8 @@ def swap_finalize(
     x_etn_token: str | None = Header(default=None),
 ):
     _require_token(authorization, x_etn_token)
+    if reason := pause_reason():
+        raise HTTPException(503, reason)
     swap = get_swap(swap_id)
     if not swap:
         raise HTTPException(404, "not found")
