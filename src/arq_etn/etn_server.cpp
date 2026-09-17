@@ -149,6 +149,70 @@ struct EtNServer::Impl
     return reserve_to_json(r);
   }
 
+  std::string set_liability(const std::string& body)
+  {
+    auto amount = extract_json_string(body, "liability_atomic");
+    if (amount.empty()) {
+      // allow bare number: "liability_atomic":123
+      const std::string needle = "\"liability_atomic\":";
+      const auto pos = body.find(needle);
+      if (pos != std::string::npos) {
+        auto i = pos + needle.size();
+        while (i < body.size() && (body[i] == ' ' || body[i] == '\t'))
+          ++i;
+        while (i < body.size() && body[i] >= '0' && body[i] <= '9')
+          amount.push_back(body[i++]);
+      }
+    }
+    if (amount.empty())
+      return {};
+    for (char c : amount) {
+      if (c < '0' || c > '9')
+        return {};
+    }
+    ReserveSummary r;
+    if (const auto prev = store->latest_reserve())
+      r = *prev;
+    r.issuer_id = store->issuer_id();
+    r.liability_atomic = amount;
+    if (r.reserve_proof_blob.empty())
+      r.reserve_proof_blob = "demo-reserve-proof";
+    if (r.as_of_height == 0)
+      r.as_of_height = 1;
+    store->save_reserve(r);
+    return reserve_to_json(r);
+  }
+
+  std::string reconcile_json() const
+  {
+    const auto r = store->latest_reserve();
+    if (!r)
+      return {};
+    std::uint64_t bal = 0;
+    std::uint64_t liab = 0;
+    try {
+      if (!r->wallet_balance_atomic.empty())
+        bal = std::stoull(r->wallet_balance_atomic);
+    } catch (...) {
+    }
+    try {
+      if (!r->liability_atomic.empty())
+        liab = std::stoull(r->liability_atomic);
+    } catch (...) {
+    }
+    const bool covered = bal >= liab;
+    const std::int64_t surplus = static_cast<std::int64_t>(bal) - static_cast<std::int64_t>(liab);
+    std::ostringstream o;
+    o << "{\"issuer_id\":\"" << r->issuer_id << "\""
+      << ",\"as_of_height\":" << r->as_of_height
+      << ",\"wallet_balance_atomic\":\"" << r->wallet_balance_atomic << "\""
+      << ",\"liability_atomic\":\"" << r->liability_atomic << "\""
+      << ",\"covered\":" << (covered ? "true" : "false")
+      << ",\"surplus_atomic\":" << surplus
+      << ",\"has_reserve_proof\":" << (r->reserve_proof_blob.empty() ? "false" : "true") << "}";
+    return o.str();
+  }
+
   std::string handle_json_rpc(const std::string& body)
   {
     const auto method = extract_json_string(body, "method");
@@ -167,6 +231,18 @@ struct EtNServer::Impl
     }
     if (method == "etn_refresh_reserve")
       return json_rpc_result(id, refresh_reserve());
+    if (method == "etn_set_liability") {
+      const auto out = set_liability(body);
+      if (out.empty())
+        return json_rpc_error(id, -32602, "invalid liability_atomic");
+      return json_rpc_result(id, out);
+    }
+    if (method == "etn_reconcile") {
+      const auto out = reconcile_json();
+      if (out.empty())
+        return json_rpc_error(id, -32001, "no reserve");
+      return json_rpc_result(id, out);
+    }
     if (method == "etn_list_attestations") {
       const auto ids = store->list_attestation_ids();
       std::ostringstream o;
@@ -220,6 +296,18 @@ struct EtNServer::Impl
     }
     if (method == "POST" && p == "/v1/etn/reserve/refresh")
       return http_ok(refresh_reserve());
+    if (method == "POST" && p == "/v1/etn/reserve/liability") {
+      const auto out = set_liability(body);
+      if (out.empty())
+        return http_err(400, "invalid liability_atomic");
+      return http_ok(out);
+    }
+    if (method == "GET" && p == "/v1/etn/reconcile") {
+      const auto out = reconcile_json();
+      if (out.empty())
+        return http_err(404, "no reserve");
+      return http_ok(out);
+    }
     if (method == "GET" && p == "/v1/etn/attestations") {
       const auto ids = store->list_attestation_ids();
       std::ostringstream o;

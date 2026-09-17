@@ -37,6 +37,10 @@ arqma-etn-audit \
 
 ```bash
 curl -s -X POST http://127.0.0.1:22050/v1/etn/reserve/refresh | jq .
+curl -s -X POST http://127.0.0.1:22050/v1/etn/reserve/liability \
+  -H 'content-type: application/json' \
+  -d '{"liability_atomic":"1000000000000"}' | jq .
+curl -s http://127.0.0.1:22050/v1/etn/reconcile | jq .
 curl -s http://127.0.0.1:22050/v1/etn/reserve | jq .
 ```
 

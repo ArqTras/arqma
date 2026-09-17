@@ -121,5 +121,40 @@ TEST(arq_etn, http_server_status_and_refresh)
     std::string raw((std::istreambuf_iterator<char>(is)), {});
     EXPECT_NE(std::string::npos, raw.find("demo-reserve-proof"));
   }
+  {
+    boost::asio::io_context io;
+    boost::asio::ip::tcp::socket sock{io};
+    const auto colon = base.rfind(':');
+    const auto host = base.substr(std::strlen("http://"), colon - std::strlen("http://"));
+    const auto port = base.substr(colon + 1);
+    const std::string body = "{\"liability_atomic\":\"500\"}";
+    boost::asio::connect(sock, boost::asio::ip::tcp::resolver{io}.resolve(host, port));
+    const std::string req = "POST /v1/etn/reserve/liability HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: " +
+                            std::to_string(body.size()) + "\r\nConnection: close\r\n\r\n" + body;
+    boost::asio::write(sock, boost::asio::buffer(req));
+    boost::asio::streambuf buf;
+    boost::system::error_code ec;
+    boost::asio::read(sock, buf, boost::asio::transfer_all(), ec);
+    std::istream is{&buf};
+    std::string raw((std::istreambuf_iterator<char>(is)), {});
+    EXPECT_NE(std::string::npos, raw.find("\"liability_atomic\":\"500\""));
+  }
+  {
+    boost::asio::io_context io;
+    boost::asio::ip::tcp::socket sock{io};
+    const auto colon = base.rfind(':');
+    const auto host = base.substr(std::strlen("http://"), colon - std::strlen("http://"));
+    const auto port = base.substr(colon + 1);
+    boost::asio::connect(sock, boost::asio::ip::tcp::resolver{io}.resolve(host, port));
+    const std::string req = "GET /v1/etn/reconcile HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n";
+    boost::asio::write(sock, boost::asio::buffer(req));
+    boost::asio::streambuf buf;
+    boost::system::error_code ec;
+    boost::asio::read(sock, buf, boost::asio::transfer_all(), ec);
+    std::istream is{&buf};
+    std::string raw((std::istreambuf_iterator<char>(is)), {});
+    EXPECT_NE(std::string::npos, raw.find("\"covered\""));
+    EXPECT_NE(std::string::npos, raw.find("\"liability_atomic\":\"500\""));
+  }
   server.stop();
 }

@@ -4,6 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Arqma ETN Bridge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Serif:wght@600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
@@ -13,6 +16,9 @@
     <p class="lead">Custody wrap sketch (model C). Demo mode does not write mainnet chains.</p>
 
     <form id="swap-form">
+      <label>API token (optional)
+        <input id="token" type="password" autocomplete="off" placeholder="ETN_BRIDGE_TOKEN" />
+      </label>
       <label>Direction
         <select name="direction" id="direction">
           <option value="mint">Mint — ARQ → wARQ</option>

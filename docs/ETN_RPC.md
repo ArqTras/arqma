@@ -12,6 +12,8 @@ OpenAPI: [`openapi/arq-etn.openapi.yaml`](openapi/arq-etn.openapi.yaml).
 | GET | `/v1/etn/status` | Service + issuer id + counts |
 | GET | `/v1/etn/reserve` | Latest `ReserveSummary` |
 | POST | `/v1/etn/reserve/refresh` | Rebuild from wallet-rpc or demo stub |
+| POST | `/v1/etn/reserve/liability` | Set issuer-published `liability_atomic` |
+| GET | `/v1/etn/reconcile` | Compare wallet balance vs liabilities |
 | GET | `/v1/etn/attestations` | List attestation ids |
 | GET | `/v1/etn/attestations/{id}` | Fetch one attestation |
 | POST | `/v1/etn/attestations` | Publish attestation (issuer) |
@@ -27,6 +29,8 @@ Compatible envelope: `{"jsonrpc":"2.0","id":"0","method":"...","params":{...}}`.
 | `etn_get_status` | `{}` | same as `/v1/etn/status` |
 | `etn_get_reserve` | `{}` | reserve summary |
 | `etn_refresh_reserve` | `{}` | refreshed summary |
+| `etn_set_liability` | `{ "liability_atomic": "..." }` | updated reserve |
+| `etn_reconcile` | `{}` | covered / surplus vs PoR package |
 | `etn_list_attestations` | `{}` | `{ "ids": [...] }` |
 | `etn_get_attestation` | `{ "id": "..." }` | attestation object |
 | `etn_publish_attestation` | attestation fields | `{ "id": "..." }` |

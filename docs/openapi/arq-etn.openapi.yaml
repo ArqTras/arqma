@@ -42,6 +42,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReserveSummary"
+  /v1/etn/reserve/liability:
+    post:
+      summary: Publish issuer liability (atomic units string)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [liability_atomic]
+              properties:
+                liability_atomic:
+                  type: string
+      responses:
+        "200":
+          description: Updated ReserveSummary
+        "400":
+          description: Invalid amount
+  /v1/etn/reconcile:
+    get:
+      summary: Compare wallet_balance_atomic vs liability_atomic
+      responses:
+        "200":
+          description: ReconcileReport
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconcileReport"
+        "404":
+          description: No reserve yet
   /v1/etn/attestations:
     get:
       summary: List attestation ids
@@ -79,7 +109,7 @@ paths:
           description: Not found
   /json_rpc:
     post:
-      summary: JSON-RPC (etn_get_status, etn_get_reserve, etn_refresh_reserve, etn_list_attestations, etn_get_attestation, etn_publish_attestation)
+      summary: JSON-RPC (etn_get_status, etn_get_reserve, etn_refresh_reserve, etn_set_liability, etn_reconcile, etn_list_attestations, etn_get_attestation, etn_publish_attestation)
       requestBody:
         required: true
         content:
@@ -110,6 +140,25 @@ components:
           type: string
         issuer_id:
           type: string
+    ReconcileReport:
+      type: object
+      properties:
+        issuer_id:
+          type: string
+        as_of_height:
+          type: integer
+          format: int64
+        wallet_balance_atomic:
+          type: string
+        liability_atomic:
+          type: string
+        covered:
+          type: boolean
+        surplus_atomic:
+          type: integer
+          format: int64
+        has_reserve_proof:
+          type: boolean
     BurnMintAttestation:
       type: object
       required: [direction, arq_txid, arq_amount_atomic, eth_txid, warq_amount_atomic, eth_chain_id, issuer_pubkey, signature]

@@ -18,7 +18,8 @@ Branch: `ETF`. Language: English. Authorship: ArqTras (no Cursor co-author).
 | OpenAPI + operator docs | Done |
 | Wire to live `wallet-rpc` `get_reserve_proof` + height/balance | Done (`etn_wallet_rpc`) |
 | Unit test: HTTP status + demo reserve refresh | Done |
-| Production TLS / auth / multi-issuer | TODO |
+| Issuer liability publish + reconcile endpoint | Done |
+| Production TLS / multi-issuer registry | TODO |
 
 **Exit criteria:** issuer can refresh a PoR blob, store it, and serve `/v1/etn/reserve` to an auditor.
 
@@ -39,7 +40,7 @@ Branch: `ETF`. Language: English. Authorship: ArqTras (no Cursor co-author).
 
 ## Phase 3 — Hardening
 
-- Manual balance reconcile UI / ops runbook (limits already env-gated)
+- Manual balance reconcile endpoint shipped (`/v1/etn/reconcile`); ops UI still thin
 - Multisig mint / pause / upgrade keys
 - Monitoring + soak against stagenet
 - Optional true atomic swap research (`arq_swap`) — **separate product gate**
