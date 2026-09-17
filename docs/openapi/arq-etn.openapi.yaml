@@ -1,0 +1,103 @@
+openapi: 3.0.3
+info:
+  title: Arqma ETN audit companion (sketch)
+  version: 0.0.1
+  description: |
+    Planned HTTP surface for `arqma-etn-audit` (model A custody PoR + model C
+    burn/mint attestations). Not implemented. Companion process — not arqmad.
+paths:
+  /v1/etn/status:
+    get:
+      summary: Process health
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  service:
+                    type: string
+                    example: arqma-etn-audit
+                  ok:
+                    type: boolean
+  /v1/etn/reserve:
+    get:
+      summary: Latest reserve / PoR summary
+      responses:
+        "200":
+          description: ReserveSummary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReserveSummary"
+  /v1/etn/reserve/refresh:
+    post:
+      summary: Rebuild reserve proof from configured view-only wallet
+      responses:
+        "200":
+          description: Updated ReserveSummary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReserveSummary"
+  /v1/etn/attestations/{id}:
+    get:
+      summary: Fetch burn↔mint attestation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: BurnMintAttestation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BurnMintAttestation"
+        "404":
+          description: Not found
+components:
+  schemas:
+    ReserveSummary:
+      type: object
+      properties:
+        schema:
+          type: string
+          example: arqma-etn-por-v1
+        as_of_height:
+          type: integer
+          format: int64
+        liability_atomic:
+          type: string
+        reserve_proof:
+          type: string
+        issuer_id:
+          type: string
+    BurnMintAttestation:
+      type: object
+      properties:
+        direction:
+          type: string
+          enum: [mint, redeem]
+        arq_txid:
+          type: string
+        arq_amount_atomic:
+          type: string
+        eth_txid:
+          type: string
+        warq_amount_atomic:
+          type: string
+        eth_chain_id:
+          type: integer
+          format: int64
+        arq_height:
+          type: integer
+          format: int64
+        issuer_pubkey:
+          type: string
+        signature:
+          type: string

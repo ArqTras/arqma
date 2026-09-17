@@ -49,6 +49,8 @@
 
 ### Features
 
+- Sketch ETN models A+C (`docs/ETN_A_C.md`, `src/arq_etn/`, OpenAPI stub): issuer
+  custody PoR path + burn↔mint wrap attestations; no consensus / privacy flip.
 - Generate P2P `NETWORK_ID` at build time via `cmake/GenNetworkId.cmake`:
   mainnet stays on the historical fixed UUID; testnet/stagenet are
   commit-scoped (dirty tree isolates). Daemon logs the seed at P2P init.
