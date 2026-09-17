@@ -18,6 +18,7 @@ and local UI are **secondary probes**, not a Session-class client.
 | `arqma-storage` | Optional HTTP KV + TTL + anti-entropy (operator probe) |
 | `arqma-router` | Optional privacy-router peel/store (operator probe) |
 | `arqma-msg` | Minimal CLI probe over storage/router (`gen` / `send` / `inbox` / `open`) |
+| `arqma-etn-audit` | ETN A+C companion (PoR + attestations) — [`ETN_A_C.md`](ETN_A_C.md) |
 
 Blink lives **in-process** as `src/arq_blink` (quorum sign/verify + collector).
 `get_blink_status` / `print_blink` report that collector plus `wire_connected`

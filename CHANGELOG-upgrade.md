@@ -49,6 +49,12 @@
 
 ### Features
 
+- ETN A+C scaffold: `arqma-etn-audit` (PoR + attestations HTTP/JSON-RPC),
+  `contrib/etn-bridge` (API/processing/frontend + Solidity stubs), full EN docs
+  (`ETN_A_C`, implementation plan, operator, RPC). Demo mode only for wrap mint;
+  no consensus / privacy default changes.
+- Sketch ETN models A+C (`docs/ETN_A_C.md`, `src/arq_etn/`, OpenAPI stub): issuer
+  custody PoR path + burn↔mint wrap attestations; no consensus / privacy flip.
 - Generate P2P `NETWORK_ID` at build time via `cmake/GenNetworkId.cmake`:
   mainnet stays on the historical fixed UUID; testnet/stagenet are
   commit-scoped (dirty tree isolates). Daemon logs the seed at P2P init.

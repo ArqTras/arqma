@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Arqma ETN Bridge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Serif:wght@600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <main>
+    <p class="brand">Arqma</p>
+    <h1>ETN wrap bridge</h1>
+    <p class="lead">Custody wrap sketch (model C). Demo mode does not write mainnet chains.</p>
+
+    <form id="swap-form">
+      <label>API token (optional)
+        <input id="token" type="password" autocomplete="off" placeholder="ETN_BRIDGE_TOKEN" />
+      </label>
+      <label>Direction
+        <select name="direction" id="direction">
+          <option value="mint">Mint — ARQ → wARQ</option>
+          <option value="redeem">Redeem — wARQ → ARQ</option>
+        </select>
+      </label>
+      <label>Amount (atomic)
+        <input name="amount_atomic" id="amount" value="1000000000" required />
+      </label>
+      <label id="dest-label">Destination ETH address
+        <input name="dest" id="dest" placeholder="0x…" required />
+      </label>
+      <button type="submit">Create swap</button>
+    </form>
+
+    <section id="result" hidden>
+      <h2>Swap</h2>
+      <pre id="swap-json"></pre>
+      <label>Deposit / burn tx id
+        <input id="txid" placeholder="arq or eth txid" />
+      </label>
+      <button id="finalize" type="button">Finalize (demo)</button>
+      <pre id="final-json"></pre>
+    </section>
+
+    <section>
+      <h2>Status</h2>
+      <pre id="status-json">loading…</pre>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

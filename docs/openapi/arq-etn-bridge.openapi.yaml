@@ -1,0 +1,93 @@
+openapi: 3.0.3
+info:
+  title: Arqma ETN wrap bridge
+  version: 0.1.0
+  description: |
+    Model C custodial wrap API (`contrib/etn-bridge`). Demo by default.
+    See docs/ETN_OPERATOR.md and docs/ETN_RPC.md.
+servers:
+  - url: http://127.0.0.1:8788
+paths:
+  /v1/status:
+    get:
+      summary: Bridge health
+      responses:
+        "200":
+          description: Status
+  /v1/swap:
+    post:
+      summary: Create mint/redeem intent
+      security:
+        - bearerAuth: []
+        - etnToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [direction, amount_atomic]
+              properties:
+                direction:
+                  type: string
+                  enum: [mint, redeem]
+                amount_atomic:
+                  type: string
+                dest_eth_address:
+                  type: string
+                dest_arq_address:
+                  type: string
+      responses:
+        "200":
+          description: Swap
+        "401":
+          description: Unauthorized
+        "429":
+          description: Daily limit
+        "503":
+          description: Paused
+  /v1/swap/{id}:
+    get:
+      summary: Swap status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Swap
+  /v1/swap/{id}/finalize:
+    post:
+      summary: Attach txids / demo finalize
+      security:
+        - bearerAuth: []
+        - etnToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Finalized or queued
+  /v1/swaps:
+    get:
+      summary: List swaps
+      security:
+        - bearerAuth: []
+        - etnToken: []
+      responses:
+        "200":
+          description: Swap list
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    etnToken:
+      type: apiKey
+      in: header
+      name: X-ETN-Token
