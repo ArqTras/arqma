@@ -16,6 +16,46 @@ import httpx
 DEFAULT_DB = Path(os.environ.get("ETN_BRIDGE_DB", str(Path.home() / ".arqma" / "etn-bridge" / "swaps.db")))
 AUDIT_URL = os.environ.get("ETN_AUDIT_URL", "http://127.0.0.1:22050").rstrip("/")
 DEMO = os.environ.get("ETN_DEMO", "1") not in ("0", "false", "False")
+BRIDGE_TOKEN = os.environ.get("ETN_BRIDGE_TOKEN", os.environ.get("ARQMA_STACK_TOKEN", ""))
+# Loki-style daily volume cap (atomic units). 0 disables.
+DAILY_LIMIT_ATOMIC = int(os.environ.get("ETN_DAILY_LIMIT_ATOMIC", "0"))
+
+
+def token_ok(provided: str | None) -> bool:
+    if not BRIDGE_TOKEN:
+        return True
+    return (provided or "") == BRIDGE_TOKEN
+
+
+def daily_volume_atomic(direction: str) -> int:
+    """Sum completed swap amounts for UTC day."""
+    start = time.time() - (time.time() % 86400)
+    total = 0
+    with connect() as conn:
+        rows = conn.execute(
+            "SELECT amount_atomic, status, created_at FROM swaps WHERE direction=? AND created_at>=?",
+            (direction, start),
+        ).fetchall()
+    for row in rows:
+        if row["status"] in ("completed", "pending_processing", "awaiting_deposit"):
+            try:
+                total += int(row["amount_atomic"])
+            except ValueError:
+                continue
+    return total
+
+
+def check_daily_limit(direction: str, amount_atomic: str) -> str | None:
+    if DAILY_LIMIT_ATOMIC <= 0:
+        return None
+    try:
+        amount = int(amount_atomic)
+    except ValueError:
+        return "invalid amount"
+    used = daily_volume_atomic(direction)
+    if used + amount > DAILY_LIMIT_ATOMIC:
+        return f"daily limit exceeded ({used}+{amount} > {DAILY_LIMIT_ATOMIC})"
+    return None
 
 
 @dataclass

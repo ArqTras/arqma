@@ -5,12 +5,14 @@
 set(arq_etn_sources
   etn_types.cpp
   etn_store.cpp
-  etn_server.cpp)
+  etn_server.cpp
+  etn_wallet_rpc.cpp)
 
 set(arq_etn_headers
   etn_types.h
   etn_store.h
-  etn_server.h)
+  etn_server.h
+  etn_wallet_rpc.h)
 
 arqma_add_library(arq_etn
   ${arq_etn_sources}

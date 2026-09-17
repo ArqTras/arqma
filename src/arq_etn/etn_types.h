@@ -19,7 +19,8 @@ enum class WrapDirection : std::uint8_t
 struct ReserveSummary
 {
   std::uint64_t as_of_height = 0;
-  std::string liability_atomic;
+  std::string liability_atomic;      // issued note liabilities (issuer-published)
+  std::string wallet_balance_atomic; // unlocked balance from wallet-rpc when available
   std::string reserve_proof_blob;
   std::string issuer_id;
 };

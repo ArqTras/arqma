@@ -2,10 +2,18 @@
 
 #include "gtest/gtest.h"
 
+#include "arq_etn/etn_server.h"
 #include "arq_etn/etn_store.h"
 #include "arq_etn/etn_types.h"
 
+#include <boost/asio/connect.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/read.hpp>
+#include <boost/asio/streambuf.hpp>
+#include <boost/asio/write.hpp>
+#include <cstring>
 #include <filesystem>
+#include <memory>
 
 TEST(arq_etn, attestation_requires_core_fields)
 {
@@ -65,4 +73,53 @@ TEST(arq_etn, json_roundtrip_and_store)
   EXPECT_EQ(7u, rr->as_of_height);
   EXPECT_EQ("test-issuer", rr->issuer_id);
   std::filesystem::remove_all(dir);
+}
+
+TEST(arq_etn, http_server_status_and_refresh)
+{
+  auto store = std::make_shared<arq_etn::EtNStore>();
+  store->set_issuer_id("http-test");
+  arq_etn::EtNServer server;
+  server.set_store(store);
+  ASSERT_FALSE(server.listen("127.0.0.1", 0));
+  ASSERT_TRUE(server.running());
+  const auto base = server.base_url();
+  ASSERT_FALSE(base.empty());
+
+  // Minimal HTTP GET via Boost
+  {
+    boost::asio::io_context io;
+    boost::asio::ip::tcp::socket sock{io};
+    const auto colon = base.rfind(':');
+    const auto host = base.substr(std::strlen("http://"), colon - std::strlen("http://"));
+    const auto port = base.substr(colon + 1);
+    boost::asio::connect(sock, boost::asio::ip::tcp::resolver{io}.resolve(host, port));
+    const std::string req = "GET /v1/etn/status HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n";
+    boost::asio::write(sock, boost::asio::buffer(req));
+    boost::asio::streambuf buf;
+    boost::system::error_code ec;
+    boost::asio::read(sock, buf, boost::asio::transfer_all(), ec);
+    std::istream is{&buf};
+    std::string raw((std::istreambuf_iterator<char>(is)), {});
+    EXPECT_NE(std::string::npos, raw.find("arqma-etn-audit"));
+    EXPECT_NE(std::string::npos, raw.find("http-test"));
+  }
+  {
+    boost::asio::io_context io;
+    boost::asio::ip::tcp::socket sock{io};
+    const auto colon = base.rfind(':');
+    const auto host = base.substr(std::strlen("http://"), colon - std::strlen("http://"));
+    const auto port = base.substr(colon + 1);
+    boost::asio::connect(sock, boost::asio::ip::tcp::resolver{io}.resolve(host, port));
+    const std::string req =
+        "POST /v1/etn/reserve/refresh HTTP/1.1\r\nHost: localhost\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+    boost::asio::write(sock, boost::asio::buffer(req));
+    boost::asio::streambuf buf;
+    boost::system::error_code ec;
+    boost::asio::read(sock, buf, boost::asio::transfer_all(), ec);
+    std::istream is{&buf};
+    std::string raw((std::istreambuf_iterator<char>(is)), {});
+    EXPECT_NE(std::string::npos, raw.find("demo-reserve-proof"));
+  }
+  server.stop();
 }

@@ -1,6 +1,7 @@
 // Copyright (c) 2018 - 2026, The Arqma Network
 
 #include "etn_server.h"
+#include "etn_wallet_rpc.h"
 
 #include <boost/asio/connect.hpp>
 #include <boost/asio/ip/tcp.hpp>
@@ -84,54 +85,6 @@ std::string extract_json_string(const std::string& body, const std::string& key)
   return out;
 }
 
-/// Best-effort wallet-rpc get_reserve_proof; returns empty on failure.
-std::string fetch_reserve_proof(const std::string& wallet_rpc_url)
-{
-  if (wallet_rpc_url.empty())
-    return {};
-  try {
-    // Expect http://host:port[/json_rpc]
-    std::string url = wallet_rpc_url;
-    if (url.rfind("http://", 0) != 0)
-      return {};
-    url = url.substr(7);
-    const auto slash = url.find('/');
-    std::string hostport = slash == std::string::npos ? url : url.substr(0, slash);
-    std::string path = slash == std::string::npos ? "/json_rpc" : url.substr(slash);
-    const auto colon = hostport.rfind(':');
-    if (colon == std::string::npos)
-      return {};
-    const std::string host = hostport.substr(0, colon);
-    const auto port = static_cast<std::uint16_t>(std::stoul(hostport.substr(colon + 1)));
-    const std::string payload =
-        "{\"jsonrpc\":\"2.0\",\"id\":\"0\",\"method\":\"get_reserve_proof\",\"params\":{\"all\":true}}";
-    boost::asio::io_context io;
-    boost::asio::ip::tcp::socket sock{io};
-    boost::asio::ip::tcp::resolver resolver{io};
-    boost::asio::connect(sock, resolver.resolve(host, std::to_string(port)));
-    const std::string req = "POST " + path +
-                            " HTTP/1.1\r\nHost: " + hostport +
-                            "\r\nContent-Type: application/json\r\nContent-Length: " + std::to_string(payload.size()) +
-                            "\r\nConnection: close\r\n\r\n" + payload;
-    boost::asio::write(sock, boost::asio::buffer(req));
-    boost::asio::streambuf buf;
-    boost::system::error_code ec;
-    boost::asio::read(sock, buf, boost::asio::transfer_all(), ec);
-    std::istream is{&buf};
-    std::string raw((std::istreambuf_iterator<char>(is)), {});
-    const auto body_pos = raw.find("\r\n\r\n");
-    if (body_pos == std::string::npos)
-      return {};
-    const std::string body = raw.substr(body_pos + 4);
-    auto proof = extract_json_string(body, "signature");
-    if (proof.empty())
-      proof = extract_json_string(body, "reserve_proof");
-    return proof;
-  } catch (...) {
-    return {};
-  }
-}
-
 } // namespace
 
 struct EtNServer::Impl
@@ -160,7 +113,8 @@ struct EtNServer::Impl
       << ",\"ok\":true"
       << ",\"issuer_id\":\"" << store->issuer_id() << "\""
       << ",\"attestation_count\":" << store->attestation_count()
-      << ",\"has_reserve\":" << (store->latest_reserve() ? "true" : "false") << "}";
+      << ",\"has_reserve\":" << (store->latest_reserve() ? "true" : "false")
+      << ",\"wallet_rpc_configured\":" << (wallet_rpc_url.empty() ? "false" : "true") << "}";
     return o.str();
   }
 
@@ -168,9 +122,24 @@ struct EtNServer::Impl
   {
     ReserveSummary r;
     r.issuer_id = store->issuer_id();
-    r.liability_atomic = "0";
+    // Liabilities stay issuer-published (default 0). Wallet balance is assets, not liabilities.
+    if (const auto prev = store->latest_reserve())
+      r.liability_atomic = prev->liability_atomic.empty() ? "0" : prev->liability_atomic;
+    else
+      r.liability_atomic = "0";
     r.as_of_height = 0;
-    r.reserve_proof_blob = fetch_reserve_proof(wallet_rpc_url);
+    if (!wallet_rpc_url.empty()) {
+      WalletRpcConfig cfg;
+      cfg.url = wallet_rpc_url;
+      const auto proof = fetch_reserve_proof_from_wallet_rpc(cfg);
+      if (proof.ok) {
+        r.reserve_proof_blob = proof.signature;
+        r.as_of_height = proof.wallet_height;
+        r.wallet_balance_atomic = proof.balance_atomic;
+      } else {
+        r.reserve_proof_blob = "wallet-rpc-failed:" + proof.error;
+      }
+    }
     if (r.reserve_proof_blob.empty()) {
       // Demo / offline stub so local ETN stacks work without wallet-rpc.
       r.reserve_proof_blob = "demo-reserve-proof";

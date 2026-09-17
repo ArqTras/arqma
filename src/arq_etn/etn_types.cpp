@@ -92,6 +92,7 @@ std::string reserve_to_json(const ReserveSummary& r)
   o << "{\"schema\":\"arqma-etn-por-v1\""
     << ",\"as_of_height\":" << r.as_of_height
     << ",\"liability_atomic\":\"" << json_escape(r.liability_atomic) << "\""
+    << ",\"wallet_balance_atomic\":\"" << json_escape(r.wallet_balance_atomic) << "\""
     << ",\"reserve_proof\":\"" << json_escape(r.reserve_proof_blob) << "\""
     << ",\"issuer_id\":\"" << json_escape(r.issuer_id) << "\"}";
   return o.str();
@@ -102,6 +103,7 @@ bool reserve_from_json(const std::string& json, ReserveSummary& out)
   out = {};
   out.as_of_height = json_u64_field(json, "as_of_height");
   out.liability_atomic = json_string_field(json, "liability_atomic");
+  out.wallet_balance_atomic = json_string_field(json, "wallet_balance_atomic");
   out.reserve_proof_blob = json_string_field(json, "reserve_proof");
   if (out.reserve_proof_blob.empty())
     out.reserve_proof_blob = json_string_field(json, "reserve_proof_blob");

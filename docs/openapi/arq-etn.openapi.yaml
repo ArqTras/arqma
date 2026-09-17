@@ -102,6 +102,10 @@ components:
           format: int64
         liability_atomic:
           type: string
+          description: Issuer-published note liabilities (not wallet balance)
+        wallet_balance_atomic:
+          type: string
+          description: Unlocked balance from wallet-rpc when configured
         reserve_proof:
           type: string
         issuer_id:

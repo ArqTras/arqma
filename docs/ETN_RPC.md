@@ -33,23 +33,29 @@ Compatible envelope: `{"jsonrpc":"2.0","id":"0","method":"...","params":{...}}`.
 
 ## Existing wallet-rpc methods used by model A
 
-Do **not** reinvent these — call `arqma-wallet-rpc`:
+Do **not** reinvent these — call `arqma-wallet-rpc` (see `src/arq_etn/etn_wallet_rpc.*`):
 
 | Method | Use |
 |--------|-----|
+| `get_height` | PoR `as_of_height` |
+| `get_balance` | PoR `wallet_balance_atomic` |
+| `get_reserve_proof` | PoR `reserve_proof` blob |
+| `check_reserve_proof` | Verify PoR (auditor tooling) |
 | `query_key` | view key export (offline ceremony) |
-| `get_reserve_proof` | PoR blob for auditor |
-| `check_reserve_proof` | Verify PoR |
 | `get_tx_proof` / `check_tx_proof` | Optional tx-level evidence |
 | `sign_transfer` / `submit_transfer` | Cold spend path |
+| `get_transfers` | Bridge mint deposit sweep (`ETN_WALLET_RPC_URL`) |
 
 ## etn-bridge — HTTP
 
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET | `/` | Frontend |
-| GET | `/v1/status` | Bridge health |
+| GET | `/v1/status` | Bridge health (`auth_required`, `daily_limit_atomic`) |
 | POST | `/v1/swap` | Create mint/redeem intent |
 | GET | `/v1/swap/{id}` | Swap status |
 | POST | `/v1/swap/{id}/finalize` | Attach ARQ/ETH tx + trigger processing hook |
-| GET | `/v1/swaps` | List recent swaps (demo DB) |
+| GET | `/v1/swaps` | List recent swaps |
+
+Auth (when `ETN_BRIDGE_TOKEN` is set): `Authorization: Bearer <token>` or `X-ETN-Token: <token>`
+on mutate / list endpoints. Daily cap: `ETN_DAILY_LIMIT_ATOMIC` (0 = disabled).

@@ -8,15 +8,16 @@ Branch: `ETF`. Language: English. Authorship: ArqTras (no Cursor co-author).
 2. Confirm PoR + investor KYC sufficiency vs on-chain transparent ledger.
 3. Choose wrap jurisdiction / custodian for wARQ mint keys.
 
-## Phase 1 — Model A in-tree (current scaffold)
+## Phase 1 — Model A in-tree (current)
 
 | Deliverable | Status |
 |-------------|--------|
 | `src/arq_etn` types + attestation validation | Done |
-| `arqma-etn-audit` HTTP + JSON-RPC companion | Done (scaffold) |
-| File-backed reserve + attestation store | Done (scaffold) |
+| `arqma-etn-audit` HTTP + JSON-RPC companion | Done |
+| File-backed reserve + attestation store | Done |
 | OpenAPI + operator docs | Done |
-| Wire to live `wallet-rpc` `get_reserve_proof` | Partial (HTTP proxy hook) |
+| Wire to live `wallet-rpc` `get_reserve_proof` + height/balance | Done (`etn_wallet_rpc`) |
+| Unit test: HTTP status + demo reserve refresh | Done |
 | Production TLS / auth / multi-issuer | TODO |
 
 **Exit criteria:** issuer can refresh a PoR blob, store it, and serve `/v1/etn/reserve` to an auditor.
@@ -25,9 +26,12 @@ Branch: `ETF`. Language: English. Authorship: ArqTras (no Cursor co-author).
 
 | Deliverable | Status |
 |-------------|--------|
-| `contrib/etn-bridge` API + processing + frontend | Done (scaffold + demo mode) |
+| `contrib/etn-bridge` API + processing + frontend | Done (demo + auth hooks) |
 | Solidity `WARQ` + `EtNBridge` stubs | Done (stubs) |
-| Burn detection via daemon/wallet RPC | Hook + demo |
+| `ETN_BRIDGE_TOKEN` + Bearer / `X-ETN-Token` auth | Done |
+| Daily volume limit (`ETN_DAILY_LIMIT_ATOMIC`) | Done |
+| Deposit sweep via wallet-rpc `get_transfers` | Done (processing worker) |
+| Burn detection via daemon/wallet RPC | Hook + sweep |
 | Attestation publish into `arqma-etn-audit` | Hook + demo |
 | Mainnet ETH deploy + audits | TODO |
 
@@ -35,7 +39,7 @@ Branch: `ETF`. Language: English. Authorship: ArqTras (no Cursor co-author).
 
 ## Phase 3 — Hardening
 
-- Daily limits, manual balance checks (Loki processing pattern)
+- Manual balance reconcile UI / ops runbook (limits already env-gated)
 - Multisig mint / pause / upgrade keys
 - Monitoring + soak against stagenet
 - Optional true atomic swap research (`arq_swap`) — **separate product gate**
@@ -49,9 +53,9 @@ Branch: `ETF`. Language: English. Authorship: ArqTras (no Cursor co-author).
 ## Engineering order (recommended)
 
 1. Run `arqma-etn-audit` + wallet-rpc view-only against stagenet.
-2. Run `contrib/etn-bridge` in `--demo`.
-3. Replace demo mint with testnet ETH deploy.
-4. Point processing at real HF19 burns.
+2. Run `contrib/etn-bridge` in demo with token + daily limit set.
+3. Point processing at `ETN_WALLET_RPC_URL` for mint deposit sweep.
+4. Replace demo mint with testnet ETH deploy.
 5. Security review before any mainnet mint key ceremony.
 
 ## Non-goals for this branch

@@ -5,24 +5,39 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from etn_bridge.bridge_core import (
+    BRIDGE_TOKEN,
+    DAILY_LIMIT_ATOMIC,
     DEMO,
+    check_daily_limit,
     create_swap,
     get_swap,
     list_swaps,
     publish_attestation,
     swap_to_dict,
+    token_ok,
     update_swap,
 )
 
 FRONTEND = Path(__file__).resolve().parents[2] / "frontend"
 
 app = FastAPI(title="Arqma ETN Bridge", version="0.1.0")
+
+
+def _require_token(
+    authorization: str | None = None,
+    x_etn_token: str | None = None,
+) -> None:
+    provided = x_etn_token
+    if authorization and authorization.lower().startswith("bearer "):
+        provided = authorization.split(" ", 1)[1].strip()
+    if not token_ok(provided):
+        raise HTTPException(401, "unauthorized")
 
 
 class SwapCreate(BaseModel):
@@ -43,12 +58,19 @@ def status():
         "service": "arqma-etn-bridge",
         "ok": True,
         "demo": DEMO,
+        "auth_required": bool(BRIDGE_TOKEN),
+        "daily_limit_atomic": DAILY_LIMIT_ATOMIC,
         "audit_url": os.environ.get("ETN_AUDIT_URL", "http://127.0.0.1:22050"),
     }
 
 
 @app.post("/v1/swap")
-def swap_create(body: SwapCreate):
+def swap_create(
+    body: SwapCreate,
+    authorization: str | None = Header(default=None),
+    x_etn_token: str | None = Header(default=None),
+):
+    _require_token(authorization, x_etn_token)
     if body.direction == "mint":
         dest = body.dest_eth_address or ""
         if not dest:
@@ -59,6 +81,9 @@ def swap_create(body: SwapCreate):
             raise HTTPException(400, "dest_arq_address required for redeem")
     if not body.amount_atomic.isdigit() or int(body.amount_atomic) <= 0:
         raise HTTPException(400, "amount_atomic must be a positive integer string")
+    limit_err = check_daily_limit(body.direction, body.amount_atomic)
+    if limit_err:
+        raise HTTPException(429, limit_err)
     swap = create_swap(body.direction, body.amount_atomic, dest)
     return swap_to_dict(swap)
 
@@ -72,12 +97,22 @@ def swap_get(swap_id: str):
 
 
 @app.get("/v1/swaps")
-def swaps_list():
+def swaps_list(
+    authorization: str | None = Header(default=None),
+    x_etn_token: str | None = Header(default=None),
+):
+    _require_token(authorization, x_etn_token)
     return {"swaps": [swap_to_dict(s) for s in list_swaps()]}
 
 
 @app.post("/v1/swap/{swap_id}/finalize")
-def swap_finalize(swap_id: str, body: SwapFinalize):
+def swap_finalize(
+    swap_id: str,
+    body: SwapFinalize,
+    authorization: str | None = Header(default=None),
+    x_etn_token: str | None = Header(default=None),
+):
+    _require_token(authorization, x_etn_token)
     swap = get_swap(swap_id)
     if not swap:
         raise HTTPException(404, "not found")
