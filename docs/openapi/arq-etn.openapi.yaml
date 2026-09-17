@@ -1,27 +1,25 @@
 openapi: 3.0.3
 info:
-  title: Arqma ETN audit companion (sketch)
-  version: 0.0.1
+  title: Arqma ETN audit companion
+  version: 0.1.0
   description: |
-    Planned HTTP surface for `arqma-etn-audit` (model A custody PoR + model C
-    burn/mint attestations). Not implemented. Companion process — not arqmad.
+    HTTP + JSON-RPC surface for `arqma-etn-audit` (model A PoR + model C attestations).
+    Companion process — not arqmad. See docs/ETN_RPC.md.
+servers:
+  - url: http://127.0.0.1:22050
 paths:
-  /v1/etn/status:
+  /status:
     get:
-      summary: Process health
+      summary: Liveness
       responses:
         "200":
           description: OK
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  service:
-                    type: string
-                    example: arqma-etn-audit
-                  ok:
-                    type: boolean
+  /v1/etn/status:
+    get:
+      summary: Service status
+      responses:
+        "200":
+          description: Status object
   /v1/etn/reserve:
     get:
       summary: Latest reserve / PoR summary
@@ -32,9 +30,11 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReserveSummary"
+        "404":
+          description: No reserve yet
   /v1/etn/reserve/refresh:
     post:
-      summary: Rebuild reserve proof from configured view-only wallet
+      summary: Rebuild reserve proof (wallet-rpc or demo stub)
       responses:
         "200":
           description: Updated ReserveSummary
@@ -42,9 +42,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ReserveSummary"
+  /v1/etn/attestations:
+    get:
+      summary: List attestation ids
+      responses:
+        "200":
+          description: Id list
+    post:
+      summary: Publish burn↔mint attestation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BurnMintAttestation"
+      responses:
+        "200":
+          description: Created id
   /v1/etn/attestations/{id}:
     get:
-      summary: Fetch burn↔mint attestation
+      summary: Fetch attestation
       parameters:
         - name: id
           in: path
@@ -60,6 +77,18 @@ paths:
                 $ref: "#/components/schemas/BurnMintAttestation"
         "404":
           description: Not found
+  /json_rpc:
+    post:
+      summary: JSON-RPC (etn_get_status, etn_get_reserve, etn_refresh_reserve, etn_list_attestations, etn_get_attestation, etn_publish_attestation)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: JSON-RPC response
 components:
   schemas:
     ReserveSummary:
@@ -79,7 +108,10 @@ components:
           type: string
     BurnMintAttestation:
       type: object
+      required: [direction, arq_txid, arq_amount_atomic, eth_txid, warq_amount_atomic, eth_chain_id, issuer_pubkey, signature]
       properties:
+        id:
+          type: string
         direction:
           type: string
           enum: [mint, redeem]

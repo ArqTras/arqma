@@ -1,7 +1,6 @@
 // Copyright (c) 2018 - 2026, The Arqma Network
 //
 // Sketch types for ETN custody (model A) + burn↔mint wrap attestations (model C).
-// Not consensus. Optional build: -DBUILD_ARQ_ETN=ON
 
 #pragma once
 
@@ -13,23 +12,22 @@ namespace arq_etn {
 
 enum class WrapDirection : std::uint8_t
 {
-  Mint = 1,   // ARQ burned → wARQ minted
-  Redeem = 2  // wARQ burned → ARQ paid from custody
+  Mint = 1,
+  Redeem = 2
 };
 
-/// Aggregated reserve snapshot for an issuer (model A).
 struct ReserveSummary
 {
   std::uint64_t as_of_height = 0;
-  std::string liability_atomic;     // decimal string of outstanding note units
-  std::string reserve_proof_blob;   // wallet2 get_reserve_proof payload
+  std::string liability_atomic;
+  std::string reserve_proof_blob;
   std::string issuer_id;
 };
 
-/// Links an Arqma HF19 burn (or custody payout) to an external wrap tx (model C).
 struct BurnMintAttestation
 {
   WrapDirection direction = WrapDirection::Mint;
+  std::string id;
   std::string arq_txid_hex;
   std::string arq_amount_atomic;
   std::string eth_txid_hex;
@@ -40,7 +38,13 @@ struct BurnMintAttestation
   std::string signature_hex;
 };
 
-/// Minimal validation used by unit tests / companion (no wallet I/O here).
 bool attestation_fields_present(const BurnMintAttestation& a) noexcept;
+std::string direction_to_string(WrapDirection d) noexcept;
+WrapDirection direction_from_string(const std::string& s) noexcept;
+
+std::string reserve_to_json(const ReserveSummary& r);
+bool reserve_from_json(const std::string& json, ReserveSummary& out);
+std::string attestation_to_json(const BurnMintAttestation& a);
+bool attestation_from_json(const std::string& json, BurnMintAttestation& out);
 
 } // namespace arq_etn

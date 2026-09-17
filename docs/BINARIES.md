@@ -125,6 +125,27 @@ arqma-storage --listen 127.0.0.1:22021 --data-dir ~/.arqma/storage \
 
 Daemon probe: `arqmad --storage-client-url=http://127.0.0.1:22021`.
 
+### `arqma-etn-audit` — ETN PoR + attestations (model A/C)
+
+Companion for issuer custody packages and wrap attestations. **Not consensus.**
+
+```bash
+arqma-etn-audit --listen 127.0.0.1:22050 --data-dir ~/.arqma/etn-audit \
+  --issuer-id example-etn-issuer \
+  --wallet-rpc-url http://127.0.0.1:19991/json_rpc
+```
+
+| Flag | Default | Purpose |
+|------|---------|---------|
+| `--listen` | `127.0.0.1:22050` | HTTP + `/json_rpc` |
+| `--data-dir` | (memory until refresh) | Persist reserve + attestations |
+| `--wallet-rpc-url` | unset | Proxy `get_reserve_proof` (else demo stub) |
+| `--token` | unset / `ARQMA_STACK_TOKEN` | Protect mutating routes |
+| `--issuer-id` | `arqma-etn-issuer` | Id embedded in PoR JSON |
+
+Docs: [`ETN_OPERATOR.md`](ETN_OPERATOR.md), [`ETN_RPC.md`](ETN_RPC.md).  
+Wrap UI/API: `contrib/etn-bridge` (`ETN_DEMO=1 uvicorn etn_bridge.api.app:app --port 8788`).
+
 ### `arqma-router` — onion peel / store forward
 
 ```bash
