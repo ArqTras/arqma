@@ -4,6 +4,10 @@
 
 ### Fixes
 
+- Stabilize storage anti-entropy unit tests: wait for `gossip_rounds` (and
+  digest/sync/membership counters) in the same poll loop as payload
+  convergence; run the first gossip round immediately instead of after a full
+  interval sleep.
 - Unblock `arqma-storage` / `arqma-router` shutdown: `StorageServer::stop` and
   `RouterServer::stop` self-connect to wake a synchronous `accept()` before
   `join()` (close alone could hang unit tests and process teardown). Apply a
@@ -45,6 +49,9 @@
 
 ### Features
 
+- Generate P2P `NETWORK_ID` at build time via `cmake/GenNetworkId.cmake`:
+  mainnet stays on the historical fixed UUID; testnet/stagenet are
+  commit-scoped (dirty tree isolates). Daemon logs the seed at P2P init.
 - Add `--arqnet-mesh-shadow` opt-in SocketStack dual-write (stagenet/testnet soak;
   mainnet needs `--arqnet-allow-experimental`) and expose `mesh_shadow*` counters
   on `get_arqnet_status`. Live peer mesh remains SNNetwork.

@@ -468,15 +468,15 @@ struct StorageServer::Impl
       const int interval = gossip_interval_sec.load();
       if (interval <= 0)
         break;
-      const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{interval};
-      while (running.load() && gossip_interval_sec.load() > 0 && std::chrono::steady_clock::now() < deadline)
-        std::this_thread::sleep_for(std::chrono::milliseconds{100});
-      if (!running.load() || gossip_interval_sec.load() <= 0)
-        break;
+      // Gossip first, then sleep — avoids a full-interval blind window on start
+      // and shrinks the race where KV lands before gossip_rounds++.
       try {
         gossip_once();
       } catch (...) {
       }
+      const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{interval};
+      while (running.load() && gossip_interval_sec.load() > 0 && std::chrono::steady_clock::now() < deadline)
+        std::this_thread::sleep_for(std::chrono::milliseconds{100});
     }
   }
 
