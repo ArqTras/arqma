@@ -84,7 +84,7 @@ enum class Backend
 struct Config
 {
   Backend backend = Backend::Remote;
-  /// Example: http://127.0.0.1:22021 — required for Remote reachability probes.
+  /// Example: http://127.0.0.1:19997 — required for Remote reachability probes.
   std::string base_url;
   std::chrono::milliseconds connect_timeout{2000};
   /// Optional stack token (`ARQMA_STACK_TOKEN`). Empty disables auth.

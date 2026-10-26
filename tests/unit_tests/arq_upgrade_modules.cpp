@@ -140,7 +140,7 @@ TEST(arq_router, experimental_lifecycle_when_enabled)
   arq_router::RouterConfig cfg;
   cfg.enabled = true;
   cfg.data_dir = "/tmp/arq-router-test";
-  cfg.listen = "127.0.0.1:1090";
+  cfg.listen = "127.0.0.1:19998";
   arq_router::RouterService router{cfg};
   EXPECT_STREQ("idle", router.state_name());
   EXPECT_FALSE(router.init());
@@ -167,9 +167,9 @@ TEST(arq_router, enabled_requires_data_dir_and_sane_listen)
   cfg.data_dir = "/tmp/arq-router";
   cfg.listen = "bad";
   EXPECT_EQ(std::make_error_code(std::errc::invalid_argument), arq_router::validate_config(cfg));
-  cfg.listen = "127.0.0.1:1090";
+  cfg.listen = "127.0.0.1:19998";
   EXPECT_FALSE(arq_router::validate_config(cfg));
-  cfg.listen = "[::1]:1090";
+  cfg.listen = "[::1]:19998";
   EXPECT_FALSE(arq_router::validate_config(cfg));
 
   arq_router::RouterService router{cfg};

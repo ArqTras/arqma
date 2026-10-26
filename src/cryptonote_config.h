@@ -286,6 +286,9 @@ namespace config
   const uint16_t RPC_DEFAULT_PORT = 19994;
   const uint16_t ZMQ_DEFAULT_PORT = 19995;
   const uint16_t ANET_DEFAULT_PORT = 19996;
+  /// Optional companion HTTP probes (same 1999x family; not Oxen 22021 / Lokinet 1090).
+  const uint16_t STORAGE_HTTP_DEFAULT_PORT = 19997;
+  const uint16_t ROUTER_HTTP_DEFAULT_PORT = 19998;
   // Mainnet NETWORK_ID is the historical fixed UUID (live P2P continuity).
   // Testnet/stagenet IDs are commit-scoped (dirty tree isolates). See
   // cmake/GenNetworkId.cmake.
@@ -305,6 +308,8 @@ namespace config
     const uint16_t RPC_DEFAULT_PORT = 29994;
     const uint16_t ZMQ_DEFAULT_PORT = 29995;
     const uint16_t ANET_DEFAULT_PORT = 29996;
+    const uint16_t STORAGE_HTTP_DEFAULT_PORT = 29997;
+    const uint16_t ROUTER_HTTP_DEFAULT_PORT = 29998;
     boost::uuids::uuid const NETWORK_ID = { { ARQMA_NET_ID_TESTNET_BYTES } };
     std::string const GOV_WALLET_ADDRESS = "atywxUgKyRajPKSRHWDtjyPTaE9thXgyrTpk9RsdkYzCdPYSxtTkW8Jj6xgrNHXLEd22yb7Gdk39DoJpgrLKTe85NP22nsWGY";
     std::string const DEV_WALLET_ADDRESS = "atywfJChhS1XLjfY2pDGUHNo5BcWMM5ZJeFs4pWGs9p7gCbxSguxoyBWLDYasHuY7yHppCWYRbPPMHNVf2EXuzpq2xMZLhQZMW";
@@ -320,6 +325,8 @@ namespace config
     const uint16_t RPC_DEFAULT_PORT = 39994;
     const uint16_t ZMQ_DEFAULT_PORT = 39995;
     const uint16_t ANET_DEFAULT_PORT = 39996;
+    const uint16_t STORAGE_HTTP_DEFAULT_PORT = 39997;
+    const uint16_t ROUTER_HTTP_DEFAULT_PORT = 39998;
     boost::uuids::uuid const NETWORK_ID = { { ARQMA_NET_ID_STAGENET_BYTES } };
     std::string const GOV_WALLET_ADDRESS = "as3DH2He8go7QzsiWc2PK4by2XdQZmUTF8Bv2bKY3egmRH9zPAF3iwWFteTPYaob4m5GuCNTLHFgtVdA6nbuP3Gp1x4Fvjv5G";
     std::string const DEV_WALLET_ADDRESS = "as1gAmaQQZMDy8SQzeqQSxGJJJpinLxSpgALxxZEDyNL6QB6hREvXzoVDi9LrFGJVu1x33toQVe9hWeXdhsjnkg7199GtodQy";
