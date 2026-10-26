@@ -110,3 +110,6 @@ src/lmdb/liblmdb/mdb_stat
 src/lmdb/liblmdb/mdb_copy
 src/lmdb/liblmdb/mdb_dump
 utils/__pycache__/
+
+# Local editor/agent rules (not part of the product tree)
+.cursor/
