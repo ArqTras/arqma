@@ -79,6 +79,7 @@ Windows/macOS/Linux arm: `make depends` / `.github/workflows/depends.yml`
 - [x] Everyday `send <hex> hello` (positional) + remembered names (`name=hex` → `~/.arqma/msg/contacts`)
 - [x] Mainnet HF20 prep: weight-neutral Pulse splice, stack token, opaque inbox, honest Blink/UBSan docs, CLSAG operator checklist
 - [x] Unified daemon restricted-RPC catalog (`rpc_auth.h` drives `MAP_*_IF` + handler denials); storage quota per namespace
+- [x] Companion HTTP ports aligned to Arqma family (storage 19997 / router 19998); AUTO_VAL_INIT call sites use `{}`
 - [x] Fix companion `StorageServer` / `RouterServer` `stop()` accept/join hang (self-connect wakeup)
 - [x] Local Release verify: 628 unit + hash-target; binary inventory + packaging docs
 - [x] Document 3-OS local env (Linux apt / macOS brew / Windows mingw) aligned with CI
@@ -101,7 +102,7 @@ Windows/macOS/Linux arm: `make depends` / `.github/workflows/depends.yml`
 
 ## Quality
 
-- Local `unit_tests` → **628** passed; `ctest -R 'unit_tests|hash-target'` green
+- Local `unit_tests` → **635** passed (Arqma ports 19997/19998; AUTO_VAL_INIT call sites fixed)
 - Test steps: `docs/OPERATOR_UPGRADE.md` (unit / daemon probes / optional messenger / network soak)
 - Primary upgrade story: HF20/HF21 + Pulse hybrid + Arq-Net mesh; companions are probes
 - Release readiness: code + unit gate ready; network soak deferred to operators with SN quorum

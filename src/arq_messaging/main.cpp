@@ -90,7 +90,7 @@ int main(int argc, char** argv)
 {
   namespace po = boost::program_options;
   std::string cmd;
-  std::string url = "http://127.0.0.1:22021";
+  std::string url = "http://127.0.0.1:19997";
   std::string to;
   std::vector<std::string> text_parts;
   std::string key;

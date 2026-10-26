@@ -31,7 +31,7 @@ arqmad --data-dir /var/lib/arqma --config-file /etc/arqma/arqma.conf
 arqmad --stagenet --arqnet-backend=arqmq --arqnet-mesh-shadow
 
 # With local companion stack probes
-arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
+arqmad --storage-client-url=http://127.0.0.1:19997 --arq-router
 ```
 
 Useful RPC (unrestricted): `get_info`, `get_arqnet_status`, `get_pulse_status`,
@@ -108,34 +108,34 @@ source "${ARQMA_STACK_DIR:-/tmp/arqma-stack}/env"
 ### `arqma-storage` — HTTP KV / inbox / swarm
 
 ```bash
-arqma-storage --listen 127.0.0.1:22021 --data-dir ~/.arqma/storage
+arqma-storage --listen 127.0.0.1:19997 --data-dir ~/.arqma/storage
 
 # With stack token + replica peer
-arqma-storage --listen 127.0.0.1:22021 --data-dir ~/.arqma/storage \
+arqma-storage --listen 127.0.0.1:19997 --data-dir ~/.arqma/storage \
   --token "$ARQMA_STACK_TOKEN" \
-  --peer http://127.0.0.1:22022
+  --peer http://127.0.0.1:19999
 ```
 
 | Flag | Default | Purpose |
 |------|---------|---------|
-| `--listen` | `127.0.0.1:22021` | `host:port` or `[ipv6]:port` |
+| `--listen` | `127.0.0.1:19997` | `host:port` or `[ipv6]:port` |
 | `--data-dir` | (memory only) | On-disk KV / snodes volume |
 | `--token` | unset / `ARQMA_STACK_TOKEN` | Protects mutating routes |
 | `--peer` | — | Replica base URL (repeatable) |
 
-Daemon probe: `arqmad --storage-client-url=http://127.0.0.1:22021`.
+Daemon probe: `arqmad --storage-client-url=http://127.0.0.1:19997`.
 
 ### `arqma-router` — onion peel / store forward
 
 ```bash
-arqma-router --listen 127.0.0.1:1090 --data-dir ~/.arqma/arq-router \
-  --storage-url http://127.0.0.1:22021 \
+arqma-router --listen 127.0.0.1:19998 --data-dir ~/.arqma/arq-router \
+  --storage-url http://127.0.0.1:19997 \
   --token "$ARQMA_STACK_TOKEN"
 ```
 
 | Flag | Default | Purpose |
 |------|---------|---------|
-| `--listen` | `127.0.0.1:1090` | HTTP status / peel API |
+| `--listen` | `127.0.0.1:19998` | HTTP status / peel API |
 | `--data-dir` | `arq-router` | Router state directory |
 | `--storage-url` | — | Last-hop `arqma-storage` base URL |
 | `--token` | unset / `ARQMA_STACK_TOKEN` | Stack auth |
@@ -153,8 +153,8 @@ arqma-msg inbox
 arqma-msg open
 
 # Explicit endpoints
-arqma-msg --url http://127.0.0.1:22021 --router http://127.0.0.1:1090 gen
-arqma-msg --url http://127.0.0.1:22021 send <hex> "hello"
+arqma-msg --url http://127.0.0.1:19997 --router http://127.0.0.1:19998 gen
+arqma-msg --url http://127.0.0.1:19997 send <hex> "hello"
 
 # Optional local UI shell (probe only): utils/arqma-msg-ui.py → http://127.0.0.1:8787/
 ```
@@ -262,8 +262,8 @@ Expect **628** unit tests + `hash-target` pass.
 ```text
 arqmad         :19994  ←── arqma-wallet-cli / arqma-wallet-rpc  (primary)
                └── --storage-client-url → storage (optional probe)
-arqma-storage  :22021  ←── get_storage_status / print_storage / arqma-msg
-arqma-router   :1090   ←── arqma-msg --router (optional onion probe)
+arqma-storage  :19997  ←── get_storage_status / print_storage / arqma-msg
+arqma-router   :19998   ←── arqma-msg --router (optional onion probe)
 ```
 
 See also: [`OPERATOR_UPGRADE.md`](OPERATOR_UPGRADE.md), [`PLATFORM.md`](PLATFORM.md),
