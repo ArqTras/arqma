@@ -119,7 +119,7 @@ TEST(arq_messaging_envelope, onion_rejects_oversized_payload)
 
 TEST(arq_messaging_envelope, onion_forward_frame_roundtrip)
 {
-  const std::string url = "http://127.0.0.1:1091";
+  const std::string url = "http://127.0.0.1:19998";
   const std::vector<std::uint8_t> inner{0x11, 0x22, 0x33};
   std::vector<std::uint8_t> framed;
   ASSERT_TRUE(arq_messaging::encode_onion_forward(url, inner, framed));
@@ -140,8 +140,8 @@ TEST(arq_messaging_envelope, compose_onion_route_peels_forward_frame)
   ASSERT_FALSE(arq_messaging::generate_identity(hop0));
   ASSERT_FALSE(arq_messaging::generate_identity(hop1));
   const std::vector<std::uint8_t> payload{0xca, 0xfe, 0xba, 0xbe};
-  const std::string url0 = "http://127.0.0.1:1090";
-  const std::string url1 = "http://127.0.0.1:1091";
+  const std::string url0 = "http://127.0.0.1:19998";
+  const std::string url1 = "http://127.0.0.1:19998";
   std::vector<std::uint8_t> onion;
   ASSERT_FALSE(arq_messaging::compose_onion_route({hop0.public_key, hop1.public_key}, {url0, url1}, payload, onion));
 
@@ -161,16 +161,16 @@ TEST(arq_messaging_envelope, compose_onion_route_peels_forward_frame)
 TEST(arq_messaging_envelope, parse_stack_env_storage_and_router)
 {
   const auto env = arq_messaging::parse_stack_env("# comment\n"
-                                                  "ARQMA_STORAGE_URL=http://127.0.0.1:22021\n"
-                                                  "ARQMA_ROUTER_URL = http://127.0.0.1:1090\n"
+                                                  "ARQMA_STORAGE_URL=http://127.0.0.1:19997\n"
+                                                  "ARQMA_ROUTER_URL = http://127.0.0.1:19998\n"
                                                   "OTHER=ignore\n");
-  EXPECT_EQ("http://127.0.0.1:22021", env.storage_url);
-  EXPECT_EQ("http://127.0.0.1:1090", env.router_url);
+  EXPECT_EQ("http://127.0.0.1:19997", env.storage_url);
+  EXPECT_EQ("http://127.0.0.1:19998", env.router_url);
   EXPECT_TRUE(env.token.empty());
   const auto with_token = arq_messaging::parse_stack_env("ARQMA_STACK_TOKEN=secret-token\n");
   EXPECT_EQ("secret-token", with_token.token);
   const auto empty = arq_messaging::parse_stack_env("");
-  EXPECT_EQ("http://127.0.0.1:22021", empty.storage_url);
+  EXPECT_EQ("http://127.0.0.1:19997", empty.storage_url);
   EXPECT_TRUE(empty.router_url.empty());
 }
 

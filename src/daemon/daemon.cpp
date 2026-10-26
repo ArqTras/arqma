@@ -163,7 +163,7 @@ public:
       arq_router::RouterConfig router_cfg;
       router_cfg.enabled = true;
       router_cfg.data_dir = (boost::filesystem::path(command_line::get_arg(vm, cryptonote::arg_data_dir)) / "arq-router").string();
-      router_cfg.listen = "127.0.0.1:1090";
+      router_cfg.listen = "127.0.0.1:19998";
       router_service = std::make_unique<arq_router::RouterService>(router_cfg);
       const auto router_ec = router_service->init();
       if (router_ec)

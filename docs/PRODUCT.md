@@ -29,7 +29,7 @@ observability; it does **not** replace Pulse or RandomARQ.
 ```text
 utils/arqma-stack.sh                 # Linux / macOS — starts storage + router
 utils/arqma-stack.cmd                # Windows
-arqmad --storage-client-url=http://127.0.0.1:22021
+arqmad --storage-client-url=http://127.0.0.1:19997
 # get_storage_status / print_storage
 # get_pulse_status / print_pulse
 # get_blink_status / print_blink

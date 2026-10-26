@@ -14,7 +14,7 @@
 namespace arq_messaging {
 struct StackEnv
 {
-  std::string storage_url = "http://127.0.0.1:22021";
+  std::string storage_url = "http://127.0.0.1:19997";
   std::string router_url;
   std::string token;
 };

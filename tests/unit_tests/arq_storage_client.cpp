@@ -47,11 +47,11 @@
 
 TEST(arq_storage_endpoint, parses_http_and_https_urls)
 {
-  const auto http = arq_storage::parse_endpoint("http://127.0.0.1:22021/status");
+  const auto http = arq_storage::parse_endpoint("http://127.0.0.1:19997/status");
   ASSERT_TRUE(http);
   EXPECT_FALSE(http.tls);
   EXPECT_EQ("127.0.0.1", http.host);
-  EXPECT_EQ(22021, http.port);
+  EXPECT_EQ(19997, http.port);
   EXPECT_EQ("/status", http.path);
 
   const auto https = arq_storage::parse_endpoint("https://storage.example");
@@ -72,19 +72,19 @@ TEST(arq_storage_endpoint, rejects_invalid_urls)
 
 TEST(arq_storage_endpoint, parses_ipv6_and_listen_addresses)
 {
-  const auto ep = arq_storage::parse_endpoint("http://[::1]:22021/status");
+  const auto ep = arq_storage::parse_endpoint("http://[::1]:19997/status");
   ASSERT_TRUE(ep);
   EXPECT_EQ("::1", ep.host);
-  EXPECT_EQ(22021, ep.port);
+  EXPECT_EQ(19997, ep.port);
   EXPECT_EQ("/status", ep.path);
-  EXPECT_EQ("[::1]:22021", arq_storage::format_http_authority(ep.host, ep.port));
-  EXPECT_EQ("[::1]:22021", arq_storage::http_host_header(ep));
+  EXPECT_EQ("[::1]:19997", arq_storage::format_http_authority(ep.host, ep.port));
+  EXPECT_EQ("[::1]:19997", arq_storage::http_host_header(ep));
 
   std::string host;
   std::uint16_t port = 0;
-  ASSERT_TRUE(arq_storage::parse_listen_address("[::1]:22021", host, port));
+  ASSERT_TRUE(arq_storage::parse_listen_address("[::1]:19997", host, port));
   EXPECT_EQ("::1", host);
-  EXPECT_EQ(22021, port);
+  EXPECT_EQ(19997, port);
   EXPECT_TRUE(arq_storage::parse_listen_address("127.0.0.1:0", host, port));
   EXPECT_EQ(0, port);
   EXPECT_FALSE(arq_storage::parse_listen_address("127.0.0.1", host, port));
@@ -93,11 +93,11 @@ TEST(arq_storage_endpoint, parses_ipv6_and_listen_addresses)
 
 TEST(arq_storage_endpoint, formats_http_get_request)
 {
-  const auto ep = arq_storage::parse_endpoint("http://127.0.0.1:22021/status");
+  const auto ep = arq_storage::parse_endpoint("http://127.0.0.1:19997/status");
   ASSERT_TRUE(ep);
   const auto req = arq_storage::format_http_get_request(ep);
   EXPECT_NE(std::string::npos, req.find("GET /status HTTP/1.1\r\n"));
-  EXPECT_NE(std::string::npos, req.find("Host: 127.0.0.1:22021\r\n"));
+  EXPECT_NE(std::string::npos, req.find("Host: 127.0.0.1:19997\r\n"));
   EXPECT_NE(std::string::npos, req.find("Connection: close\r\n\r\n"));
 }
 
@@ -161,11 +161,11 @@ TEST(arq_storage_server, remote_client_http_roundtrip)
   ASSERT_FALSE(keys.error);
   ASSERT_EQ(1u, keys.value.size());
   EXPECT_EQ("hello", keys.value[0]);
-  client.set_snodes_for_pubkey("pk", {"http://127.0.0.1:22021", "http://127.0.0.1:22022"});
+  client.set_snodes_for_pubkey("pk", {"http://127.0.0.1:19997", "http://127.0.0.1:19999"});
   const auto snodes = client.get_snodes_for_pubkey("pk");
   ASSERT_FALSE(snodes.error);
   ASSERT_EQ(2u, snodes.value.size());
-  EXPECT_EQ("http://127.0.0.1:22021", snodes.value[0]);
+  EXPECT_EQ("http://127.0.0.1:19997", snodes.value[0]);
   server.stop();
   EXPECT_FALSE(server.running());
 }
@@ -338,11 +338,11 @@ TEST(arq_storage_server, swarm_status_lists_members)
 
 TEST(arq_storage_server, merge_snode_urls_uniques_and_cap)
 {
-  const auto merged = arq_storage::merge_snode_urls({"http://127.0.0.1:22021/", "https://example.com:443"},
-                                                    {"http://127.0.0.1:22021", "http://127.0.0.1:22022", "not-a-url"});
+  const auto merged = arq_storage::merge_snode_urls({"http://127.0.0.1:19997/", "https://example.com:443"},
+                                                    {"http://127.0.0.1:19997", "http://127.0.0.1:19999", "not-a-url"});
   ASSERT_EQ(2u, merged.size());
-  EXPECT_EQ("http://127.0.0.1:22021", merged[0]);
-  EXPECT_EQ("http://127.0.0.1:22022", merged[1]);
+  EXPECT_EQ("http://127.0.0.1:19997", merged[0]);
+  EXPECT_EQ("http://127.0.0.1:19999", merged[1]);
   std::vector<std::string> many;
   many.reserve(arq_storage::max_snode_urls + 4);
   for (std::size_t i = 0; i < arq_storage::max_snode_urls + 4; ++i)
@@ -356,13 +356,13 @@ TEST(arq_storage_server, merges_snode_lists_on_put)
   ASSERT_FALSE(server.listen("127.0.0.1", 0));
   arq_storage::Config cfg{arq_storage::Backend::Remote, server.base_url(), std::chrono::milliseconds{2000}};
   arq_storage::StorageClient client{cfg};
-  client.set_snodes_for_pubkey("pk", {"http://127.0.0.1:22021"});
-  client.set_snodes_for_pubkey("pk", {"http://127.0.0.1:22022"});
+  client.set_snodes_for_pubkey("pk", {"http://127.0.0.1:19997"});
+  client.set_snodes_for_pubkey("pk", {"http://127.0.0.1:19999"});
   const auto members = client.get_snodes_for_pubkey("pk");
   ASSERT_FALSE(members.error);
   ASSERT_EQ(2u, members.value.size());
-  EXPECT_EQ("http://127.0.0.1:22021", members.value[0]);
-  EXPECT_EQ("http://127.0.0.1:22022", members.value[1]);
+  EXPECT_EQ("http://127.0.0.1:19997", members.value[0]);
+  EXPECT_EQ("http://127.0.0.1:19999", members.value[1]);
   const auto swarm = client.get_swarm("pk");
   ASSERT_FALSE(swarm.error);
   EXPECT_EQ(arq_messaging::hash_pubkey_to_swarm("pk"), swarm.value.first);
@@ -558,6 +558,6 @@ TEST(arq_storage_http, inbox_namespace_hides_pubkey_and_hop_allowlist)
   EXPECT_EQ(38u, ns.size());
   EXPECT_TRUE(ns.find(hex) == std::string::npos);
   EXPECT_EQ(ns, arq_storage::inbox_namespace(hex));
-  EXPECT_TRUE(arq_storage::hop_host_allowed("http://127.0.0.1:1091", "http://127.0.0.1:22021"));
-  EXPECT_FALSE(arq_storage::hop_host_allowed("http://8.8.8.8:80", "http://127.0.0.1:22021"));
+  EXPECT_TRUE(arq_storage::hop_host_allowed("http://127.0.0.1:19998", "http://127.0.0.1:19997"));
+  EXPECT_FALSE(arq_storage::hop_host_allowed("http://8.8.8.8:80", "http://127.0.0.1:19997"));
 }

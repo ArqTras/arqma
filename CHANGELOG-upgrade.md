@@ -4,6 +4,10 @@
 
 ### Fixes
 
+- Align companion HTTP defaults with the Arqma `1999x` family: storage
+  `19997`, router `19998` (testnet/stagenet `29997`/`29998`, `39997`/`39998`).
+  Drop Oxen/Lokinet-style `22021` / `1090` defaults from stack scripts, docs,
+  and CLI. Remove the reintroduced `AUTO_VAL_INIT` shim (already gone upstream).
 - Stabilize storage anti-entropy unit tests: wait for `gossip_rounds` (and
   digest/sync/membership counters) in the same poll loop as payload
   convergence; run the first gossip round immediately instead of after a full

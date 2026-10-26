@@ -44,13 +44,13 @@ struct Endpoint
 };
 
 /// Parses `http://host:port[/path]`, `https://host:port[/path]`, and
-/// RFC 3986 IPv6 (`http://[::1]:22021/status`). Default ports: http=80, https=443.
+/// RFC 3986 IPv6 (`http://[::1]:19997/status`). Default ports: http=80, https=443.
 Endpoint parse_endpoint(std::string_view url) noexcept;
 
 /// Parses CLI `host:port` or `[ipv6]:port`. Port may be 0 (ephemeral bind).
 bool parse_listen_address(std::string_view listen, std::string& host, std::uint16_t& port) noexcept;
 
-/// `127.0.0.1:22021` or `[::1]:22021` (IPv6 host is bracketed).
+/// `127.0.0.1:19997` or `[::1]:19997` (IPv6 host is bracketed).
 std::string format_http_authority(std::string_view host, std::uint16_t port);
 
 /// HTTP `Host` header value for an endpoint (IPv6 bracketed, port included).

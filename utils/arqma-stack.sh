@@ -3,8 +3,8 @@
 set -euo pipefail
 
 BIN_DIR="${ARQMA_BIN_DIR:-$(cd "$(dirname "$0")/.." && pwd)/build/upgrade-test/bin}"
-STORAGE_LISTEN="${1:-127.0.0.1:22021}"
-ROUTER_LISTEN="${2:-127.0.0.1:1090}"
+STORAGE_LISTEN="${1:-127.0.0.1:19997}"
+ROUTER_LISTEN="${2:-127.0.0.1:19998}"
 STACK_DIR="${ARQMA_STACK_DIR:-${TMPDIR:-/tmp}/arqma-stack}"
 
 if [[ ! -x "${BIN_DIR}/arqma-storage" || ! -x "${BIN_DIR}/arqma-router" ]]; then

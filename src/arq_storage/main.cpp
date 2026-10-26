@@ -17,7 +17,7 @@
 int main(int argc, char** argv)
 {
   namespace po = boost::program_options;
-  std::string listen = "127.0.0.1:22021";
+  std::string listen = "127.0.0.1:19997";
   std::string data_dir;
   std::string token;
   int gossip_interval = 15;
