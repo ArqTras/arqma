@@ -89,6 +89,8 @@ add_subdirectory(arq_blink)
 add_subdirectory(arq_storage)
 add_subdirectory(arq_messaging)
 add_subdirectory(arq_router)
+# ETN custody / wrap sketch (models A+C) — not consensus; see docs/ETN_A_C.md
+add_subdirectory(arq_etn)
 if(NOT IOS)
   add_subdirectory(serialization)
   add_subdirectory(p2p)

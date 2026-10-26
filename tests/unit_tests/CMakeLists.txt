@@ -33,6 +33,7 @@ set(unit_tests_sources
   arq_blink.cpp
   arq_messaging_envelope.cpp
   arq_storage_client.cpp
+  arq_etn.cpp
   arq_upgrade_modules.cpp
   arqmq_facade.cpp
   arqmq_transport.cpp
@@ -94,6 +95,7 @@ target_link_libraries(unit_tests
     p2p
     arqmq
     arq_storage
+    arq_etn
     arq_messaging
     arq_router
     arq_blink

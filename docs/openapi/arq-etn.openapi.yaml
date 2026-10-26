@@ -1,0 +1,218 @@
+openapi: 3.0.3
+info:
+  title: Arqma ETN audit companion
+  version: 0.1.0
+  description: |
+    HTTP + JSON-RPC surface for `arqma-etn-audit` (model A PoR + model C attestations).
+    Companion process — not arqmad. See docs/ETN_RPC.md.
+servers:
+  - url: http://127.0.0.1:22050
+paths:
+  /status:
+    get:
+      summary: Liveness
+      responses:
+        "200":
+          description: OK
+  /v1/etn/status:
+    get:
+      summary: Service status
+      responses:
+        "200":
+          description: Status object
+  /v1/etn/reserve:
+    get:
+      summary: Latest reserve / PoR summary
+      responses:
+        "200":
+          description: ReserveSummary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReserveSummary"
+        "404":
+          description: No reserve yet
+  /v1/etn/reserve/refresh:
+    post:
+      summary: Rebuild reserve proof (wallet-rpc or demo stub)
+      responses:
+        "200":
+          description: Updated ReserveSummary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReserveSummary"
+  /v1/etn/reserve/liability:
+    post:
+      summary: Publish issuer liability (atomic units string)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [liability_atomic]
+              properties:
+                liability_atomic:
+                  type: string
+      responses:
+        "200":
+          description: Updated ReserveSummary
+        "400":
+          description: Invalid amount
+  /v1/etn/reconcile:
+    get:
+      summary: Compare wallet_balance_atomic vs liability_atomic
+      responses:
+        "200":
+          description: ReconcileReport
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReconcileReport"
+        "404":
+          description: No reserve yet
+  /v1/etn/por-package:
+    get:
+      summary: Auditor PoR package (reserve + reconcile + attestation ids)
+      responses:
+        "200":
+          description: PorPackage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PorPackage"
+        "404":
+          description: No reserve yet
+  /v1/etn/attestations:
+    get:
+      summary: List attestation ids
+      responses:
+        "200":
+          description: Id list
+    post:
+      summary: Publish burn↔mint attestation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BurnMintAttestation"
+      responses:
+        "200":
+          description: Created id
+  /v1/etn/attestations/{id}:
+    get:
+      summary: Fetch attestation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: BurnMintAttestation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BurnMintAttestation"
+        "404":
+          description: Not found
+  /json_rpc:
+    post:
+      summary: JSON-RPC (etn_get_status, etn_get_reserve, etn_refresh_reserve, etn_set_liability, etn_reconcile, etn_get_por_package, etn_list_attestations, etn_get_attestation, etn_publish_attestation)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: JSON-RPC response
+components:
+  schemas:
+    ReserveSummary:
+      type: object
+      properties:
+        schema:
+          type: string
+          example: arqma-etn-por-v1
+        as_of_height:
+          type: integer
+          format: int64
+        liability_atomic:
+          type: string
+          description: Issuer-published note liabilities (not wallet balance)
+        wallet_balance_atomic:
+          type: string
+          description: Unlocked balance from wallet-rpc when configured
+        reserve_proof:
+          type: string
+        issuer_id:
+          type: string
+    ReconcileReport:
+      type: object
+      properties:
+        issuer_id:
+          type: string
+        as_of_height:
+          type: integer
+          format: int64
+        wallet_balance_atomic:
+          type: string
+        liability_atomic:
+          type: string
+        covered:
+          type: boolean
+        surplus_atomic:
+          type: integer
+          format: int64
+        has_reserve_proof:
+          type: boolean
+    PorPackage:
+      type: object
+      properties:
+        schema:
+          type: string
+          example: arqma-etn-por-package-v1
+        issuer_id:
+          type: string
+        reserve:
+          $ref: "#/components/schemas/ReserveSummary"
+        reconcile:
+          $ref: "#/components/schemas/ReconcileReport"
+        attestation_count:
+          type: integer
+        attestation_ids:
+          type: array
+          items:
+            type: string
+    BurnMintAttestation:
+      type: object
+      required: [direction, arq_txid, arq_amount_atomic, eth_txid, warq_amount_atomic, eth_chain_id, issuer_pubkey, signature]
+      properties:
+        id:
+          type: string
+        direction:
+          type: string
+          enum: [mint, redeem]
+        arq_txid:
+          type: string
+        arq_amount_atomic:
+          type: string
+        eth_txid:
+          type: string
+        warq_amount_atomic:
+          type: string
+        eth_chain_id:
+          type: integer
+          format: int64
+        arq_height:
+          type: integer
+          format: int64
+        issuer_pubkey:
+          type: string
+        signature:
+          type: string

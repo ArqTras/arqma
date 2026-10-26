@@ -110,3 +110,5 @@ src/lmdb/liblmdb/mdb_stat
 src/lmdb/liblmdb/mdb_copy
 src/lmdb/liblmdb/mdb_dump
 utils/__pycache__/
+**/__pycache__/
+*.py[cod]
