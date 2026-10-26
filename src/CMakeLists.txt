@@ -109,3 +109,16 @@ if(PER_BLOCK_CHECKPOINT)
 endif()
 
 add_subdirectory(device)
+
+# Ensure commit-scoped NETWORK_ID header is refreshed before compile of
+# translation units that include cryptonote_config.h.
+if(TARGET gennetworkid)
+  foreach(_nid_dep IN ITEMS version common cryptonote_basic cryptonote_core cryptonote_protocol)
+    if(TARGET ${_nid_dep})
+      add_dependencies(${_nid_dep} gennetworkid)
+    endif()
+  endforeach()
+  if(TARGET p2p)
+    add_dependencies(p2p gennetworkid)
+  endif()
+endif()

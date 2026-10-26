@@ -37,7 +37,7 @@ int main(int argc, char** argv)
   namespace po = boost::program_options;
   arq_router::RouterConfig cfg;
   cfg.enabled = true;
-  cfg.listen = "127.0.0.1:1090";
+  cfg.listen = "127.0.0.1:19998";
   cfg.data_dir = "arq-router";
   std::string storage_url;
   std::string token;

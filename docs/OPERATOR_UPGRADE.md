@@ -139,6 +139,9 @@ before HF21 so exclusive mesh has a CURVE stack.
 - **macOS product / cross:** native Homebrew unit build, or
   `make depends target=arm64-apple-darwin` / `x86_64-apple-darwin`.
 - Do **not** commit `build/` or binaries.
+- **NETWORK_ID:** mainnet keeps the historical fixed P2P UUID (upgrade nodes
+  still peer with live mainnet). Testnet/stagenet IDs are commit-scoped; a dirty
+  tree gets a distinct ID (daemon logs `NETWORK_ID seed=` at P2P init).
 
 ### Package inventory (ship from `bin/`)
 
@@ -201,7 +204,7 @@ ASan (Linux CI equivalent): configure with `-DSANITIZE=ON` (address sanitizer on
 ### 2. Daemon probes (core upgrade path)
 
 ```bash
-build/upgrade-release/bin/arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
+build/upgrade-release/bin/arqmad --storage-client-url=http://127.0.0.1:19997 --arq-router
 # unrestricted RPC / console:
 # get_pulse_status / print_pulse  — hybrid, pow_replacement_ready=false
 # get_blink_status / print_blink  — wire_connected + mesh_blink_tx_*
@@ -288,7 +291,7 @@ Not the primary upgrade deliverable; use for storage/router smoke tests:
 ```text
 utils/arqma-stack.sh
 utils/arqma-stack.cmd
-arqmad --storage-client-url=http://127.0.0.1:22021 --arq-router
+arqmad --storage-client-url=http://127.0.0.1:19997 --arq-router
 arqma-msg gen | send <hex> hello | inbox | open
 ```
 
@@ -300,20 +303,20 @@ The stack token is in `$ARQMA_STACK_DIR/env`.
 Operator binaries if you are not using the stack:
 
 ```text
-arqma-storage --listen 127.0.0.1:22021 --data-dir ~/.arqma/storage --peer http://127.0.0.1:22022
-arqma-router --listen 127.0.0.1:1090 --data-dir ~/.arqma/arq-router --storage-url http://127.0.0.1:22021
+arqma-storage --listen 127.0.0.1:19997 --data-dir ~/.arqma/storage --peer http://127.0.0.1:19999
+arqma-router --listen 127.0.0.1:19998 --data-dir ~/.arqma/arq-router --storage-url http://127.0.0.1:19997
 ```
 
 `arqma-storage` honors `PUT /v1/kv?ttl=` (max 14 days). Inbox keys also copy to
 URLs listed in `PUT /v1/snodes?pubkey=`. `GET /v1/swarm?pubkey=` returns swarm id
 plus those members. `arqma-msg` get / inbox / open also read those members when
-the node in `--url` has no local copy. Listen on IPv6 as `[::1]:22021`. HTTP
+the node in `--url` has no local copy. Listen on IPv6 as `[::1]:19997`. HTTP
 bodies are capped at 1 MiB on Linux, macOS, and Windows. Repeat `--router`
 (outermost first, max 3); intermediate hops forward leftover onion, the last hop
 needs `--storage-url`. `PUT /v1/snodes` merges unique HTTP member URLs (cap 32)
 and pushes the list onto those members. `arqma-msg swarm` lists or announces
 membership. Anti-entropy repair: `GET /v1/digest?ns=` + `POST /v1/sync?ns=` and `arqma-storage --gossip-interval=15` (0 disables). Still not a full Oxen swarm.
-Probe gossip health via `GET http://127.0.0.1:22021/status` or daemon `get_storage_status` / `print_storage` (`peer_count`, `gossip_rounds`, `digest_ok`, `sync_ok`, `membership_ok`, `gossip_fail`). Blink mesh soak: watch `mesh_blink_tx_shadow_parse_ok` / `*_parse_fail` on `get_blink_status` / `get_arqnet_status` (observability only).
+Probe gossip health via `GET http://127.0.0.1:19997/status` or daemon `get_storage_status` / `print_storage` (`peer_count`, `gossip_rounds`, `digest_ok`, `sync_ok`, `membership_ok`, `gossip_fail`). Blink mesh soak: watch `mesh_blink_tx_shadow_parse_ok` / `*_parse_fail` on `get_blink_status` / `get_arqnet_status` (observability only).
 
 ## Compatibility
 

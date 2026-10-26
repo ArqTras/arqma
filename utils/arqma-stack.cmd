@@ -4,9 +4,9 @@ setlocal
 set "BIN_DIR=%ARQMA_BIN_DIR%"
 if "%BIN_DIR%"=="" set "BIN_DIR=%~dp0..\build\upgrade-test\bin"
 set "STORAGE_LISTEN=%~1"
-if "%STORAGE_LISTEN%"=="" set "STORAGE_LISTEN=127.0.0.1:22021"
+if "%STORAGE_LISTEN%"=="" set "STORAGE_LISTEN=127.0.0.1:19997"
 set "ROUTER_LISTEN=%~2"
-if "%ROUTER_LISTEN%"=="" set "ROUTER_LISTEN=127.0.0.1:1090"
+if "%ROUTER_LISTEN%"=="" set "ROUTER_LISTEN=127.0.0.1:19998"
 set "STACK_DIR=%ARQMA_STACK_DIR%"
 if "%STACK_DIR%"=="" set "STACK_DIR=%TEMP%\arqma-stack"
 
