@@ -1,6 +1,9 @@
 # Changelog — upgrade branch
 
-## Unreleased
+## 10.1.0 — Cipherstorm Vault (upgrade foundation)
+
+In-tree software version bumped **10.0.0 → 10.1.0** (codename unchanged).
+No mainnet hard-fork activation in this cut; see `docs/RELEASE_NOTES_v10.1.0.md`.
 
 ### Fixes
 

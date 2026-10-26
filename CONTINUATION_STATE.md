@@ -1,11 +1,12 @@
 # CONTINUATION_STATE
 
 Branch: `upgrade` · Remote: `origin/upgrade` · Authorship: ArqTras only  
-Hooks: `git -c core.hooksPath=/tmp/empty-git-hooks`  
-Author: ArqTras `<33489188+ArqTras@users.noreply.github.com>`
+Author: ArqTras `<biuro@ar-net.info>` · signing key `FAB8833900C876FF`
 
 ## Tip
 
+- In-tree software version **10.1.0** (Cipherstorm Vault); release notes
+  `docs/RELEASE_NOTES_v10.1.0.md` — tag `v10.1.0` / GitHub Release still pending
 - Stage 4 mesh gate on; HF20 **4 000 000** hybrid SN; HF21 **5 000 000** exclusive
 - Pulse Milestone C: hybrid producer; majority certificate extra bound to miner
   payload hash; weight-neutral miner extra; round bound to block timestamp

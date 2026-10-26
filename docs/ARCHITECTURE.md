@@ -45,7 +45,7 @@ rebrand.
 
 ## Consensus / hard forks
 
-Software version: **10.0.0**. Highest protocol version: **network_version_19**.
+Software version: **10.1.0**. Highest protocol version: **network_version_19**.
 
 HF19 enables:
 
