@@ -164,14 +164,39 @@ namespace nodetool
     uint32_t my_port;
     uint16_t rpc_port;
     peerid_type peer_id;
+    // Software identity (optional on wire for legacy peers).
+    uint16_t version_major;
+    uint16_t version_minor;
+    uint16_t version_revision;
+    uint32_t version_build;
 
     BEGIN_KV_SERIALIZE_MAP()
       KV_SERIALIZE_VAL_POD_AS_BLOB(network_id)
       KV_SERIALIZE(peer_id)
       KV_SERIALIZE(my_port)
       KV_SERIALIZE_OPT(rpc_port, (uint16_t)(0))
+      KV_SERIALIZE_OPT(version_major, (uint16_t)(0))
+      KV_SERIALIZE_OPT(version_minor, (uint16_t)(0))
+      KV_SERIALIZE_OPT(version_revision, (uint16_t)(0))
+      KV_SERIALIZE_OPT(version_build, (uint32_t)(0))
     END_KV_SERIALIZE_MAP()
   };
+
+  /// True if peer software is at/above P2P_MIN_ACCEPTED_VERSION_*, or if the
+  /// peer omitted version fields (all zero — legacy handshake).
+  inline bool is_p2p_peer_version_acceptable(const basic_node_data& nd) noexcept
+  {
+    if (nd.version_major == 0 && nd.version_minor == 0 && nd.version_revision == 0 && nd.version_build == 0)
+      return true;
+
+    if (nd.version_major != P2P_MIN_ACCEPTED_VERSION_MAJOR)
+      return nd.version_major > P2P_MIN_ACCEPTED_VERSION_MAJOR;
+    if (nd.version_minor != P2P_MIN_ACCEPTED_VERSION_MINOR)
+      return nd.version_minor > P2P_MIN_ACCEPTED_VERSION_MINOR;
+    if (nd.version_revision != P2P_MIN_ACCEPTED_VERSION_REVISION)
+      return nd.version_revision > P2P_MIN_ACCEPTED_VERSION_REVISION;
+    return nd.version_build >= P2P_MIN_ACCEPTED_VERSION_BUILD;
+  }
 
 
 #define P2P_COMMANDS_POOL_BASE 1000

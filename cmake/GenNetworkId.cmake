@@ -1,6 +1,6 @@
 # Copyright (c) 2018 - 2026, The Arqma Network
 #
-# Build-time NETWORK_ID (dirty detection patterned on hyle-team/zano version.cmake):
+# Build-time NETWORK_ID (git dirty detection for non-mainnet seeds):
 #   - mainnet   -> ALWAYS the historical fixed UUID (live P2P continuity)
 #   - testnet / stagenet:
 #       clean tree -> ID derived only from `git rev-parse HEAD` (valid)
@@ -66,7 +66,7 @@ else()
   set(ARQMA_NET_ID_COMMIT "${_commit}")
   set(ARQMA_NET_ID_SEED "${_commit}")
 
-  # Zano-style dirty detection (no tags required).
+  # Dirty detection via git diff-index / untracked (no tags required).
   execute_process(
     COMMAND "${GIT}" update-index -q --refresh
     WORKING_DIRECTORY "${SRC_DIR}"

@@ -12,7 +12,6 @@ Portions Copyright (c) 2012-2013 The Cryptonote developers.
 - Discord: [https://chat.arqma.com](https://chat.arqma.com)
 - Telegram: [https://telegram.arqma.com](https://telegram.arqma.com)
 - Matrix chat: [#arqma:matrix.org or Internal room ID: !YqTIhVcMbLHivbYegN:matrix.org](https://#arqma:matrix.org)
-- Upgrade docs: [docs/UPGRADE_ROADMAP.md](docs/UPGRADE_ROADMAP.md), [docs/PLATFORM.md](docs/PLATFORM.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/MIGRATION.md](docs/MIGRATION.md)
 
 ## Upgrade branch (`upgrade`)
 
@@ -35,17 +34,6 @@ then **HF21 exclusive native mesh** (mainnet height **5 000 000**), with Pulse a
 3. Pulse stage stays hybrid (PoW required)
 4. Storage / router stay out of the `arqmad` process
 
-**Docs for this branch:**
-
-- [docs/PRODUCT.md](docs/PRODUCT.md) — what ships vs probe-only
-- [docs/OPERATOR_UPGRADE.md](docs/OPERATOR_UPGRADE.md) — operator knobs, HF checklist, how to test
-- [docs/BINARIES.md](docs/BINARIES.md) — launch flags for every binary
-- [docs/UPGRADE_ROADMAP.md](docs/UPGRADE_ROADMAP.md) — milestone map
-- [docs/PLATFORM.md](docs/PLATFORM.md) — Linux / macOS / Windows build matrix
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/MIGRATION.md](docs/MIGRATION.md)
-- [docs/PR_COMPLETENESS_GATE.md](docs/PR_COMPLETENESS_GATE.md) — what this PR claims vs defers
-- PR: [ArqTras/arqma#3](https://github.com/ArqTras/arqma/pull/3)
-
 **Quick verify (Linux/macOS):**
 
 ```bash
@@ -62,8 +50,7 @@ ctest --test-dir build/upgrade-release -R 'unit_tests|hash-target' --output-on-f
 # Expect: [  PASSED  ] 628 tests.
 ```
 
-Binaries land in `build/upgrade-release/bin/`. Full package lists and soak steps:
-[docs/OPERATOR_UPGRADE.md](docs/OPERATOR_UPGRADE.md).
+Binaries land in `build/upgrade-release/bin/`.
 
 ## Other Arqma related websites
 
@@ -134,8 +121,7 @@ If you want to help out, see [CONTRIBUTING](CONTRIBUTING.md) for a set of guidel
 ### IMPORTANT
 
 Tagged releases are the stable path for production nodes. The `upgrade` branch
-is the active modernization line (HF20/HF21 + hybrid Pulse + Arq-Net dual-stack);
-prefer it when following [docs/OPERATOR_UPGRADE.md](docs/OPERATOR_UPGRADE.md).
+is the active modernization line (HF20/HF21 + hybrid Pulse + Arq-Net dual-stack).
 `master` may lag or differ — do not mix undocumented tip builds with mainnet SNs.
 
 ![Monitored by DiscordHooks](https://img.shields.io/static/v1?label=Monitored%20by&message=DiscordHooks&color=brightgreen&style=for-the-badge)

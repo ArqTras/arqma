@@ -1,5 +1,5 @@
 #!/bin/sh
-# Strip accidental Co-authored-by / Cursor trailers (portable, macOS-safe).
+# Strip accidental Co-authored-by / Made-with / agent trailers (portable, macOS-safe).
 msgfile="$1"
 tmp="${msgfile}.strip.$$"
 sed -e '/^Co-authored-by:/Id' -e '/^Signed-off-by:/Id' -e '/^Made-with:/Id' -e '/[Cc]ursor[Aa]gent/d' -e '/[Cc]ursor [Aa]gent/d' "$msgfile" > "$tmp" && mv "$tmp" "$msgfile"

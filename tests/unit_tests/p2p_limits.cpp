@@ -30,6 +30,7 @@
 
 #include "cryptonote_config.h"
 #include "net/levin_base.h"
+#include "p2p/p2p_protocol_defs.h"
 
 TEST(p2p_limits, documented_connection_totals_match_defaults)
 {
@@ -64,4 +65,36 @@ TEST(p2p_limits, preauth_budget_is_below_full_packet_max)
   EXPECT_LT(P2P_PREAUTH_PACKET_MAX_SIZE_BYTES, P2P_DEFAULT_PACKET_MAX_SIZE_BYTES);
   EXPECT_EQ(250u, P2P_MAX_PEERS_IN_HANDSHAKE);
   EXPECT_EQ(static_cast<uint64_t>(LEVIN_INITIAL_MAX_PACKET_SIZE), P2P_PREAUTH_PACKET_MAX_SIZE_BYTES);
+}
+
+TEST(p2p_limits, software_version_gate_rejects_below_minimum)
+{
+  EXPECT_EQ(10u, P2P_MIN_ACCEPTED_VERSION_MAJOR);
+  EXPECT_EQ(0u, P2P_MIN_ACCEPTED_VERSION_MINOR);
+  EXPECT_EQ(0u, P2P_MIN_ACCEPTED_VERSION_REVISION);
+  EXPECT_EQ(0u, P2P_MIN_ACCEPTED_VERSION_BUILD);
+
+  nodetool::basic_node_data legacy{};
+  EXPECT_TRUE(nodetool::is_p2p_peer_version_acceptable(legacy));
+
+  nodetool::basic_node_data ok{};
+  ok.version_major = 10;
+  ok.version_minor = 1;
+  ok.version_revision = 0;
+  ok.version_build = 1;
+  EXPECT_TRUE(nodetool::is_p2p_peer_version_acceptable(ok));
+
+  nodetool::basic_node_data at_min{};
+  at_min.version_major = 10;
+  at_min.version_minor = 0;
+  at_min.version_revision = 0;
+  at_min.version_build = 0;
+  EXPECT_TRUE(nodetool::is_p2p_peer_version_acceptable(at_min));
+
+  nodetool::basic_node_data too_old{};
+  too_old.version_major = 9;
+  too_old.version_minor = 9;
+  too_old.version_revision = 9;
+  too_old.version_build = 999;
+  EXPECT_FALSE(nodetool::is_p2p_peer_version_acceptable(too_old));
 }

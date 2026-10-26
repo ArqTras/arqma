@@ -8,7 +8,7 @@ ARG TZ=Etc/UTC
 ARG TARGETARCH
 ENV TZ=${TZ}
 
-# Stabilne APT + komplet narzędzi do "depends"
+# Stable APT + tooling for "depends"
 RUN set -eux; \
     rm -rf /var/lib/apt/lists/*; \
     apt-get -o Acquire::Retries=5 update; \
@@ -31,7 +31,7 @@ RUN set -eux; \
         flex \
         file \
         patch; \
-    # Cross-kompilator tylko dla arm64
+    # Cross-compiler only for arm64
     if [ "$TARGETARCH" = "arm64" ]; then \
         apt-get -y --no-install-recommends install \
             gcc-aarch64-linux-gnu g++-aarch64-linux-gnu; \
@@ -41,7 +41,7 @@ RUN set -eux; \
 WORKDIR /src
 COPY . .
 
-# Budowa zależności i binarek (z rekursywnymi submodułami)
+# Build dependencies and binaries (with recursive submodules)
 RUN set -eux; \
     git submodule update --init --recursive; \
     rm -rf build; \
@@ -67,7 +67,7 @@ RUN set -eux; \
 
 COPY --from=builder /out/bin/ /usr/local/bin/
 
-# Nie uruchamiaj demona jako root
+# Do not run the daemon as root
 RUN adduser --system --group --disabled-password arqma && \
     mkdir -p /wallet /home/arqma/.arqma && \
     chown -R arqma:arqma /home/arqma/.arqma /wallet

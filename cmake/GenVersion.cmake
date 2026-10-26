@@ -29,8 +29,8 @@
 #
 # Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
 
-# Check what commit we're on
-execute_process(COMMAND "${GIT}" rev-parse --short HEAD RESULT_VARIABLE RET OUTPUT_VARIABLE COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE)
+# Git identity for VERSIONTAG (short hash, optional -dirty).
+execute_process(COMMAND "${GIT}" rev-parse --short=7 HEAD RESULT_VARIABLE RET OUTPUT_VARIABLE COMMIT OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 if(RET)
 	# Something went wrong, set the version tag to -unknown
@@ -42,12 +42,18 @@ if(RET)
 else()
 	message(STATUS "You are currently on commit ${COMMIT}")
 
+    set(VERSIONTAG "${COMMIT}")
+    execute_process(COMMAND "${GIT}" update-index -q --refresh WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" ERROR_QUIET)
+    execute_process(COMMAND "${GIT}" diff-index --quiet HEAD -- WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" RESULT_VARIABLE DIRTY_RET ERROR_QUIET)
+    if("${DIRTY_RET}" STREQUAL "1")
+      set(VERSIONTAG "${COMMIT}-dirty")
+    endif()
+
 	# Get all the tags
 	execute_process(COMMAND "${GIT}" rev-list --tags --max-count=1 --abbrev-commit RESULT_VARIABLE RET OUTPUT_VARIABLE TAGGEDCOMMIT OUTPUT_STRIP_TRAILING_WHITESPACE)
 
     if(NOT TAGGEDCOMMIT)
         message(WARNING "Cannot determine most recent tag. Make sure that you are building either from a Git working tree or from a source archive.")
-        set(VERSIONTAG "${COMMIT}")
         set(VERSION_IS_RELEASE "false")
     else()
         message(STATUS "The most recent tag was at ${TAGGEDCOMMIT}")
@@ -59,7 +65,6 @@ else()
             set(VERSION_IS_RELEASE "true")
         else()
             message(STATUS "You are ahead of or behind a tagged release")
-            set(VERSIONTAG "${COMMIT}")
             set(VERSION_IS_RELEASE "false")
         endif()
     endif()

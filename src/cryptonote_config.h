@@ -143,6 +143,14 @@ using namespace std::literals;
 #define P2P_LOCAL_WHITE_PEERLIST_LIMIT                  1000
 #define P2P_LOCAL_GRAY_PEERLIST_LIMIT                   5000
 
+/// Minimum software version accepted on P2P handshake when a peer advertises
+/// MAJOR.MINOR.REVISION.BUILD. All-zero advertised fields mean a
+/// legacy peer omitted the version → still accepted during rollout.
+#define P2P_MIN_ACCEPTED_VERSION_MAJOR                  10
+#define P2P_MIN_ACCEPTED_VERSION_MINOR                  0
+#define P2P_MIN_ACCEPTED_VERSION_REVISION               0
+#define P2P_MIN_ACCEPTED_VERSION_BUILD                  0
+
 #define P2P_DEFAULT_CONNECTIONS_COUNT_OUT               8
 #define P2P_DEFAULT_CONNECTIONS_COUNT_IN                32
 #define P2P_DEFAULT_CONNECTIONS_COUNT_TEST_OUT          2

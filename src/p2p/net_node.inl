@@ -1019,6 +1019,17 @@ namespace nodetool
         return;
       }
 
+      if(!is_p2p_peer_version_acceptable(rsp.node_data))
+      {
+        LOG_WARNING_CC(context, "COMMAND_HANDSHAKE Failed, peer software too old: "
+          << rsp.node_data.version_major << "." << rsp.node_data.version_minor << "."
+          << rsp.node_data.version_revision << "." << rsp.node_data.version_build
+          << " (min " << P2P_MIN_ACCEPTED_VERSION_MAJOR << "." << P2P_MIN_ACCEPTED_VERSION_MINOR
+          << "." << P2P_MIN_ACCEPTED_VERSION_REVISION << "." << P2P_MIN_ACCEPTED_VERSION_BUILD
+          << "), closing connection.");
+        return;
+      }
+
       if(!handle_remote_peerlist(rsp.local_peerlist_new, context))
       {
         LOG_WARNING_CC(context, "COMMAND_HANDSHAKE: failed to handle_remote_peerlist(...), closing connection.");
@@ -1960,6 +1971,10 @@ namespace nodetool
       node_data.my_port = 0;
     node_data.rpc_port = zone.m_can_pingback ? m_rpc_port : 0;
     node_data.network_id = m_network_id;
+    node_data.version_major = ARQMA_VERSION[0];
+    node_data.version_minor = ARQMA_VERSION[1];
+    node_data.version_revision = ARQMA_VERSION[2];
+    node_data.version_build = ARQMA_VERSION_BUILD;
     return true;
   }
   //-----------------------------------------------------------------------------------
@@ -2232,6 +2247,19 @@ namespace nodetool
     {
 
       LOG_INFO_CC(context, "WRONG NETWORK AGENT CONNECTED! id=" << arg.node_data.network_id);
+      drop_connection(context);
+      add_host_fail(context.m_remote_address);
+      return 1;
+    }
+
+    if(!is_p2p_peer_version_acceptable(arg.node_data))
+    {
+      LOG_INFO_CC(context, "PEER SOFTWARE TOO OLD: "
+        << arg.node_data.version_major << "." << arg.node_data.version_minor << "."
+        << arg.node_data.version_revision << "." << arg.node_data.version_build
+        << " (min " << P2P_MIN_ACCEPTED_VERSION_MAJOR << "." << P2P_MIN_ACCEPTED_VERSION_MINOR
+        << "." << P2P_MIN_ACCEPTED_VERSION_REVISION << "." << P2P_MIN_ACCEPTED_VERSION_BUILD
+        << ")");
       drop_connection(context);
       add_host_fail(context.m_remote_address);
       return 1;

@@ -2,8 +2,18 @@
 
 ## 10.1.0 — Cipherstorm Vault (upgrade foundation)
 
-In-tree software version bumped **10.0.0 → 10.1.0** (codename unchanged).
-No mainnet hard-fork activation in this cut; see `docs/RELEASE_NOTES_v10.1.0.md`.
+In-tree software version bumped **10.0.0 → 10.1.0.1** (4-part MAJOR.MINOR.REVISION.BUILD;
+codename unchanged). No mainnet hard-fork activation in this cut; see
+`docs/RELEASE_NOTES_v10.1.0.md`.
+
+### Versioning / P2P
+
+- Adopt 4-part software version (`10.1.0.1`) with git short hash in
+  `ARQMA_VERSION_FULL` (`10.1.0.1[<sha7>]`, optional `-dirty`).
+- Advertise MAJOR/MINOR/REVISION/BUILD on P2P `basic_node_data`; reject peers
+  that advertise below `P2P_MIN_ACCEPTED_VERSION_*` (currently `10.0.0.0`).
+  Legacy peers that omit version fields remain accepted.
+- SN uptime-proof wire still uses the 3-part triple (major/minor/revision).
 
 ### Fixes
 
@@ -181,4 +191,4 @@ No mainnet hard-fork activation in this cut; see `docs/RELEASE_NOTES_v10.1.0.md`
   refresh the phase/roadmap status docs for the latest upgrade work.
 - Release prep: Linux binary inventory + system deps, depends/CI artifact map,
   multi-SN stagenet soak how-to, local **628**-test verify notes
-  (`CONTINUATION_STATE.md`, `docs/OPERATOR_UPGRADE.md`, release notes / gate).
+  (operator upgrade notes, release notes / gate).
