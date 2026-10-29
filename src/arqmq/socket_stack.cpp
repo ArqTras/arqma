@@ -57,8 +57,10 @@ bool recv_all_parts(zmq::socket_t& sock, std::vector<zmq::message_t>& parts, con
   parts.push_back(std::move(msg));
   while (parts.back().more()) {
     zmq::message_t next;
+    // A set more-flag means another frame is part of this message. Returning a
+    // short sequence would let handlers treat a truncated command as complete.
     if (!sock.recv(next, zmq::recv_flags::none))
-      break;
+      return false;
     parts.push_back(std::move(next));
   }
   return true;
@@ -252,27 +254,30 @@ std::error_code SocketStack::send_to_peer(const std::string_view pubkey, const s
       return std::make_error_code(std::errc::invalid_argument);
   }
 
-  std::error_code ec;
-  std::mutex mu;
-  std::condition_variable cv;
-  bool done = false;
-  SendJob job{
-      std::string{pubkey}, std::string{command}, std::string{payload}, std::move(resolved_hint), &ec, &mu, &cv, &done};
+  auto state = std::make_shared<SendJob>();
+  state->pubkey = std::string{pubkey};
+  state->command = std::string{command};
+  state->payload = std::string{payload};
+  state->hint = std::move(resolved_hint);
+  // The worker deletes this holder after copying the shared_ptr. On timeout the
+  // caller's shared_ptr drops, but the worker's copy keeps the state alive.
+  auto* holder = new std::shared_ptr<SendJob>(state);
 
   try {
     zmq::socket_t push{context_, zmq::socket_type::push};
     push.connect(ctrl_endpoint_);
     zmq::message_t cmd{k_send, std::strlen(k_send)};
     push.send(cmd, zmq::send_flags::sndmore);
-    send_pointer(push, &job);
+    send_pointer(push, holder);
   } catch (...) {
+    delete holder;
     return std::make_error_code(std::errc::io_error);
   }
 
-  std::unique_lock<std::mutex> lock{mu};
-  if (!cv.wait_for(lock, std::chrono::seconds(5), [&] { return done; }))
+  std::unique_lock<std::mutex> lock{state->mu};
+  if (!state->cv.wait_for(lock, std::chrono::seconds(5), [&] { return state->done; }))
     return std::make_error_code(std::errc::timed_out);
-  return ec;
+  return state->ec;
 }
 
 void SocketStack::register_handler(std::string command, CategoryAcl required, CommandHandler handler)
@@ -286,26 +291,25 @@ std::error_code SocketStack::dispatch(const InboundRequest& request, std::string
   if (!running_.load())
     return std::make_error_code(std::errc::not_connected);
 
-  std::error_code ec;
-  std::string local_reply;
-  std::string* reply_ptr = reply ? reply : &local_reply;
-  std::mutex mu;
-  std::condition_variable cv;
-  bool done = false;
-  Job job{request, reply_ptr, &ec, &mu, &cv, &done};
+  auto state = std::make_shared<Job>();
+  state->request = request;
+  auto* holder = new std::shared_ptr<Job>(state);
 
   try {
     zmq::socket_t push{context_, zmq::socket_type::push};
     push.connect(jobs_endpoint_);
-    send_pointer(push, &job);
+    send_pointer(push, holder);
   } catch (...) {
+    delete holder;
     return std::make_error_code(std::errc::io_error);
   }
 
-  std::unique_lock<std::mutex> lock{mu};
-  if (!cv.wait_for(lock, std::chrono::seconds(5), [&] { return done; }))
+  std::unique_lock<std::mutex> lock{state->mu};
+  if (!state->cv.wait_for(lock, std::chrono::seconds(5), [&] { return state->done; }))
     return std::make_error_code(std::errc::timed_out);
-  return ec;
+  if (reply)
+    *reply = std::move(state->reply_storage);
+  return state->ec;
 }
 
 size_t SocketStack::handler_count() const
@@ -577,16 +581,19 @@ void SocketStack::worker_main()
       if (command == k_quit)
         break;
       if (command == k_send) {
-        auto* send_job = static_cast<SendJob*>(recv_pointer(ctrl));
+        auto* holder = static_cast<std::shared_ptr<SendJob>*>(recv_pointer(ctrl));
+        if (!holder)
+          continue;
+        std::shared_ptr<SendJob> send_job = std::move(*holder);
+        delete holder;
         if (!send_job)
           continue;
-        std::error_code ec = worker_send_to_peer(*send_job, outgoing);
-        if (send_job->ec)
-          *send_job->ec = ec;
-        if (send_job->mu && send_job->cv && send_job->done) {
-          std::lock_guard<std::mutex> lock{*send_job->mu};
-          *send_job->done = true;
-          send_job->cv->notify_one();
+        const std::error_code ec = worker_send_to_peer(*send_job, outgoing);
+        {
+          std::lock_guard<std::mutex> lock{send_job->mu};
+          send_job->ec = ec;
+          send_job->done = true;
+          send_job->cv.notify_one();
         }
         continue;
       }
@@ -638,17 +645,19 @@ void SocketStack::worker_main()
     }
 
     if (items[0].revents & ZMQ_POLLIN) {
-      auto* raw = recv_pointer(jobs);
-      auto* job = static_cast<Job*>(raw);
+      auto* holder = static_cast<std::shared_ptr<Job>*>(recv_pointer(jobs));
+      if (!holder)
+        continue;
+      std::shared_ptr<Job> job = std::move(*holder);
+      delete holder;
       if (!job)
         continue;
-      std::error_code ec = handle_job(job->request, job->reply);
-      if (job->ec)
-        *job->ec = ec;
-      if (job->mu && job->cv && job->done) {
-        std::lock_guard<std::mutex> lock{*job->mu};
-        *job->done = true;
-        job->cv->notify_one();
+      const std::error_code ec = handle_job(job->request, &job->reply_storage);
+      {
+        std::lock_guard<std::mutex> lock{job->mu};
+        job->ec = ec;
+        job->done = true;
+        job->cv.notify_one();
       }
     }
   }
