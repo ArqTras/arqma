@@ -4,7 +4,7 @@ Reviewed tip: `0d6db6b20e00e6a8cbc2eb876b395ad48c499d8a`
 Base: `arqma/arqma` `master` at `4b067e8c22d1feeab3f78c848c44fc24a1bcdd0e` (`Hf_19 CLSAG + Atomic Swap`)  
 Diff size: 175 files, +20863 / −4045.
 
-This note is a code review of that tip. It does not change hard-fork heights, Pulse stage, or the default Arq-Net backend. Safe fixes that landed with this note are listed at the end.
+This note is a code review of that tip. It does not change hard-fork heights, Pulse stage, or the default Arq-Net backend. Safe fixes that landed with this note are listed at the end. Follow-up: https://github.com/ArqTras/arqma/pull/7
 
 `mergeable` on GitHub is `MERGEABLE`. `mergeStateStatus` is `BLOCKED` because `reviewDecision` is `REVIEW_REQUIRED`, and because `macos-14-unit-Release` failed. That macOS job died in **Install dependencies (macOS)** (Homebrew), before configure. Ubuntu unit Release and Debug on the same tip completed successfully. `linux-asan-ubsan` was skipped after the macOS failure.
 
@@ -153,4 +153,4 @@ Issues:
 - High, not changed: at HF20, `arqmq`+CURVE nodes send quorum only on `port+10000` and skip SNNetwork. That matches the published lock, and it is a mixed-fleet outage if any SN opts in early. Stay on `legacy-arqnet` for mainnet until the whole quorum is on the new port.
 - Medium: testnet gains HF19 at 1200 (master testnet has no v19 row). Stagenet/testnet network ids are per commit, and a dirty tree will not peer. Mainnet id is unchanged. `docs/PRODUCT.md` and `docs/OPERATOR_UPGRADE.md` are not on the tip; the PR body should stop citing them.
 
-I would not merge until the SocketStack timeout and the Pulse template stamp are in the branch, and until a same-commit stagenet soak is actually run. Neither fix moves HF20, Pulse stage, or the default backend.
+I would not merge until the SocketStack timeout and the Pulse template stamp are in the branch, and until a same-commit stagenet soak is actually run. Neither fix moves HF20, Pulse stage, or the default backend. Those two fixes, plus this write-up, are in https://github.com/ArqTras/arqma/pull/7.
