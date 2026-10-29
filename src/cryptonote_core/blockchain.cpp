@@ -1480,10 +1480,22 @@ bool Blockchain::create_block_template(block& b, const crypto::hash *from_block,
         else
           pulse_cache_ok = !has_pulse;
       }
+      // Pulse payload_hash binds the cached block timestamp. Stamping a newer
+      // time onto that miner tx makes a PoW-valid block fail
+      // validate_miner_transaction once HF20 attaches a certificate.
+      // Pre-HF20 templates have no pulse extra, so the cache stamp is unchanged.
+      const uint64_t template_now = static_cast<uint64_t>(time(NULL));
+      if (pulse_cache_ok && service_nodes::pulse::hybrid_sn_permitted(m_btc.major_version))
+      {
+        cryptonote::tx_extra_pulse_round bound{};
+        if (cryptonote::get_pulse_round_from_tx_extra(m_btc.miner_tx.extra, bound) &&
+            template_now != m_btc.timestamp)
+          pulse_cache_ok = false;
+      }
       if (pulse_cache_ok)
       {
         MDEBUG("Using cached template");
-        m_btc.timestamp = time(NULL); // update timestamp unconditionally
+        m_btc.timestamp = template_now;
         b = m_btc;
         diffic = m_btc_difficulty;
         height = m_btc_height;

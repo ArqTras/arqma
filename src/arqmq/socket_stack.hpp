@@ -126,14 +126,16 @@ private:
     CommandHandler handler;
   };
 
+  // Heap-owned. The worker and the waiting caller share it. A 5s timeout must
+  // not free the object while the worker still writes the result.
   struct Job
   {
     InboundRequest request;
-    std::string* reply = nullptr;
-    std::error_code* ec = nullptr;
-    std::mutex* mu = nullptr;
-    std::condition_variable* cv = nullptr;
-    bool* done = nullptr;
+    std::string reply_storage;
+    std::error_code ec;
+    std::mutex mu;
+    std::condition_variable cv;
+    bool done = false;
   };
 
   struct SendJob
@@ -142,10 +144,10 @@ private:
     std::string command;
     std::string payload;
     std::string hint;
-    std::error_code* ec = nullptr;
-    std::mutex* mu = nullptr;
-    std::condition_variable* cv = nullptr;
-    bool* done = nullptr;
+    std::error_code ec;
+    std::mutex mu;
+    std::condition_variable cv;
+    bool done = false;
   };
 
   void worker_main();

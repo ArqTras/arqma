@@ -132,7 +132,7 @@ bool test_generator::construct_block(cryptonote::block& blk, uint64_t height, co
     txs_size += get_object_blobsize(tx);
   }
 
-  blk.miner_tx = AUTO_VAL_INIT(blk.miner_tx);
+  blk.miner_tx = {};
   size_t target_block_size = txs_size + get_object_blobsize(blk.miner_tx);
   while (true)
   {
